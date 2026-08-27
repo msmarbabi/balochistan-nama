@@ -1,0 +1,205 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: 'Vazirmatn', Tahoma, Arial, sans-serif;
+  --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: #f8fafc;
+  --foreground: #1e293b;
+  --card: #ffffff;
+  --card-foreground: #1e293b;
+  --primary: #059669;
+  --primary-foreground: #ffffff;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+}
+
+.dark {
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --card: #1e293b;
+  --card-foreground: #f1f5f9;
+  --primary: #10b981;
+  --primary-foreground: #022c22;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --border: #334155;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  overflow-x: hidden;
+  min-height: 100dvh;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Vazirmatn', 'Iran Sans', Tahoma, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background 0.4s ease, color 0.4s ease;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+.dark ::-webkit-scrollbar-thumb { background: #475569; }
+
+/* 3D perspective container */
+.perspective-800 { perspective: 800px; }
+.perspective-1000 { perspective: 1000px; }
+.preserve-3d { transform-style: preserve-3d; }
+
+/* Clock face glow */
+.clock-glow {
+  filter: drop-shadow(0 0 15px rgba(5, 150, 105, 0.4));
+}
+.dark .clock-glow {
+  filter: drop-shadow(0 0 20px rgba(16, 185, 129, 0.5));
+}
+
+/* Analog clock hands */
+.clock-hand {
+ transform-origin: 50% 100%;
+ transition: transform 0.3s cubic-bezier(0.4, 2.08, 0.55, 0.44);
+}
+
+/* Compass needle animation */
+@keyframes compass-needle-sway {
+  0%, 100% { transform: rotate(var(--bearing)); }
+  25% { transform: rotate(calc(var(--bearing) + 2deg)); }
+  75% { transform: rotate(calc(var(--bearing) - 2deg)); }
+}
+
+.compass-needle {
+  animation: compass-needle-sway 3s ease-in-out infinite;
+}
+
+/* 3D card flip */
+.card-3d {
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+}
+.card-3d:hover {
+  transform: rotateY(5deg) rotateX(2deg) translateZ(10px);
+}
+
+/* Floating animation for icons */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Pulse glow for active tab */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 5px rgba(5, 150, 105, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(5, 150, 105, 0.6); }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Gradient text */
+.gradient-text {
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Cyberpunk style for compass */
+.cyberpunk-border {
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.1), inset 0 0 10px rgba(0, 255, 255, 0.05);
+}
+
+.cyberpunk-text {
+  text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+}
+
+/* Tab bar styling */
+.tab-bar {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Calendar day cell hover */
+.day-cell {
+  transition: all 0.2s ease;
+}
+.day-cell:active {
+  transform: scale(0.92);
+}
+
+/* Holiday badge pulse */
+@keyframes holiday-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.15); }
+}
+
+.holiday-dot {
+  animation: holiday-pulse 2s ease-in-out infinite;
+}
+
+/* Spinner */
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}
+
+/* Note card theme colors */
+.note-spring { border-right: 4px solid #10b981; }
+.note-summer { border-right: 4px solid #f97316; }
+.note-autumn { border-right: 4px solid #b91c1c; }
+.note-winter { border-right: 4px solid #2563eb; }
+.note-birthday { border-right: 4px solid #ec4899; }
+.note-baluch { border-right: 4px solid #7c3aed; }
+
+/* Toast notification slide-in */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.slide-in {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+/* Nastaliq style for poetry */
+.poetry-text {
+  font-style: italic;
+  line-height: 2.2;
+  letter-spacing: 0.5px;
+}
+
+/* Hide scrollbar but keep scrolling */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

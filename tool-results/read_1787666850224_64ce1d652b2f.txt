@@ -1,0 +1,944 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect, useCallback } from 'react';
+     4→import { Compass, Clock, Navigation, AlertCircle } from 'lucide-react';
+     5→import {
+     6→  getCurrentTripleDate,
+     7→  toPersianDigits,
+     8→  getShamsiMonthName,
+     9→  getPersianDayName,
+    10→} from '@/lib/calendar-utils';
+    11→
+    12→// ============================================
+    13→// Props
+    14→// ============================================
+    15→
+    16→interface ClockCompassTabProps {
+    17→  isDark: boolean;
+    18→  themeColor: string;
+    19→  themeGradient: string;
+    20→}
+    21→
+    22→// ============================================
+    23→// Persian digits for clock face
+    24→// ============================================
+    25→
+    26→const PERSIAN_NUMBERS = [
+    27→  '۱۲', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹', '۱۰', '۱۱',
+    28→];
+    29→
+    30→// ============================================
+    31→// Helpers
+    32→// ============================================
+    33→
+    34→/** Polar → Cartesian: 0° = North (top), clockwise */
+    35→function pol(cx: number, cy: number, r: number, deg: number) {
+    36→  const rad = (deg * Math.PI) / 180;
+    37→  return { x: cx + r * Math.sin(rad), y: cy - r * Math.cos(rad) };
+    38→}
+    39→
+    40→/** Text rotation so label is never upside-down */
+    41→function textRot(deg: number) {
+    42→  return deg > 90 && deg < 270 ? deg - 180 : deg;
+    43→}
+    44→
+    45→// ============================================
+    46→// Component
+    47→// ============================================
+    48→
+    49→export default function ClockCompassTab({ isDark, themeColor, themeGradient }: ClockCompassTabProps) {
+    50→  // ---- State ----
+    51→  const [time, setTime] = useState<Date>(new Date());
+    52→  const [heading, setHeading] = useState<number>(0);
+    53→  const [hasOrientation, setHasOrientation] = useState(false);
+    54→  const [beta, setBeta] = useState<number>(0);
+    55→  const [gamma, setGamma] = useState<number>(0);
+    56→  const [demoAngle, setDemoAngle] = useState<number>(0);
+    57→  const [demoBeta, setDemoBeta] = useState<number>(0);
+    58→
+    59→  // ---- Real-time clock ----
+    60→  useEffect(() => {
+    61→    const timer = setInterval(() => setTime(new Date()), 1000);
+    62→    return () => clearInterval(timer);
+    63→  }, []);
+    64→
+    65→  // ---- Device orientation ----
+    66→  const handleOrientation = useCallback((event: DeviceOrientationEvent) => {
+    67→    const headingVal = (event as unknown as { webkitCompassHeading?: number }).webkitCompassHeading ??
+    68→      (event.alpha != null ? (360 - event.alpha) % 360 : 0);
+    69→    setHeading(headingVal);
+    70→    setBeta(event.beta ?? 0);
+    71→    setGamma(event.gamma ?? 0);
+    72→    setHasOrientation(true);
+    73→  }, []);
+    74→
+    75→  useEffect(() => {
+    76→    if (typeof window !== 'undefined' && 'DeviceOrientationEvent' in window) {
+    77→      const DOE = DeviceOrientationEvent as unknown as {
+    78→        requestPermission?: () => Promise<string>;
+    79→      };
+    80→      if (typeof DOE.requestPermission === 'function') {
+    81→        DOE.requestPermission().then((response) => {
+    82→          if (response === 'granted') {
+    83→            window.addEventListener('deviceorientation', handleOrientation);
+    84→          }
+    85→        }).catch(() => {
+    86→          // Permission denied, use demo
+    87→        });
+    88→      } else {
+    89→        window.addEventListener('deviceorientation', handleOrientation);
+    90→      }
+    91→    }
+    92→    return () => window.removeEventListener('deviceorientation', handleOrientation);
+    93→  }, [handleOrientation]);
+    94→
+    95→  // ---- Demo animation (when no sensor) ----
+    96→  useEffect(() => {
+    97→    if (hasOrientation) return;
+    98→    const timer = setInterval(() => {
+    99→      setDemoAngle((prev) => (prev + 0.3) % 360);
+   100→    }, 30);
+   101→    return () => clearInterval(timer);
+   102→  }, [hasOrientation]);
+   103→
+   104→  useEffect(() => {
+   105→    if (hasOrientation) return;
+   106→    const timer = setInterval(() => {
+   107→      setDemoBeta(5 * Math.sin(Date.now() / 2000));
+   108→    }, 30);
+   109→    return () => clearInterval(timer);
+   110→  }, [hasOrientation]);
+   111→
+   112→  // ---- Computed values ----
+   113→  const hours = time.getHours();
+   114→  const minutes = time.getMinutes();
+   115→  const seconds = time.getSeconds();
+   116→  const ampm = hours >= 12 ? 'ب.ظ' : 'ق.ظ';
+   117→  const hours12 = hours % 12 || 12;
+   118→  const timeStr = `${toPersianDigits(String(hours12).padStart(2, '0'))}:${toPersianDigits(String(minutes).padStart(2, '0'))}:${toPersianDigits(String(seconds).padStart(2, '0'))}`;
+   119→
+   120→  // Shamsi date
+   121→  const triple = getCurrentTripleDate();
+   122→  const { gy, gm, gd } = { gy: triple.miladi.year, gm: triple.miladi.month, gd: triple.miladi.day };
+   123→  const dayName = getPersianDayName(gy, gm, gd);
+   124→  const monthName = getShamsiMonthName(triple.shamsi.month);
+   125→  const dateStr = `${dayName} ${toPersianDigits(triple.shamsi.day)} ${monthName} ${toPersianDigits(triple.shamsi.year)}`;
+   126→
+   127→  // Analog clock hand angles
+   128→  const secondDeg = seconds * 6;
+   129→  const minuteDeg = minutes * 6 + seconds * 0.1;
+   130→  const hourDeg = (hours % 12) * 30 + minutes * 0.5;
+   131→
+   132→  // Compass
+   133→  const currentHeading = hasOrientation ? heading : demoAngle;
+   134→  const currentBeta = hasOrientation ? beta : demoBeta;
+   135→  const currentGamma = hasOrientation ? gamma : 0;
+   136→
+   137→  // Qibla: approximately 253 degrees from North
+   138→  const QIBLA_DEGREES = 253;
+   139→
+   140→  // ---- Styles ----
+   141→  const cardBg = isDark ? 'bg-[#1e293b]' : 'bg-white';
+   142→  const textColor = isDark ? 'text-[#f1f5f9]' : 'text-[#1e293b]';
+   143→  const mutedColor = isDark ? 'text-[#94a3b8]' : 'text-[#64748b]';
+   144→
+   145→  // ================================================================
+   146→  // SECTION 1 : DIGITAL CLOCK
+   147→  // ================================================================
+   148→
+   149→  // (rendered inline below)
+   150→
+   151→  // ================================================================
+   152→  // SECTION 2 : ANALOG 3D CLOCK
+   153→  // ================================================================
+   154→
+   155→  const renderAnalogClock = () => (
+   156→    <div className="flex justify-center items-center py-4">
+   157→      <div
+   158→        className="animate-float"
+   159→        style={{ perspective: '800px' }}
+   160→      >
+   161→        <div
+   162→          className="relative rounded-full clock-glow"
+   163→          style={{
+   164→            width: 220,
+   165→            height: 220,
+   166→            background: isDark
+   167→              ? 'radial-gradient(circle, #1e293b 0%, #0f172a 100%)'
+   168→              : 'radial-gradient(circle, #ffffff 0%, #f1f5f9 100%)',
+   169→            border: `3px solid ${themeColor}`,
+   170→            transform: 'rotateX(10deg)',
+   171→            transformStyle: 'preserve-3d',
+   172→          }}
+   173→        >
+   174→          {/* Hour markers */}
+   175→          {PERSIAN_NUMBERS.map((num, i) => {
+   176→            const angle = (i * 30) * (Math.PI / 180);
+   177→            const radius = 85;
+   178→            const x = 110 + radius * Math.sin(angle) - 12;
+   179→            const y = 110 - radius * Math.cos(angle) - 8;
+   180→            return (
+   181→              <span
+   182→                key={i}
+   183→                className="absolute text-xs font-bold"
+   184→                style={{
+   185→                  left: x,
+   186→                  top: y,
+   187→                  color: i === 0 ? themeColor : (isDark ? '#94a3b8' : '#475569'),
+   188→                  fontSize: i === 0 ? '13px' : '11px',
+   189→                }}
+   190→              >
+   191→                {num}
+   192→              </span>
+   193→            );
+   194→          })}
+   195→
+   196→          {/* Tick marks */}
+   197→          {Array.from({ length: 60 }).map((_, i) => {
+   198→            const angle = i * 6;
+   199→            const isMajor = i % 5 === 0;
+   200→            const outerR = 105;
+   201→            const innerR = isMajor ? 95 : 99;
+   202→            const rad = (angle * Math.PI) / 180;
+   203→            const x1 = 110 + outerR * Math.sin(rad);
+   204→            const y1 = 110 - outerR * Math.cos(rad);
+   205→            const x2 = 110 + innerR * Math.sin(rad);
+   206→            const y2 = 110 - innerR * Math.cos(rad);
+   207→            return (
+   208→              <line
+   209→                key={`tick-${i}`}
+   210→                x1={x1} y1={y1} x2={x2} y2={y2}
+   211→                stroke={isMajor ? themeColor : (isDark ? '#475569' : '#cbd5e1')}
+   212→                strokeWidth={isMajor ? 2 : 0.8}
+   213→                strokeLinecap="round"
+   214→              />
+   215→            );
+   216→          })}
+   217→
+   218→          {/* Hour hand */}
+   219→          <div
+   220→            className="clock-hand absolute"
+   221→            style={{
+   222→              left: '50%',
+   223→              top: '20%',
+   224→              width: 4,
+   225→              height: '30%',
+   226→              marginLeft: -2,
+   227→              background: isDark ? '#e2e8f0' : '#1e293b',
+   228→              borderRadius: 2,
+   229→              transformOrigin: '50% 100%',
+   230→              transform: `rotate(${hourDeg}deg)`,
+   231→              zIndex: 10,
+   232→            }}
+   233→          />
+   234→
+   235→          {/* Minute hand */}
+   236→          <div
+   237→            className="clock-hand absolute"
+   238→            style={{
+   239→              left: '50%',
+   240→              top: '14%',
+   241→              width: 3,
+   242→              height: '38%',
+   243→              marginLeft: -1.5,
+   244→              background: isDark ? '#cbd5e1' : '#334155',
+   245→              borderRadius: 2,
+   246→              transformOrigin: '50% 100%',
+   247→              transform: `rotate(${minuteDeg}deg)`,
+   248→              zIndex: 11,
+   249→            }}
+   250→          />
+   251→
+   252→          {/* Second hand */}
+   253→          <div
+   254→            className="absolute"
+   255→            style={{
+   256→              left: '50%',
+   257→              top: '12%',
+   258→              width: 1.5,
+   259→              height: '40%',
+   260→              marginLeft: -0.75,
+   261→              background: '#ef4444',
+   262→              borderRadius: 1,
+   263→              transformOrigin: '50% 100%',
+   264→              transform: `rotate(${secondDeg}deg)`,
+   265→              transition: 'transform 0.3s cubic-bezier(0.4, 2.08, 0.55, 0.44)',
+   266→              zIndex: 12,
+   267→            }}
+   268→          />
+   269→
+   270→          {/* Center dot */}
+   271→          <div
+   272→            className="absolute rounded-full"
+   273→            style={{
+   274→              width: 10,
+   275→              height: 10,
+   276→              left: '50%',
+   277→              top: '50%',
+   278→              marginLeft: -5,
+   279→              marginTop: -5,
+   280→              background: themeColor,
+   281→              boxShadow: `0 0 6px ${themeColor}`,
+   282→              zIndex: 13,
+   283→            }}
+   284→          />
+   285→        </div>
+   286→      </div>
+   287→    </div>
+   288→  );
+   289→
+   290→  // ================================================================
+   291→  // SECTION 3 : ENHANCED 3D COMPASS
+   292→  // ================================================================
+   293→
+   294→  const COMPASS_SIZE = 280;
+   295→  const CC = COMPASS_SIZE / 2; // 140
+   296→
+   297→  // Pre-compute compass rose geometry
+   298→  const sq1 = { // cardinal square, R = 88
+   299→    N: pol(CC, CC, 88, 0),
+   300→    E: pol(CC, CC, 88, 90),
+   301→    S: pol(CC, CC, 88, 180),
+   302→    W: pol(CC, CC, 88, 270),
+   303→  };
+   304→
+   305→  const sq2 = { // intercardinal square, R = 70
+   306→    NE: pol(CC, CC, 70, 45),
+   307→    SE: pol(CC, CC, 70, 135),
+   308→    SW: pol(CC, CC, 70, 225),
+   309→    NW: pol(CC, CC, 70, 315),
+   310→  };
+   311→
+   312→  // Star triangle fills (alternating light / dark)
+   313→  const starA = isDark ? `${themeColor}32` : `${themeColor}24`;
+   314→  const starB = isDark ? `${themeColor}1a` : `${themeColor}12`;
+   315→  const starStrokeColor = isDark ? `${themeColor}50` : `${themeColor}38`;
+   316→
+   317→  // Cardinal direction data
+   318→  const cardinals = [
+   319→    { deg: 0,   en: 'N', fa: 'شمال' },
+   320→    { deg: 90,  en: 'E', fa: 'شرق' },
+   321→    { deg: 180, en: 'S', fa: 'جنوب' },
+   322→    { deg: 270, en: 'W', fa: 'غرب' },
+   323→  ];
+   324→
+   325→  // Intercardinal direction data
+   326→  const intercardinals = [
+   327→    { deg: 45,  fa: 'شمال شرقی' },
+   328→    { deg: 135, fa: 'جنوب شرقی' },
+   329→    { deg: 225, fa: 'جنوب غربی' },
+   330→    { deg: 315, fa: 'شمال غربی' },
+   331→  ];
+   332→
+   333→  // Degree labels every 30° (exclude cardinals)
+   334→  const degreeLabels = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330];
+   335→
+   336→  // Qibla position (inside rotating SVG)
+   337→  const qiblaDot = pol(CC, CC, 100, QIBLA_DEGREES);
+   338→  const qiblaLabel = pol(CC, CC, 114, QIBLA_DEGREES);
+   339→
+   340→  // Needle geometry
+   341→  const needleN = { tip: pol(CC, CC, 82, 0), lWing: pol(CC, CC, 11, 270), rWing: pol(CC, CC, 11, 90), tail: pol(CC, CC, 10, 180) };
+   342→  const needleS = { tip: pol(CC, CC, 82, 180), lWing: pol(CC, CC, 11, 90), rWing: pol(CC, CC, 11, 270), tail: pol(CC, CC, 10, 0) };
+   343→
+   344→  const renderCompass = () => (
+   345→    <div className="flex flex-col items-center py-4">
+   346→      <div className="relative" style={{ width: COMPASS_SIZE, height: COMPASS_SIZE }}>
+   347→        {/* Fixed top indicator triangle */}
+   348→        <div
+   349→          className="absolute z-30"
+   350→          style={{
+   351→            top: -2,
+   352→            left: '50%',
+   353→            marginLeft: -7,
+   354→            width: 0,
+   355→            height: 0,
+   356→            borderLeft: '7px solid transparent',
+   357→            borderRight: '7px solid transparent',
+   358→            borderTop: `12px solid ${themeColor}`,
+   359→            filter: `drop-shadow(0 0 4px ${themeColor})`,
+   360→          }}
+   361→        />
+   362→
+   363→        {/* Rotating compass body */}
+   364→        <div
+   365→          className="absolute inset-0"
+   366→          style={{
+   367→            transform: `rotate(${-currentHeading}deg)`,
+   368→            transition: 'transform 0.3s ease-out',
+   369→          }}
+   370→        >
+   371→          <svg
+   372→            viewBox={`0 0 ${COMPASS_SIZE} ${COMPASS_SIZE}`}
+   373→            width={COMPASS_SIZE}
+   374→            height={COMPASS_SIZE}
+   375→            style={{
+   376→              filter: `drop-shadow(0 0 12px ${isDark ? `${themeColor}20` : `${themeColor}10`})`,
+   377→            }}
+   378→          >
+   379→            {/* ---- Defs ---- */}
+   380→            <defs>
+   381→              {/* Background radial gradient */}
+   382→              <radialGradient id="compassBg">
+   383→                <stop offset="0%" stopColor={isDark ? '#1e293b' : '#ffffff'} />
+   384→                <stop offset="100%" stopColor={isDark ? '#0f172a' : '#f1f5f9'} />
+   385→              </radialGradient>
+   386→
+   387→              {/* North needle gradient */}
+   388→              <linearGradient id="needleNorth" x1="0" y1="0" x2="0" y2="1">
+   389→                <stop offset="0%" stopColor={themeColor} />
+   390→                <stop offset="100%" stopColor={themeColor} stopOpacity="0.55" />
+   391→              </linearGradient>
+   392→
+   393→              {/* Qibla glow filter */}
+   394→              <filter id="qiblaGlow" x="-100%" y="-100%" width="300%" height="300%">
+   395→                <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
+   396→                <feMerge>
+   397→                  <feMergeNode in="blur" />
+   398→                  <feMergeNode in="SourceGraphic" />
+   399→                </feMerge>
+   400→              </filter>
+   401→
+   402→              {/* Outer ring subtle gradient */}
+   403→              <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+   404→                <stop offset="0%" stopColor={themeColor} stopOpacity="0.3" />
+   405→                <stop offset="50%" stopColor={themeColor} stopOpacity="0.1" />
+   406→                <stop offset="100%" stopColor={themeColor} stopOpacity="0.3" />
+   407→              </linearGradient>
+   408→            </defs>
+   409→
+   410→            {/* ---- Background circle ---- */}
+   411→            <circle
+   412→              cx={CC} cy={CC} r={CC - 1}
+   413→              fill="url(#compassBg)"
+   414→              stroke={themeColor}
+   415→              strokeWidth="2.5"
+   416→              opacity={0.9}
+   417→            />
+   418→            <circle
+   419→              cx={CC} cy={CC} r={CC - 1}
+   420→              fill="none"
+   421→              stroke="url(#ringGrad)"
+   422→              strokeWidth="6"
+   423→            />
+   424→
+   425→            {/* ============================================
+   426→                OUTER DEGREE RING
+   427→                72 ticks every 5°
+   428→                ============================================ */}
+   429→            {Array.from({ length: 72 }).map((_, i) => {
+   430→              const angle = i * 5;
+   431→              const isMajor30 = angle % 30 === 0;
+   432→              const isMid10 = angle % 10 === 0;
+   433→              const outerR = 137;
+   434→              const innerR = isMajor30 ? 123 : isMid10 ? 128 : 132;
+   435→              const p1 = pol(CC, CC, outerR, angle);
+   436→              const p2 = pol(CC, CC, innerR, angle);
+   437→              return (
+   438→                <line
+   439→                  key={`dt-${i}`}
+   440→                  x1={p1.x} y1={p1.y}
+   441→                  x2={p2.x} y2={p2.y}
+   442→                  stroke={isMajor30
+   443→                    ? themeColor
+   444→                    : isMid10
+   445→                      ? (isDark ? '#64748b' : '#94a3b8')
+   446→                      : (isDark ? '#334155' : '#cbd5e1')
+   447→                  }
+   448→                  strokeWidth={isMajor30 ? 2 : isMid10 ? 1 : 0.5}
+   449→                  strokeLinecap="round"
+   450→                />
+   451→              );
+   452→            })}
+   453→
+   454→            {/* ============================================
+   455→                DEGREE LABELS every 30° (Persian digits)
+   456→                Skip 0°, 90°, 180°, 270° (cardinal labels shown instead)
+   457→                ============================================ */}
+   458→            {degreeLabels.map((deg) => {
+   459→              // Skip cardinal positions — they get direction names
+   460→              if (deg % 90 === 0) return null;
+   461→
+   462→              const p = pol(CC, CC, 113, deg);
+   463→              const rot = textRot(deg);
+   464→              return (
+   465→                <text
+   466→                  key={`dl-${deg}`}
+   467→                  x={p.x} y={p.y}
+   468→                  textAnchor="middle"
+   469→                  dominantBaseline="central"
+   470→                  transform={`rotate(${rot}, ${p.x}, ${p.y})`}
+   471→                  fill={isDark ? '#94a3b8' : '#475569'}
+   472→                  fontSize="9"
+   473→                  fontFamily="monospace"
+   474→                >
+   475→                  {toPersianDigits(String(deg))}°
+   476→                </text>
+   477→              );
+   478→            })}
+   479→
+   480→            {/* ============================================
+   481→                INNER DECORATIVE RING
+   482→                ============================================ */}
+   483→            <circle
+   484→              cx={CC} cy={CC} r={106}
+   485→              fill="none"
+   486→              stroke={isDark ? '#334155' : '#e2e8f0'}
+   487→              strokeWidth="0.75"
+   488→            />
+   489→
+   490→            {/* ============================================
+   491→                8-POINT STAR COMPASS ROSE
+   492→                Two overlapping squares, each split into 4 triangles
+   493→                with alternating fills for a faceted look.
+   494→                ============================================ */}
+   495→
+   496→            {/* Square 1 — Cardinal (N, E, S, W) — 4 triangles */}
+   497→            {/* N→E quadrant */}
+   498→            <polygon
+   499→              points={`${CC},${CC} ${sq1.N.x},${sq1.N.y} ${sq1.E.x},${sq1.E.y}`}
+   500→              fill={starA} stroke={starStrokeColor} strokeWidth="0.5"
+   501→            />
+   502→            {/* E→S quadrant */}
+   503→            <polygon
+   504→              points={`${CC},${CC} ${sq1.E.x},${sq1.E.y} ${sq1.S.x},${sq1.S.y}`}
+   505→              fill={starB} stroke={starStrokeColor} strokeWidth="0.5"
+   506→            />
+   507→            {/* S→W quadrant */}
+   508→            <polygon
+   509→              points={`${CC},${CC} ${sq1.S.x},${sq1.S.y} ${sq1.W.x},${sq1.W.y}`}
+   510→              fill={starA} stroke={starStrokeColor} strokeWidth="0.5"
+   511→            />
+   512→            {/* W→N quadrant */}
+   513→            <polygon
+   514→              points={`${CC},${CC} ${sq1.W.x},${sq1.W.y} ${sq1.N.x},${sq1.N.y}`}
+   515→              fill={starB} stroke={starStrokeColor} strokeWidth="0.5"
+   516→            />
+   517→
+   518→            {/* Square 2 — Intercardinal (NE, SE, SW, NW) — 4 triangles */}
+   519→            {/* NE→SE */}
+   520→            <polygon
+   521→              points={`${CC},${CC} ${sq2.NE.x},${sq2.NE.y} ${sq2.SE.x},${sq2.SE.y}`}
+   522→              fill={starB} stroke={starStrokeColor} strokeWidth="0.5"
+   523→            />
+   524→            {/* SE→SW */}
+   525→            <polygon
+   526→              points={`${CC},${CC} ${sq2.SE.x},${sq2.SE.y} ${sq2.SW.x},${sq2.SW.y}`}
+   527→              fill={starA} stroke={starStrokeColor} strokeWidth="0.5"
+   528→            />
+   529→            {/* SW→NW */}
+   530→            <polygon
+   531→              points={`${CC},${CC} ${sq2.SW.x},${sq2.SW.y} ${sq2.NW.x},${sq2.NW.y}`}
+   532→              fill={starB} stroke={starStrokeColor} strokeWidth="0.5"
+   533→            />
+   534→            {/* NW→NE */}
+   535→            <polygon
+   536→              points={`${CC},${CC} ${sq2.NW.x},${sq2.NW.y} ${sq2.NE.x},${sq2.NE.y}`}
+   537→              fill={starA} stroke={starStrokeColor} strokeWidth="0.5"
+   538→            />
+   539→
+   540→            {/* ============================================
+   541→                CARDINAL DIRECTION LABELS
+   542→                Both Persian & English, at r = 68
+   543→                ============================================ */}
+   544→            {cardinals.map((d) => {
+   545→              const pMain = pol(CC, CC, 66, d.deg);
+   546→              const pSub = pol(CC, CC, 55, d.deg);
+   547→              const rot = textRot(d.deg);
+   548→              const isNorth = d.deg === 0;
+   549→              return (
+   550→                <g key={`card-${d.deg}`}>
+   551→                  {/* Persian name */}
+   552→                  <text
+   553→                    x={pMain.x} y={pMain.y}
+   554→                    textAnchor="middle" dominantBaseline="central"
+   555→                    transform={`rotate(${rot}, ${pMain.x}, ${pMain.y})`}
+   556→                    fill={isNorth ? themeColor : (isDark ? '#e2e8f0' : '#1e293b')}
+   557→                    fontSize={isNorth ? '14' : '12'}
+   558→                    fontWeight="bold"
+   559→                  >
+   560→                    {d.fa}
+   561→                  </text>
+   562→                  {/* English letter */}
+   563→                  <text
+   564→                    x={pSub.x} y={pSub.y}
+   565→                    textAnchor="middle" dominantBaseline="central"
+   566→                    transform={`rotate(${rot}, ${pSub.x}, ${pSub.y})`}
+   567→                    fill={isNorth ? themeColor : (isDark ? '#64748b' : '#94a3b8')}
+   568→                    fontSize="9"
+   569→                    fontWeight="600"
+   570→                  >
+   571→                    ({d.en})
+   572→                  </text>
+   573→                </g>
+   574→              );
+   575→            })}
+   576→
+   577→            {/* ============================================
+   578→                INTERCARDINAL DIRECTION LABELS
+   579→                Small Persian text, radially aligned
+   580→                ============================================ */}
+   581→            {intercardinals.map((d) => {
+   582→              const p = pol(CC, CC, 56, d.deg);
+   583→              const rot = textRot(d.deg);
+   584→              return (
+   585→                <text
+   586→                  key={`icard-${d.deg}`}
+   587→                  x={p.x} y={p.y}
+   588→                  textAnchor="middle" dominantBaseline="central"
+   589→                  transform={`rotate(${rot}, ${p.x}, ${p.y})`}
+   590→                  fill={isDark ? '#64748b' : '#94a3b8'}
+   591→                  fontSize="7"
+   592→                  fontWeight="500"
+   593→                >
+   594→                  {d.fa}
+   595→                </text>
+   596→              );
+   597→            })}
+   598→
+   599→            {/* ============================================
+   600→                DIAMOND COMPASS NEEDLE
+   601→                North half: themeColor gradient
+   602→                South half: gray
+   603→                ============================================ */}
+   604→
+   605→            {/* North needle (diamond kite) */}
+   606→            <polygon
+   607→              points={
+   608→                `${needleN.tip.x},${needleN.tip.y} ${needleN.rWing.x},${needleN.rWing.y} ${needleN.tail.x},${needleN.tail.y} ${needleN.lWing.x},${needleN.lWing.y}`
+   609→              }
+   610→              fill="url(#needleNorth)"
+   611→              stroke={themeColor}
+   612→              strokeWidth="0.5"
+   613→              opacity={0.92}
+   614→            />
+   615→
+   616→            {/* South needle (diamond kite) */}
+   617→            <polygon
+   618→              points={
+   619→                `${needleS.tip.x},${needleS.tip.y} ${needleS.rWing.x},${needleS.rWing.y} ${needleS.tail.x},${needleS.tail.y} ${needleS.lWing.x},${needleS.lWing.y}`
+   620→              }
+   621→              fill={isDark ? '#475569' : '#94a3b8'}
+   622→              stroke={isDark ? '#64748b' : '#cbd5e1'}
+   623→              strokeWidth="0.5"
+   624→              opacity={0.75}
+   625→            />
+   626→
+   627→            {/* Needle center cap */}
+   628→            <circle
+   629→              cx={CC} cy={CC} r={7}
+   630→              fill={isDark ? '#1e293b' : '#ffffff'}
+   631→              stroke={themeColor}
+   632→              strokeWidth="2"
+   633→            />
+   634→            <circle
+   635→              cx={CC} cy={CC} r={3}
+   636→              fill={themeColor}
+   637→            />
+   638→
+   639→            {/* ============================================
+   640→                QIBLA MARKER at 253°
+   641→                Golden dot with glow + "کعبه" label
+   642→                (rotates with the compass rose)
+   643→                ============================================ */}
+   644→            <g>
+   645→              {/* Glow halo */}
+   646→              <circle
+   647→                cx={qiblaDot.x} cy={qiblaDot.y} r={10}
+   648→                fill="#eab308"
+   649→                opacity={0.18}
+   650→                filter="url(#qiblaGlow)"
+   651→              />
+   652→              {/* Golden dot */}
+   653→              <circle
+   654→                cx={qiblaDot.x} cy={qiblaDot.y} r={5}
+   655→                fill="#eab308"
+   656→                stroke="#fef08a"
+   657→                strokeWidth="1.5"
+   658→              />
+   659→              {/* Inner highlight */}
+   660→              <circle
+   661→                cx={qiblaDot.x} cy={qiblaDot.y} r={2}
+   662→                fill="#fef9c3"
+   663→              />
+   664→              {/* Label "کعبه" */}
+   665→              <text
+   666→                x={qiblaLabel.x} y={qiblaLabel.y}
+   667→                textAnchor="middle" dominantBaseline="central"
+   668→                transform={`rotate(${textRot(QIBLA_DEGREES)}, ${qiblaLabel.x}, ${qiblaLabel.y})`}
+   669→                fill="#eab308"
+   670→                fontSize="9"
+   671→                fontWeight="bold"
+   672→              >
+   673→                کعبه
+   674→              </text>
+   675→            </g>
+   676→
+   677→          </svg>
+   678→        </div>
+   679→      </div>
+   680→
+   681→      {/* Heading display */}
+   682→      <div className={`flex items-center gap-2 mt-3 ${mutedColor}`}>
+   683→        <Navigation size={14} />
+   684→        <span className="text-sm font-medium">
+   685→          {toPersianDigits(Math.round(currentHeading))}° {hasOrientation ? '' : '(آزمایشی)'}
+   686→        </span>
+   687→      </div>
+   688→
+   689→      {/* Qibla legend */}
+   690→      <div className="flex items-center gap-1.5 justify-center mt-1">
+   691→        <div
+   692→          className="w-2.5 h-2.5 rounded-full"
+   693→          style={{
+   694→            background: '#eab308',
+   695→            boxShadow: '0 0 6px rgba(234,179,8,0.6)',
+   696→          }}
+   697→        />
+   698→        <span className={`text-xs ${mutedColor}`}>
+   699→          قبله: {toPersianDigits(QIBLA_DEGREES)}° از شمال
+   700→        </span>
+   701→      </div>
+   702→    </div>
+   703→  );
+   704→
+   705→  // ================================================================
+   706→  // SECTION 4 : PILOT INDICATOR
+   707→  // ================================================================
+   708→
+   709→  const renderPilotIndicator = () => (
+   710→    <div className="flex flex-col items-center py-4">
+   711→      <div
+   712→        className="relative rounded-full overflow-hidden"
+   713→        style={{
+   714→          width: 160,
+   715→          height: 160,
+   716→          border: `2px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+   717→        }}
+   718→      >
+   719→        {/* Sky & Ground with tilt */}
+   720→        <div
+   721→          className="absolute inset-0"
+   722→          style={{
+   723→            transform: `rotate(${currentGamma * 0.5}deg)`,
+   724→            transition: 'transform 0.15s ease-out',
+   725→            transformOrigin: '50% 50%',
+   726→          }}
+   727→        >
+   728→          {/* Sky */}
+   729→          <div
+   730→            className="absolute"
+   731→            style={{
+   732→              top: 0,
+   733→              left: 0,
+   734→              right: 0,
+   735→              height: '50%',
+   736→              background: isDark
+   737→                ? 'linear-gradient(to bottom, #1e3a5f, #2d5a87)'
+   738→                : 'linear-gradient(to bottom, #60a5fa, #93c5fd)',
+   739→              marginTop: `${-currentBeta * 0.5}px`,
+   740→            }}
+   741→          />
+   742→          {/* Ground */}
+   743→          <div
+   744→            className="absolute"
+   745→            style={{
+   746→              bottom: 0,
+   747→              left: 0,
+   748→              right: 0,
+   749→              height: '50%',
+   750→              background: isDark
+   751→                ? 'linear-gradient(to bottom, #78350f, #451a03)'
+   752→                : 'linear-gradient(to bottom, #a16207, #854d0e)',
+   753→              marginBottom: `${currentBeta * 0.5}px`,
+   754→            }}
+   755→          />
+   756→          {/* Horizon line */}
+   757→          <div
+   758→            className="absolute left-0 right-0"
+   759→            style={{
+   760→              top: '50%',
+   761→              height: 1.5,
+   762→              background: '#ffffff',
+   763→              opacity: 0.7,
+   764→              marginTop: `${-currentBeta * 0.5}px`,
+   765→            }}
+   766→          />
+   767→        </div>
+   768→
+   769→        {/* Aircraft symbol (+) */}
+   770→        <div
+   771→          className="absolute"
+   772→          style={{
+   773→            top: '50%',
+   774→            left: '50%',
+   775→            transform: 'translate(-50%, -50%)',
+   776→            zIndex: 10,
+   777→          }}
+   778→        >
+   779→          {/* Wings */}
+   780→          <div
+   781→            className="absolute"
+   782→            style={{
+   783→              width: 60,
+   784→              height: 2.5,
+   785→              background: '#fbbf24',
+   786→              left: '50%',
+   787→              top: '50%',
+   788→              marginLeft: -30,
+   789→              marginTop: -1.25,
+   790→              borderRadius: 1,
+   791→              boxShadow: '0 0 4px rgba(251, 191, 36, 0.6)',
+   792→            }}
+   793→          />
+   794→          {/* Vertical bar */}
+   795→          <div
+   796→            className="absolute"
+   797→            style={{
+   798→              width: 2.5,
+   799→              height: 20,
+   800→              background: '#fbbf24',
+   801→              left: '50%',
+   802→              top: '50%',
+   803→              marginLeft: -1.25,
+   804→              marginTop: -10,
+   805→              borderRadius: 1,
+   806→              boxShadow: '0 0 4px rgba(251, 191, 36, 0.6)',
+   807→            }}
+   808→          />
+   809→          {/* Left wing tip */}
+   810→          <div
+   811→            className="absolute"
+   812→            style={{
+   813→              width: 2,
+   814→              height: 10,
+   815→              background: '#fbbf24',
+   816→              left: '50%',
+   817→              top: '50%',
+   818→              marginLeft: -32,
+   819→              marginTop: -3,
+   820→              borderRadius: 1,
+   821→              transform: 'rotate(-20deg)',
+   822→            }}
+   823→          />
+   824→          {/* Right wing tip */}
+   825→          <div
+   826→            className="absolute"
+   827→            style={{
+   828→              width: 2,
+   829→              height: 10,
+   830→              background: '#fbbf24',
+   831→              left: '50%',
+   832→              top: '50%',
+   833→              marginLeft: 30,
+   834→              marginTop: -3,
+   835→              borderRadius: 1,
+   836→              transform: 'rotate(20deg)',
+   837→            }}
+   838→          />
+   839→        </div>
+   840→
+   841→        {/* Pitch markings on left side */}
+   842→        <div className="absolute" style={{ left: 16, top: '50%', zIndex: 5, transform: 'translateY(-50%)' }}>
+   843→          {[-20, -10, 10, 20].map((pitch) => (
+   844→            <div
+   845→              key={pitch}
+   846→              className="absolute"
+   847→              style={{
+   848→                top: -pitch * 1.5,
+   849→                left: 0,
+   850→                width: 14,
+   851→                height: 1,
+   852→                background: 'rgba(255,255,255,0.3)',
+   853→                borderRadius: 1,
+   854→              }}
+   855→            />
+   856→          ))}
+   857→        </div>
+   858→      </div>
+   859→
+   860→      <p className={`text-xs mt-2 ${mutedColor}`}>
+   861→        {hasOrientation ? `شیب: ${toPersianDigits(Math.round(currentBeta))}°` : `شیب: ${toPersianDigits(Math.round(currentBeta))}° (آزمایشی)`}
+   862→      </p>
+   863→    </div>
+   864→  );
+   865→
+   866→  // ================================================================
+   867→  // MAIN RENDER
+   868→  // ================================================================
+   869→
+   870→  return (
+   871→    <div className="flex flex-col gap-4 px-4 pb-6" dir="rtl">
+   872→      {/* ==============================================
+   873→          SECTION 1 : DIGITAL CLOCK
+   874→          ============================================== */}
+   875→      <div className={`${cardBg} rounded-xl p-6 shadow-lg`}>
+   876→        <div className="flex items-center gap-2 mb-4">
+   877→          <Clock size={18} style={{ color: themeColor }} />
+   878→          <h2 className={`text-sm font-bold ${textColor}`}>ساعت دیجیتال</h2>
+   879→        </div>
+   880→
+   881→        <div className="text-center">
+   882→          <div
+   883→            className={`text-5xl font-mono font-bold tracking-wider ${textColor}`}
+   884→            style={{
+   885→              textShadow: `0 0 20px ${themeColor}60, 0 0 40px ${themeColor}30`,
+   886→            }}
+   887→          >
+   888→            {timeStr}
+   889→          </div>
+   890→          <div
+   891→            className="text-lg font-bold mt-1"
+   892→            style={{ color: themeColor }}
+   893→          >
+   894→            {ampm}
+   895→          </div>
+   896→          <div className={`text-sm mt-2 ${mutedColor}`}>
+   897→            {dateStr}
+   898→          </div>
+   899→        </div>
+   900→      </div>
+   901→
+   902→      {/* ==============================================
+   903→          SECTION 2 : ANALOG 3D CLOCK
+   904→          ============================================== */}
+   905→      <div className={`${cardBg} rounded-xl p-6 shadow-lg`}>
+   906→        <div className="flex items-center gap-2 mb-2">
+   907→          <Clock size={18} style={{ color: themeColor }} />
+   908→          <h2 className={`text-sm font-bold ${textColor}`}>ساعت آنالوگ سه‌بعدی</h2>
+   909→        </div>
+   910→        {renderAnalogClock()}
+   911→      </div>
+   912→
+   913→      {/* ==============================================
+   914→          SECTION 3 : ENHANCED 3D COMPASS
+   915→          ============================================== */}
+   916→      <div className={`${cardBg} rounded-xl p-6 shadow-lg`}>
+   917→        <div className="flex items-center gap-2 mb-2">
+   918→          <Compass size={18} style={{ color: themeColor }} />
+   919→          <h2 className={`text-sm font-bold ${textColor}`}>قطب‌نما</h2>
+   920→        </div>
+   921→        {renderCompass()}
+   922→      </div>
+   923→
+   924→      {/* ==============================================
+   925→          SECTION 4 : PILOT INDICATOR
+   926→          ============================================== */}
+   927→      <div className={`${cardBg} rounded-xl p-6 shadow-lg`}>
+   928→        <div className="flex items-center gap-2 mb-2">
+   929→          <Navigation size={18} style={{ color: themeColor }} />
+   930→          <h2 className={`text-sm font-bold ${textColor}`}>نشانگر افق مصنوعی</h2>
+   931→        </div>
+   932→        {renderPilotIndicator()}
+   933→        {!hasOrientation && (
+   934→          <div className="flex items-center gap-1.5 justify-center mt-1">
+   935→            <AlertCircle size={12} className="text-yellow-500" />
+   936→            <span className={`text-xs ${mutedColor}`}>
+   937→              حالت آزمایشی — سنسور در دسترس نیست
+   938→            </span>
+   939→          </div>
+   940→        )}
+   941→      </div>
+   942→    </div>
+   943→  );
+   944→}
