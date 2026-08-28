@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#1a1a2e"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🕌 بلوچستان نما"
+            android:textColor="#ffd166"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+        <TextView
+            android:id="@+id/widget_date"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="--"
+            android:textColor="#a0a0c0"
+            android:textSize="12sp"
+            android:gravity="center"
+            android:layout_marginBottom="6dp" />
+
+        <TextView
+            android:id="@+id/widget_fajr"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="فجر --:--"
+            android:textColor="#ffffff"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/widget_dhuhr"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="ظهر --:--"
+            android:textColor="#ffffff"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/widget_asr"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="عصر --:--"
+            android:textColor="#ffffff"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/widget_maghrib"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="مغرب --:--"
+            android:textColor="#ffffff"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/widget_isha"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="عشا --:--"
+            android:textColor="#ffffff"
+            android:textSize="13sp" />
+    </LinearLayout>
+</FrameLayout>

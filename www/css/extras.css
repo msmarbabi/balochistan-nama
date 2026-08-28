@@ -1,0 +1,256 @@
+/* ============================================================
+   Balochistan Nama - Extra styles (extras.css)
+   Styles for Tasbeeh, Tools modal, city/lang selects, notes IO.
+   Reuses the existing seasonal/accent CSS variables.
+   ============================================================ */
+
+/* ---------- Tasbeeh ---------- */
+.tb-chips {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; justify-content: center;
+}
+.tb-chip {
+  padding: 6px 12px; border-radius: 99px; font-size: 12px; font-weight: 600;
+  background: var(--bg-elev2); color: var(--fg-soft); border: 1px solid var(--line);
+  transition: all .2s var(--ease);
+}
+.tb-chip.active { background: var(--accent); color: #fff; box-shadow: 0 0 12px var(--accent); }
+
+.tb-stage { display: flex; flex-direction: column; align-items: center; gap: 14px; margin: 6px 0; }
+.tb-ring {
+  width: 220px; height: 220px; border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, var(--bg-elev) 0 58%, transparent 59%),
+    conic-gradient(var(--accent) calc(var(--p, 0) * 1%), var(--bg-elev2) 0);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 10px 30px var(--shadow), inset 0 0 0 1px var(--line);
+  position: relative;
+}
+.tb-ring__inner {
+  width: 188px; height: 188px; border-radius: 50%;
+  background: var(--bg-elev); display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px; text-align: center;
+  padding: 10px;
+}
+.tb-arabic { font-size: 22px; font-weight: 700; color: var(--accent-deep); line-height: 1.3; }
+.tb-fa { font-size: 11px; color: var(--fg-muted); }
+.tb-count { font-size: 48px; font-weight: 900; color: var(--accent); font-variant-numeric: tabular-nums; }
+.tb-count.pop { animation: tb-pop .3s var(--ease); }
+@keyframes tb-pop { 0% { transform: scale(1); } 50% { transform: scale(1.25); } 100% { transform: scale(1); } }
+.tb-target { font-size: 11px; color: var(--fg-muted); }
+
+.tb-tap {
+  width: 120px; height: 120px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+  color: #fff; font-size: 20px; font-weight: 800;
+  box-shadow: 0 8px 24px var(--accent), 0 0 0 6px var(--glass);
+  transition: transform .12s var(--ease);
+  -webkit-tap-highlight-color: transparent;
+}
+.tb-tap:active { transform: scale(.92); }
+
+.tb-stats { display: flex; gap: 10px; margin-top: 4px; }
+.tb-stat {
+  flex: 1; text-align: center; background: var(--bg-elev2); border-radius: var(--r-md);
+  padding: 12px 6px; border: 1px solid var(--line);
+}
+.tb-stat__v { font-size: 24px; font-weight: 800; color: var(--accent); }
+.tb-stat__l { font-size: 11px; color: var(--fg-muted); margin-top: 2px; }
+
+/* ---------- Tools / stopwatch ---------- */
+.sw-display { font-variant-numeric: tabular-nums; letter-spacing: 1px; }
+.sw-lap {
+  font-size: 12px; padding: 4px 10px; margin: 3px 0; border-radius: 8px;
+  background: var(--bg-elev2); color: var(--fg-soft); border: 1px solid var(--line);
+}
+
+/* ---------- Settings selects ---------- */
+.select {
+  background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line);
+  border-radius: 10px; padding: 7px 10px; font-size: 13px; min-width: 130px;
+}
+.input {
+  background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line);
+  border-radius: 10px; padding: 9px 11px; font-size: 14px; width: 100%;
+}
+.btn {
+  border: 1px solid var(--line); border-radius: 12px; padding: 9px 14px;
+  font-size: 13px; font-weight: 600; color: var(--fg); background: var(--bg-elev);
+  transition: transform .15s var(--ease), background .2s var(--ease);
+}
+.btn:active { transform: scale(.96); }
+.btn--primary { background: linear-gradient(135deg, var(--accent), var(--accent-deep)); color: #fff; border: none; }
+.btn--ghost { background: var(--bg-elev2); }
+.btn:disabled { opacity: .45; }
+
+/* ---------- Modal ---------- */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(4px);
+  display: none; align-items: center; justify-content: center; z-index: 100; padding: 16px;
+}
+.modal-backdrop.show { display: flex; animation: fadeIn .25s var(--ease); }
+.modal {
+  width: 100%; max-width: 460px; max-height: 88vh; overflow: hidden;
+  background: var(--bg-elev); border-radius: var(--r-xl); border: 1px solid var(--line);
+  box-shadow: var(--sh-deep); display: flex; flex-direction: column;
+}
+.modal__title { font-size: 17px; font-weight: 700; padding: 16px 18px 6px; }
+.modal__body { padding: 10px 18px; overflow-y: auto; }
+.modal__actions { display: flex; gap: 8px; padding: 12px 18px 18px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* confetti (reuse) */
+.confetti { position: fixed; inset: 0; pointer-events: none; z-index: 200; overflow: hidden; }
+.confetti span { position: absolute; top: -10%; font-size: 22px; animation: conf-fall linear infinite; }
+@keyframes conf-fall { to { transform: translateY(110vh) rotate(360deg); } }
+
+/* Keep modal above bottom-nav */
+.modal-backdrop { padding-bottom: calc(var(--safe-bottom) + 20px); }
+
+/* ---------- Sticky next-prayer bar ---------- */
+.sticky-prayer {
+  position: fixed; bottom: 62px; left: 8px; right: 8px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+  color: #fff; border-radius: 14px; padding: 10px 14px;
+  box-shadow: 0 8px 24px var(--shadow); z-index: 90;
+}
+.sticky-prayer__name { font-weight: 700; font-size: 14px; }
+.sticky-prayer__time { font-size: 12px; opacity: .85; }
+.sticky-prayer__countdown { font-variant-numeric: tabular-nums; font-weight: 800; font-size: 16px; }
+.hidden { display: none !important; }
+
+/* ---------- Calendar note dot ---------- */
+.cal-cell { position: relative; }
+.note-dot { position: absolute; top: 1px; right: 5px; font-size: 10px; line-height: 1; }
+.cal-cell.has-note { box-shadow: inset 0 -2px 0 var(--accent-soft); }
+.cal-cell.selected { outline: 2px solid var(--accent); }
+
+/* ---------- Calendar event dots & legend (#3) ---------- */
+.cal-grid__day.has-baloch .event-dot { background: #2a9d8f; color:#fff; }
+.cal-grid__day.has-sunni .event-dot { background: #457b9d; color:#fff; }
+.cal-grid__day.has-shia .event-dot { background: #9d4edd; color:#fff; }
+.cal-grid__day.has-intl .event-dot { background: #ff9f1c; color:#fff; }
+.cal-grid__day.has-holiday .event-dot { background: #e63946; color:#fff; }
+.event-dot { font-size: 9px; padding: 1px 4px; border-radius: 6px; background: var(--accent); color:#fff; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.day-events__item.holiday { border-right: 3px solid #e63946; }
+.day-events__item.baloch { border-right: 3px solid #2a9d8f; }
+.day-events__item.sunni { border-right: 3px solid #457b9d; }
+.day-events__item.shia { border-right: 3px solid #9d4edd; }
+.cal-season-bar { height:6px; border-radius:6px; margin:4px 0 10px; }
+.cal-legend { display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; font-size:12px; color:var(--fg); }
+.cal-legend__item { display:flex; align-items:center; gap:4px; }
+.dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+.dot-holiday { background:#e63946; } .dot-baloch { background:#2a9d8f; } .dot-sunni { background:#457b9d; } .dot-shia { background:#9d4edd; } .dot-intl { background:#ff9f1c; } .dot-note { background: var(--accent); }
+
+/* ---------- Notes tab (standalone) ---------- */
+.notes-toolbar { display:flex; gap:6px; flex-wrap:wrap; margin:10px 0; align-items:center; }
+.note-editor { margin-bottom:14px; animation: fadeIn .25s var(--ease); }
+.note-editor__actions { display:flex; gap:8px; margin-top:6px; }
+.note {
+  background: var(--bg-elev2); border:1px solid var(--line); border-radius: var(--r-md);
+  padding:12px; margin-bottom:10px; position:relative; transition: all .2s var(--ease);
+}
+.note.pinned { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 4px 14px var(--shadow); }
+.note.birthday { background: linear-gradient(135deg, rgba(255,159,28,.12), var(--bg-elev2)); }
+.note__head { display:flex; align-items:center; gap:6px; }
+.note__pin { font-size:14px; }
+.note__title { font-size:15px; font-weight:700; color: var(--fg); flex:1; }
+.note__date { font-size:12px; color: var(--fg-muted); margin-top:4px; }
+.note__cat {
+  display:inline-block; font-size:11px; padding:2px 8px; border-radius:99px;
+  background: var(--accent-soft); color: var(--accent-deep); margin-top:6px;
+}
+.note__body { font-size:13px; color: var(--fg-soft); margin-top:6px; line-height:1.6; white-space:pre-wrap; }
+.note__actions { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+
+/* ---------- Culture tabs & quiz ---------- */
+.culture-tabs { display:flex; gap:6px; flex-wrap:wrap; margin:12px 0 6px; }
+.culture-tab {
+  padding:7px 12px; border-radius:99px; font-size:13px; font-weight:600;
+  background: var(--bg-elev2); color: var(--fg-soft); border:1px solid var(--line);
+  transition: all .2s var(--ease);
+}
+.culture-tab.active { background: linear-gradient(135deg, var(--accent), var(--accent-deep)); color:#fff; box-shadow:0 0 12px var(--accent); }
+.poem { background: var(--bg-elev2); border:1px solid var(--line); border-radius: var(--r-md); padding:12px; margin-bottom:10px; }
+.poem__poet { font-size:14px; font-weight:700; color: var(--accent-deep); }
+.poem__year { font-size:11px; color: var(--fg-muted); margin-bottom:6px; }
+.poem__balochi { font-size:14px; color: var(--fg); line-height:1.9; direction:rtl; }
+.poem__fa { font-size:12px; color: var(--fg-soft); line-height:1.8; direction:rtl; margin-top:4px; }
+.poet-bio { font-size:11px; color: var(--fg-muted); margin-top:6px; line-height:1.6; }
+.proverb { background: var(--bg-elev2); border:1px solid var(--line); border-radius: var(--r-md); padding:12px; margin-bottom:10px; }
+.proverb__balochi { font-size:14px; color: var(--fg); line-height:1.8; direction:rtl; }
+.proverb__fa { font-size:12px; color: var(--fg-soft); margin-top:4px; direction:rtl; }
+.proverb__note { font-size:11px; color: var(--fg-muted); margin-top:6px; line-height:1.6; }
+.story-card, .history-card {
+  background: var(--bg-elev2); border:1px solid var(--line); border-radius: var(--r-md); padding:12px; margin-bottom:10px;
+}
+.story-title, .history-title { font-size:14px; font-weight:700; color: var(--accent-deep); margin-bottom:6px; }
+.story-text, .history-text { font-size:13px; color: var(--fg-soft); line-height:1.8; direction:rtl; }
+.story-moral { font-size:12px; color: var(--accent); margin-top:8px; font-weight:600; }
+.quiz-select .section-title { margin-top:0; }
+.quiz-option {
+  display:block; width:100%; text-align:right; padding:11px 14px; margin:6px 0; border-radius:12px;
+  background: var(--bg-elev2); border:1px solid var(--line); font-size:14px; color: var(--fg);
+  transition: all .15s var(--ease);
+}
+.quiz-option:active { transform: scale(.98); }
+.quiz-option.selected { border-color: var(--accent); background: var(--accent-soft); }
+.quiz-option.correct { border-color: #2a9d8f; background: rgba(42,157,143,.15); color:#1b6b5f; font-weight:700; }
+.quiz-option.wrong { border-color: #e63946; background: rgba(230,57,70,.12); color:#c1121f; }
+.quiz-question { font-size:15px; font-weight:700; color: var(--fg); margin:12px 0; line-height:1.6; }
+.quiz-progress { height:8px; background: var(--bg-elev2); border-radius:99px; overflow:hidden; position:relative; margin-bottom:6px; }
+.quiz-progress__bar { height:100%; background: linear-gradient(90deg, var(--accent), var(--accent-deep)); border-radius:99px; transition: width .3s var(--ease); }
+.quiz-progress__text { font-size:11px; color: var(--fg-muted); text-align:center; margin-bottom:8px; }
+.quiz-result { text-align:center; padding:20px; }
+.quiz-result__emoji { font-size:48px; }
+.quiz-result__score { font-size:24px; font-weight:800; color: var(--accent); margin:8px 0; }
+.quiz-result__pct { font-size:16px; color: var(--fg-soft); margin-bottom:14px; }
+
+/* ---------- Songs (culture) ---------- */
+.song-card { background: var(--bg-elev2); border:1px solid var(--line); border-radius: var(--r-md); padding:12px; margin-bottom:10px; }
+.song-title { font-size:15px; font-weight:700; color: var(--accent-deep); }
+.song-artist { font-size:12px; color: var(--fg-muted); margin:2px 0 6px; }
+.song-text { font-size:13px; color: var(--fg-soft); line-height:1.9; direction:rtl; white-space:pre-wrap; }
+.song-note { font-size:11px; color: var(--accent); margin-top:6px; }
+
+/* ---------- Home: stopwatch / tools / moon ---------- */
+.home-tools { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.home-tool-btn { flex:1; min-width:90px; text-align:center; padding:12px 6px; border-radius:12px; background: var(--bg-elev2); border:1px solid var(--line); font-size:13px; font-weight:600; color: var(--fg); }
+.home-tool-btn:active { transform:scale(.96); }
+.sw-box { text-align:center; }
+.sw-time { font-size:34px; font-weight:900; color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing:1px; }
+.sw-ctrls { display:flex; gap:6px; justify-content:center; margin-top:8px; flex-wrap:wrap; }
+.timer-presets { display:flex; gap:6px; flex-wrap:wrap; margin:8px 0; }
+.moon-card { display:flex; align-items:center; gap:14px; }
+.moon-card__visual { font-size:46px; }
+.moon-card__info { flex:1; }
+.moon-card__name { font-size:15px; font-weight:700; color: var(--accent-deep); }
+.moon-card__illum { font-size:12px; color: var(--fg-muted); margin-top:2px; }
+
+/* ---------- Tools divider & analog numbers ---------- */
+.tools-row { display:flex; align-items:stretch; gap:0; }
+.tool-section { flex:1; min-width:0; padding:4px 10px; }
+.tool-divider { width:2px; background: linear-gradient(var(--accent), var(--accent-deep)); opacity:.5; margin:8px 0; border-radius:2px; }
+.analog__number {
+  position:absolute; font-size:clamp(13px,3.5vw,18px); font-weight:700; color: var(--fg);
+  width:24px; height:24px; line-height:24px; text-align:center; pointer-events:none;
+}
+.analog__tick {
+  position:absolute; top:4%; left:50%; width:2px; height:8%; background: var(--fg-muted); opacity:.5;
+  transform-origin: bottom center;
+}
+.analog__tick--major { width:3px; height:11%; background: var(--accent); opacity:.9; }
+
+/* ---------- Ramadan banner ---------- */
+.ramadan-banner {
+  background: linear-gradient(135deg, #b5179e, #f72585, #ff9e00);
+  color:#fff; text-align:center; padding:9px 12px; font-size:14px; font-weight:700;
+  box-shadow:0 4px 16px rgba(247,37,133,.4); animation: pulseGlow 2.4s ease-in-out infinite;
+}
+.ramadan-banner__hint { display:block; font-size:11px; font-weight:400; opacity:.9; margin-top:2px; }
+@keyframes pulseGlow { 0%,100%{ filter:brightness(1);} 50%{ filter:brightness(1.15);} }
+
+/* ---------- Prayer streak ---------- */
+.streak-box { text-align:center; padding:8px 0; }
+.streak-flame { font-size:40px; line-height:1; }
+.streak-num { font-size:34px; font-weight:900; color: var(--accent); line-height:1.1; }
+.streak-label { font-size:12px; color: var(--fg-soft); margin-bottom:10px; }
