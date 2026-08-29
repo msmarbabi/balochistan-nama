@@ -103,7 +103,6 @@
     renderSeasonScene();
     applyFontScale();
     applySticky();
-  }
 
   function currentSeason() {
     var jm = state.triple ? state.triple.jalali.jm : 6;
