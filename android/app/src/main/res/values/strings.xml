@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">بلوچستان نما</string>
+    <string name="title_activity_main">دنیای میثم</string>
+    <string name="package_name">ir.balochistan.nama</string>
+    <string name="custom_url_scheme">ir.balochistan.nama</string>
+</resources>

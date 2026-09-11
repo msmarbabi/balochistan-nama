@@ -1,0 +1,235 @@
+/* ============================================================
+   Balochistan Nama - Compass module (compass.js)
+   Reads device orientation (via DeviceOrientationEvent or native
+   sensor bridge NativeApp.getRotation()) and animates a 3D compass
+   with cyberpunk variant, plus a pilot HUD with bank/pitch.
+   ============================================================ */
+
+(function (global) {
+  'use strict';
+
+  var state = {
+    azimuth: 0,         // degrees from north
+    pitch: 0,           // degrees (positive = phone tilted up)
+    roll: 0,            // degrees (positive = tilt right)
+    qiblaBearing: 0,    // degrees from north to Kaaba
+    lastAzUpdate: 0,
+    active: false
+  };
+
+  function start() {
+    state.active = true;
+    buildPitchLadder();
+    buildHeadingTape();
+    updateHud();
+    // Try native sensor bridge first (Android sensors)
+    if (typeof NativeApp !== 'undefined' && NativeApp.startSensors) {
+      NativeApp.startSensors();
+      return;
+    }
+    // Fallback: web DeviceOrientationEvent (iOS/Android Chrome with permission)
+    if (typeof DeviceOrientationEvent !== 'undefined') {
+      // iOS 13+ requires permission
+      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission().then(function (state) {
+          if (state === 'granted') {
+            window.addEventListener('deviceorientation', onDeviceOrientation, true);
+            window.addEventListener('compassneedscalibration', function () {
+              if (window.App) App.toast('کالیبره کردن قطب‌نما لازم است');
+            });
+          }
+        }).catch(function () {});
+      } else {
+        // Android Chrome - directly listen (note: alpha = compass heading when provided)
+        window.addEventListener('deviceorientationabsolute', onDeviceOrientationAbsolute, true);
+        window.addEventListener('deviceorientation', onDeviceOrientation, true);
+      }
+    }
+    // Fallback auto-rotate (so compass always visually animates)
+    if (!state.nativeSensors) autoRotateDemo();
+  }
+
+  function stop() {
+    state.active = false;
+    if (typeof NativeApp !== 'undefined' && NativeApp.stopSensors) NativeApp.stopSensors();
+    window.removeEventListener('deviceorientation', onDeviceOrientation, true);
+    window.removeEventListener('deviceorientationabsolute', onDeviceOrientationAbsolute, true);
+  }
+
+  function onDeviceOrientation(ev) {
+    // alpha = compass heading (rotation around Z axis)
+    // 0 = device pointing north
+    if (ev.alpha != null) {
+      var az = 360 - ev.alpha;
+      // On iOS, webkitCompassHeading is already correct
+      if (typeof ev.webkitCompassHeading === 'number') {
+        az = ev.webkitCompassHeading;
+      }
+      setAzimuth(az);
+    }
+    if (ev.beta != null) state.pitch = ev.beta;
+    if (ev.gamma != null) state.roll = ev.gamma;
+    updateHud();
+  }
+  function onDeviceOrientationAbsolute(ev) {
+    if (ev.alpha != null) {
+      var az = 360 - ev.alpha;
+      setAzimuth(az);
+    }
+    if (ev.beta != null) state.pitch = ev.beta;
+    if (ev.gamma != null) state.roll = ev.gamma;
+    updateHud();
+  }
+
+  // Called from native sensor bridge (Android, throttled ~10Hz)
+  global.__onSensorUpdate = function (azimuth, pitch, roll) {
+    state.nativeSensors = true;
+    setAzimuth(azimuth);
+    state.pitch = pitch || 0;
+    state.roll = roll || 0;
+    updateHud();
+  };
+
+  function setAzimuth(az) {
+    if (typeof az !== 'number' || isNaN(az)) return;
+    state.azimuth = az;
+    // throttle DOM updates to ~60fps
+    var now = Date.now();
+    if (now - state.lastAzUpdate < 50) return;
+    state.lastAzUpdate = now;
+    updateCompassRing();
+  }
+
+  function updateCompassRing() {
+    // The compass ring should rotate so that the actual North points "up" when the phone is aligned.
+    // If the phone is rotated by `az` degrees clockwise (from north), we want the N label to appear
+    // at angle `az` clockwise from top. So we rotate the ring by -az (counter-clockwise) which puts
+    // the physical North at the top.
+    var ring = document.getElementById('compassRing');
+    var needle = document.getElementById('compassNeedle');
+    if (ring) {
+      ring.style.setProperty('--ring-rot', (-state.azimuth) + 'deg');
+    }
+    // The qibla indicator should rotate (within the ring) to point to qibla direction relative to north
+    var qibla = document.getElementById('compassQibla');
+    if (qibla) {
+      // qibla-rot is relative to ring orientation; since ring rotates by -az, we add az
+      qibla.style.setProperty('--qibla-rot', (state.qiblaBearing + state.azimuth) + 'deg');
+    }
+    var degEl = document.getElementById('compassDeg');
+    if (degEl) degEl.textContent = Math.round(state.azimuth) + '°';
+    var info = document.getElementById('compassQiblaInfo');
+    if (info && window.Prayer) {
+      var dist = Prayer.qiblaDistance(App.getSettings().lat || 26.84, App.getSettings().lng || 60.17);
+      info.textContent = 'سمت قبله: ' + Math.round(state.qiblaBearing) + '° • فاصله: ' + dist + ' کیلومتر';
+    }
+  }
+
+  // Build pitch ladder rows once (every 10°, from -40 to +40)
+  var pitchLadderBuilt = false;
+  function buildPitchLadder() {
+    var el = document.getElementById('hudPitchLadder');
+    if (!el || pitchLadderBuilt) return;
+    pitchLadderBuilt = true;
+    el.innerHTML = '';
+    var pxPerDeg = 4; // 4px per degree of pitch
+    for (var deg = -40; deg <= 40; deg += 10) {
+      if (deg === 0) continue;
+      var row = document.createElement('div');
+      row.className = 'hud-pitch-ladder__row' + (deg < 0 ? ' hud-pitch-ladder__row--neg' : '');
+      var isBig = (deg % 20 === 0);
+      var barW = isBig ? '90px' : '40px';
+      row.innerHTML = '<span class="hud-pitch-ladder__num">' + Math.abs(deg) + '</span>' +
+        '<span class="hud-pitch-ladder__bar" style="width:' + barW + ';"></span>' +
+        '<span class="hud-pitch-ladder__num">' + Math.abs(deg) + '</span>';
+      row.style.transform = 'translateY(' + (deg * pxPerDeg) + 'px)';
+      row.dataset.deg = deg;
+      el.appendChild(row);
+    }
+  }
+
+  // Build heading tape ticks (every 5°, labeled every 15°)
+  var headingTapeBuilt = false;
+  function buildHeadingTape() {
+    var el = document.getElementById('hudHeadingTape');
+    if (!el || headingTapeBuilt) return;
+    headingTapeBuilt = true;
+    el.innerHTML = '';
+    for (var d = 0; d < 360; d += 5) {
+      var tick = document.createElement('span');
+      tick.className = 'hud-heading-tape__tick' + (d % 15 === 0 ? ' hud-heading-tape__tick--big' : '');
+      tick.dataset.deg = d;
+      tick.style.left = (d * (el.clientWidth / 360)) + 'px';
+      tick.textContent = (d % 15 === 0) ? String(d).padStart(3, '0') : '';
+      el.appendChild(tick);
+    }
+  }
+
+  function updateHud() {
+    var horizon = document.getElementById('hudHorizon');
+    var heading = document.getElementById('hudHeading');
+    var bank = document.getElementById('hudBank');
+    var pitchEl = document.getElementById('hudPitch');
+    var pitchMark = document.getElementById('hudPitchMark');
+    var bankInd = document.getElementById('hudBankIndicator');
+    var speedEl = document.getElementById('hudSpeed');
+    var altEl = document.getElementById('hudAlt');
+    if (horizon) {
+      // pitch moves the horizon (px per degree), roll rotates it
+      horizon.style.setProperty('--pitch', (state.pitch * 4) + 'px');
+      horizon.style.setProperty('--roll', (-state.roll) + 'deg');
+      // pitch ladder rows move opposite to horizon
+      var rows = horizon.querySelectorAll('.hud-pitch-ladder__row');
+      for (var i = 0; i < rows.length; i++) {
+        var deg = parseInt(rows[i].dataset.deg, 10);
+        rows[i].style.transform = 'translateY(' + ((deg - state.pitch) * 4) + 'px)';
+      }
+    }
+    if (heading) heading.textContent = Math.round(state.azimuth) + '°';
+    if (bank) bank.textContent = 'بانک: ' + Math.round(state.roll) + '°';
+    if (pitchEl) pitchEl.textContent = 'شیب: ' + Math.round(state.pitch) + '°';
+    if (pitchMark) pitchMark.textContent = Math.round(state.pitch) + '°';
+    // Bank indicator moves with roll (clamped to ±45°)
+    if (bankInd) {
+      var r = Math.max(-45, Math.min(45, state.roll));
+      bankInd.style.transform = 'translateX(-50%) translateX(' + (r * 1.3) + 'px)';
+    }
+    // Heading tape scrolls (center = current heading)
+    var tape = document.getElementById('hudHeadingTape');
+    if (tape) {
+      buildHeadingTape();
+      var half = tape.clientWidth / 2;
+      var ticks = tape.querySelectorAll('.hud-heading-tape__tick');
+      for (var j = 0; j < ticks.length; j++) {
+        var dd = parseInt(ticks[j].dataset.deg, 10);
+        var delta = ((dd - state.azimuth + 540) % 360) - 180; // -180..180
+        ticks[j].style.left = (half + delta * (tape.clientWidth / 360)) + 'px';
+        ticks[j].style.opacity = (Math.abs(delta) > 90) ? '0' : '1';
+      }
+    }
+    // Simulated speed / altitude (derived from pitch & roll for fun)
+    if (speedEl) speedEl.textContent = String(Math.max(0, Math.round(180 + Math.abs(state.pitch) * 3))).padStart(3, '0');
+    if (altEl) altEl.textContent = String(Math.max(0, Math.round(2500 + state.pitch * 40))).padStart(4, '0');
+  }
+
+  function setQibla(bearing) {
+    state.qiblaBearing = bearing;
+    updateCompassRing();
+  }
+
+  var demoTimer = null;
+  function autoRotateDemo() {
+    var angle = 0;
+    demoTimer = setInterval(function () {
+      if (!state.active) { clearInterval(demoTimer); return; }
+      if (state.nativeSensors) { clearInterval(demoTimer); return; }
+      angle = (angle + 1.5) % 360;
+      setAzimuth(angle);
+    }, 60);
+  }
+
+  var Compass = {
+    start: start, stop: stop, setQibla: setQibla, state: state
+  };
+  if (typeof window !== 'undefined') window.Compass = Compass;
+})(typeof window !== 'undefined' ? window : this);
