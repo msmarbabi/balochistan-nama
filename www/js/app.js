@@ -153,7 +153,7 @@
     if (route !== 'prayer' && Compass && Compass.stop) Compass.stop();
     if (route === 'weather') { Weather.load(); if (window.Compass) Compass.start(); wireCompassCalib(); }
     if (route === 'culture') renderCulture();
-    if (route === 'notes') { Notes.init(); }
+    if (route === 'notes') { Notes.init(); Notes.renderList('noteList'); }
     // Scroll content to top
     var content = document.getElementById('content');
     if (content) content.scrollTop = 0;
