@@ -47,21 +47,48 @@
           var labels = { fajr: 'اذان صبح', dhuhr: 'اذان ظهر', asr: 'اذان عصر', maghrib: 'اذان مغرب', isha: 'اذان عشا' };
           var keys = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
           var base = new Date(); base.setHours(0, 0, 0, 0);
+          // v1.11: جمعه‌ها اذان ظهر = خطبه جمعه
+          var preMin = settings.athanPreMin || 10;
+          var iqamaMin = settings.athanIqama != null ? settings.athanIqama : 15;
           for (var off = 0; off < 7; off++) {
             var day = new Date(base.getTime() + off * 86400000);
             var times = Prayer.computeLocal(day, settings.lat || 26.84, settings.lng || 60.17, method, tz);
+            var isFriday = day.getDay() === 5;
             for (var ki = 0; ki < keys.length; ki++) {
               var k = keys[ki];
               var hm = times[k];
               if (isNaN(hm)) continue;
               var hh = Math.floor(hm), mm = Math.round((hm - hh) * 60);
               var at = new Date(day); at.setHours(hh, mm, 0, 0);
+              var isJuma = isFriday && k === 'dhuhr';
               if (at.getTime() <= Date.now()) continue;
               notes.push({
-                id: id++, title: '🕌 ' + (labels[k] || k),
-                body: 'وقت ' + (labels[k] || k) + ' رسید — ' + (settings.locName || 'بلوچستان'),
+                id: id++, title: isJuma ? '🕌 خطبه جمعه' : '🕌 ' + (labels[k] || k),
+                body: (isJuma ? 'وقت خطبه جمعه فرا رسید' : 'وقت ' + (labels[k] || k) + ' رسید') + ' — ' + (settings.locName || 'بلوچستان'),
                 schedule: { at: at }, sound: 'adan'
               });
+              // v1.11: هشدار قبل از اذان
+              if (settings.athanPre) {
+                var preAt = new Date(at.getTime() - preMin * 60000);
+                if (preAt.getTime() > Date.now()) {
+                  notes.push({
+                    id: id++, title: '⏳ ' + (labels[k] || k) + ' نزدیک است',
+                    body: preMin + ' دقیقه دیگر — ' + (settings.locName || 'بلوچستان'),
+                    schedule: { at: preAt }, sound: 'default'
+                  });
+                }
+              }
+              // v1.11: شمارش اقامه
+              if (iqamaMin > 0) {
+                var iqAt = new Date(at.getTime() + iqMin * 60000);
+                if (iqAt.getTime() > Date.now()) {
+                  notes.push({
+                    id: id++, title: '🕌 اقامه ' + (labels[k] || k),
+                    body: 'نماز ' + (labels[k] || k) + ' اقامه می‌شود',
+                    schedule: { at: iqAt }, sound: 'default'
+                  });
+                }
+              }
             }
           }
         }

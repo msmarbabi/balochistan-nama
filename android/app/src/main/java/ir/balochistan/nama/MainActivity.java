@@ -56,6 +56,20 @@ public class MainActivity extends BridgeActivity {
                 }
 
                 @JavascriptInterface
+                public void vibrate(long ms) {
+                    try {
+                        android.os.Vibrator v = (android.os.Vibrator) getSystemService(VIBRATOR_SERVICE);
+                        if (v == null) return;
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                            v.vibrate(android.os.VibrationEffect.createOneShot(ms > 0 ? ms : 600,
+                                android.os.VibrationEffect.DEFAULT_AMPLITUDE));
+                        } else {
+                            v.vibrate(ms > 0 ? ms : 600);
+                        }
+                    } catch (Exception e) { }
+                }
+
+                @JavascriptInterface
                 public void syncWidgets() {
                     try {
                         android.appwidget.AppWidgetManager mgr = android.appwidget.AppWidgetManager.getInstance(MainActivity.this);

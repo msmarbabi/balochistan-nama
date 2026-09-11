@@ -30,6 +30,12 @@
     autoNight: false,
     athanSound: true,
     showSystemRingtones: false,
+    athanAuto: true,
+    athanPre: false,
+    athanPreMin: 10,
+    athanVibrate: false,
+    athanIqama: 15,
+    athanFridayOnlyKhotba: false,
     lat: 26.84,
     lng: 60.17,
     locName: 'ورکات، بخش پیپ، شهرستان لاشار'
@@ -702,10 +708,24 @@
       if (!window.Filesystem) return;
       var times = state.prayerTimes || {};
       var np = nextPrayer();
+      // تبدیل ساعت اعشاری به epoch ms امروز
+      function toMs(h) {
+        if (h == null) return 0;
+        var d = new Date();
+        d.setHours(Math.floor(h), Math.round((h % 1) * 60), 0, 0);
+        return d.getTime();
+      }
       var data = {
         app: 'BalochistanNama',
         date: new Date().toISOString().slice(0, 10),
         times: {
+          fajr: toMs(times.fajr),
+          dhuhr: toMs(times.dhuhr),
+          asr: toMs(times.asr),
+          maghrib: toMs(times.maghrib),
+          isha: toMs(times.isha)
+        },
+        timeLabels: {
           fajr: Prayer.formatTime(times.fajr),
           dhuhr: Prayer.formatTime(times.dhuhr),
           asr: Prayer.formatTime(times.asr),
@@ -716,6 +736,33 @@
         nextTime: np ? Prayer.formatTime(np.time) : '',
         city: settings.locName || 'بلوچستان'
       };
+      // تنظیمات اذان برای سرویس اندروید (v1.11) — پخش با اپ بسته
+      try {
+        data.athan = {
+          enabled: !!(settings.athanAuto && settings.athanSound && settings.persistentNotif),
+          preEnabled: !!settings.athanPre,
+          preMinutes: settings.athanPreMin || 10,
+          vibrate: !!settings.athanVibrate,
+          file: '/data/data/ir.balochistan.nama/files/athan_selected.mp3'
+        };
+        // کپی فایل اذان انتخابی به filesDir برای سرویس (async، بی‌صدا)
+        var selItem = (typeof Athan !== 'undefined' && Athan.getSel) ? Athan.getById(Athan.getSel().athan) : null;
+        if (selItem && selItem.type === 'file' && selItem.data) {
+          var src = selItem.data;
+          fetch(src).then(function (r) { return r.blob(); }).then(function (blob) {
+            return new Promise(function (res) {
+              var fr = new FileReader();
+              fr.onload = function () { res(String(fr.result).split(',')[1] || ''); };
+              fr.readAsDataURL(blob);
+            });
+          }).then(function (b64) {
+            return window.Filesystem.writeFile({
+              path: 'athan_selected.mp3', data: b64,
+              directory: 'DATA', encoding: 'base64', recursive: true
+            });
+          }).catch(function () {});
+        }
+      } catch (e) {}
       // آب‌وهوا برای ویجت (v1.9)
       try {
         var wc = JSON.parse(localStorage.getItem('blx_weather_cache') || 'null');
@@ -1449,7 +1496,6 @@
   }
 
   // ---------- Athan / alert sound wiring ----------
-  var __athanPlayed = {};
   function refreshAthanSelectors() {
     if (typeof Athan === 'undefined') return;
     var lib = Athan.getLib();
@@ -1479,63 +1525,175 @@
     var st = document.getElementById('athanSystemToggle');
     if (st) {
       setToggle('athanSystemToggle', !!settings.showSystemRingtones);
-      st.addEventListener('click', function () { settings.showSystemRingtones = st.classList.contains('on'); saveSettings(); if (App) App.toast('تنظیم ذخیره شد'); });
+      st.addEventListener('click', function () { settings.showSystemRingtones = st.classList.contains('on'); saveSettings(); toast('تنظیم ذخیره شد'); });
     }
     refreshAthanSelectors();
+
+    // ===== دکمه‌های پخش تست (شروع/مکث/توقف) =====
     var test = document.getElementById('athanTest');
-    if (test) test.addEventListener('click', function () { if (typeof Athan !== 'undefined') Athan.play('athan'); });
+    var pauseBtn = document.getElementById('athanPause');
+    var stopBtn = document.getElementById('athanStop');
+    var statusEl = document.getElementById('athanStatus');
+    function updStatus() {
+      if (!statusEl) return;
+      var stt = Athan.status();
+      statusEl.textContent = 'وضعیت: ' + (stt.playing ? '▶️ در حال پخش' : (stt.paused ? '⏸️ مکث' : 'متوقف'));
+    }
+    if (test) test.addEventListener('click', function () {
+      Athan.play(); // از انتخاب فعلی — یا ادامه از مکث
+      setTimeout(updStatus, 150);
+    });
+    if (pauseBtn) pauseBtn.addEventListener('click', function () {
+      var stt = Athan.status();
+      if (stt.paused) { Athan.resume(); toast('▶️ ادامه پخش'); }
+      else { Athan.pause(); toast('⏸️ پخش متوقف شد'); }
+      setTimeout(updStatus, 150);
+    });
+    if (stopBtn) stopBtn.addEventListener('click', function () {
+      Athan.stop(); toast('⏹️ پخش قطع شد');
+      setTimeout(updStatus, 150);
+    });
+    setInterval(updStatus, 2000);
+
+    // ===== افزودن از فایل (blob → base64) =====
     var addSys = document.getElementById('athanAddSys');
     var file = document.getElementById('athanFile');
     if (addSys && file) addSys.addEventListener('click', function () { file.click(); });
     if (file) file.addEventListener('change', function () {
       var f = file.files[0]; if (!f) return;
-      var url = URL.createObjectURL(f);
       var name = f.name.replace(/\.[^.]+$/, '');
-      Athan.addItem({ id: 'sys_' + Date.now(), name: name, type: 'file', data: url });
-      refreshAthanSelectors();
-      if (App) App.toast('صدا اضافه شد: ' + name);
+      var fr = new FileReader();
+      fr.onload = function () {
+        var b64 = String(fr.result).split(',')[1];
+        Athan.addItem(name, 'file64', b64);
+        refreshAthanSelectors(); renderAthanUserList();
+        toast('صدا اضافه شد: ' + name);
+      };
+      fr.readAsDataURL(f);
       file.value = '';
     });
+
+    // ===== پنل دانلود =====
     var dl = document.getElementById('athanDownload');
     var panel = document.getElementById('athanDownloadPanel');
     if (dl && panel) dl.addEventListener('click', function () { panel.style.display = (panel.style.display === 'none') ? 'block' : 'none'; });
     var dlAdd = document.getElementById('athanDlAdd');
     if (dlAdd) dlAdd.addEventListener('click', function () {
       var url = document.getElementById('athanDlUrl').value.trim();
-      if (!url) { if (App) App.toast('لینک را وارد کن'); return; }
+      if (!url) { toast('لینک را وارد کن'); return; }
       var name = document.getElementById('athanDlName').value.trim() || 'صدای دانلودی';
-      Athan.addItem({ id: 'url_' + Date.now(), name: name, type: 'url', data: url });
-      refreshAthanSelectors();
+      var id = Athan.addItem(name, 'file', url);
+      refreshAthanSelectors(); renderAthanUserList();
       document.getElementById('athanDlUrl').value = '';
       document.getElementById('athanDlName').value = '';
       if (panel) panel.style.display = 'none';
-      if (App) App.toast('صدا اضافه شد ✓');
+      toast('صدا اضافه شد ✓');
+    });
+
+    // ===== تنظیمات جدید: هشدار قبل اذان + ویبره + اقامه =====
+    var preT = document.getElementById('athanPreToggle');
+    if (preT) {
+      setToggle('athanPreToggle', !!settings.athanPre);
+      preT.addEventListener('click', function (ev) {
+        ev.stopImmediatePropagation(); // جلوگیری از listener خط init (که بعدا bind می‌شود)
+        preT.classList.toggle('on');
+        settings.athanPre = preT.classList.contains('on');
+        var row = document.getElementById('athanPreMinRow');
+        if (row) row.style.display = settings.athanPre ? '' : 'none';
+        saveSettings();
+      }, true);
+    }
+    var preRow = document.getElementById('athanPreMinRow');
+    if (preRow) preRow.style.display = settings.athanPre ? '' : 'none';
+    var preMin = document.getElementById('athanPreMinSel');
+    if (preMin) {
+      preMin.value = String(settings.athanPreMin || 10);
+      preMin.addEventListener('change', function () { settings.athanPreMin = parseInt(preMin.value, 10) || 10; saveSettings(); });
+    }
+    var vibT = document.getElementById('athanVibrateToggle');
+    if (vibT) {
+      setToggle('athanVibrateToggle', !!settings.athanVibrate);
+      vibT.addEventListener('click', function (ev) {
+        ev.stopImmediatePropagation();
+        vibT.classList.toggle('on');
+        settings.athanVibrate = vibT.classList.contains('on');
+        saveSettings();
+        if (settings.athanVibrate && typeof NativeApp !== 'undefined' && NativeApp.vibrate) { try { NativeApp.vibrate(600); } catch (e) {} }
+      }, true);
+    }
+    var iqama = document.getElementById('athanIqamaSel');
+    if (iqama) {
+      iqama.value = String(settings.athanIqama != null ? settings.athanIqama : 15);
+      iqama.addEventListener('change', function () { settings.athanIqama = parseInt(iqama.value, 10) || 0; saveSettings(); });
+    }
+
+    renderAthanUserList();
+  }
+
+  // ===== رندر لیست اذان‌های کاربر (ویرایش/حذف) =====
+  function renderAthanUserList() {
+    var box = document.getElementById('athanUserList');
+    if (!box || typeof Athan === 'undefined') return;
+    var lib = Athan.getLib();
+    var html = '';
+    var userCount = 0;
+    lib.forEach(function (it) {
+      if (it.builtin) return;
+      userCount++;
+      html += '<div class="note" style="padding:8px; display:flex; align-items:center; justify-content:space-between; gap:8px;" data-athid="' + it.id + '">' +
+        '<span style="flex:1; font-size:13px;">🔊 ' + escapeHtml(it.name) + '</span>' +
+        '<span style="display:flex; gap:4px;">' +
+        '<button class="btn btn--ghost" data-athact="edit" style="padding:4px 10px; font-size:12px;">✏️ ویرایش</button>' +
+        '<button class="btn btn--ghost" data-athact="del" style="padding:4px 10px; font-size:12px; color:#f87171;">🗑️ حذف</button>' +
+        '</span></div>';
+    });
+    if (!userCount) html = '<div class="text-small text-muted">هنوز صدای شخصی اضافه نکرده‌ای — از دکمه‌های بالا اضافه کن.</div>';
+    box.innerHTML = html;
+    // رویدادها
+    box.querySelectorAll('[data-athact]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.closest('[data-athid]').getAttribute('data-athid');
+        var act = btn.getAttribute('data-athact');
+        if (act === 'del') {
+          if (confirm('این صدا حذف شود؟')) {
+            Athan.removeItem(id);
+            refreshAthanSelectors(); renderAthanUserList();
+            toast('حذف شد');
+          }
+        } else if (act === 'edit') {
+          var it = Athan.getById(id);
+          if (!it) return;
+          var newName = prompt('نام جدید این صدا:', it.name);
+          if (newName && newName.trim()) {
+            Athan.updateItem(id, { name: newName.trim() });
+            refreshAthanSelectors(); renderAthanUserList();
+            toast('نام تغییر کرد ✓');
+          }
+        }
+      });
     });
   }
+
   function checkAthan() {
-    if (!state.prayerTimes) return;
-    if (!settings.athanSound && !settings.showSystemRingtones) {
-      // still allow alert-only playback if athan off but alert chosen
-    }
+    if (!settings.athanAuto || !settings.athanSound) return;
+    var pt = state.prayerTimes;
+    if (!pt) return;
     var now = new Date();
-    var dateStr = now.toDateString();
-    var h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
-    var nowH = h + m / 60 + s / 3600;
-    var keys = ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'];
-    for (var i = 0; i < keys.length; i++) {
-      var k = keys[i];
-      var t = state.prayerTimes[k];
-      if (isNaN(t)) continue;
-      var diff = nowH - t;
-      if (diff >= 0 && diff < 3 / 3600) {
-        var pk = dateStr + ':' + k;
-        if (__athanPlayed[pk]) continue;
-        __athanPlayed[pk] = true;
-        if (typeof Athan !== 'undefined') {
-          if (settings.athanSound) Athan.play('athan');
-          else Athan.play('alert');
-        }
-        break;
+    var nowH = now.getHours() + now.getMinutes() / 60;
+    var names = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha']; // طلوع اذان نیست!
+    var played = {};
+    try { played = JSON.parse(localStorage.getItem('blx_athan_played') || '{}'); } catch (e) {}
+    for (var i = 0; i < names.length; i++) {
+      var k = names[i];
+      var t = pt[k];
+      if (t == null) continue;
+      var stamp = now.getDate() + '-' + (now.getMonth() + 1) + '-' + now.getFullYear() + '-' + k;
+      if (played[stamp]) continue;
+      // در ۹۰ ثانیه اول وقت
+      if (nowH >= t && nowH < t + 1.5 / 60) {
+        played[stamp] = 1;
+        try { localStorage.setItem('blx_athan_played', JSON.stringify(played)); } catch (e) {}
+        if (typeof Athan !== 'undefined') { try { Athan.play(); } catch (e) {} }
       }
     }
   }

@@ -1,111 +1,224 @@
-/* ============================================================
-   Balochistan Nama - Athan / Alert sound library (athan.js)
-   Manages a library of sounds (built-in tones, custom files from
-   system, remote URLs), plays them, and remembers which sound is
-   used for adhan vs alert. Pure vanilla, Web Audio + <audio>.
-   ============================================================ */
-
-(function (global) {
+/* اذان — بلوچستان‌نما v1.11 (مدیریت کامل پخش + CRUD کتابخانه) */
+(function () {
   'use strict';
 
-  var KEY_LIB = 'blx_athan_lib';
-  var KEY_SEL = 'blx_athan_sel';
+  var LIB_KEY = 'blx_athan_lib';
+  var SEL_KEY = 'blx_athan_sel';
 
   var DEFAULT_LIB = [
-    { id: 'user_adan', name: 'اذان مکه مکرمه ( علی الملا )', type: 'file', data: 'assets/audio/adan_user.mp3', builtin: true }
+    { id: 'user_adan', name: 'اذان مکه مکرمه (علی الملا)', type: 'file', data: 'assets/audio/adan_user.mp3', builtin: true },
+    { id: 'digital_athan', name: 'اذان دیجیتال (استاندارد)', type: 'digital', data: 'standard', builtin: true },
+    { id: 'digital_athan_slow', name: 'اذان دیجیتال (آرام)', type: 'digital', data: 'slow', builtin: true },
+    { id: 'digital_athan_warm', name: 'اذان دیجیتال (مليح)', type: 'digital', data: 'warm', builtin: true },
+    { id: 'silent', name: 'بدون صدا (فقط اعلان)', type: 'silent', data: '', builtin: true }
   ];
 
-  function loadLib() {
-    try { var l = JSON.parse(localStorage.getItem(KEY_LIB) || 'null'); if (l && l.length) {
-      // Remove any non-default items that are no longer in DEFAULT_LIB
-      // (user asked to remove all previous adhans/tones, keep only current default)
-      var defaults = {};
-      for (var d = 0; d < DEFAULT_LIB.length; d++) defaults[DEFAULT_LIB[d].id] = true;
-      var kept = [];
-      var changed = false;
-      for (var i = 0; i < l.length; i++) {
-        if (defaults[l[i].id]) { kept.push(l[i]); }
-        else if (!l[i].builtin) { kept.push(l[i]); } // keep user-added custom files
-        else { changed = true; } // drop old builtin adhans/tones
-      }
-      // Ensure current defaults present
-      for (var d2 = 0; d2 < DEFAULT_LIB.length; d2++) {
-        var found = false;
-        for (var k = 0; k < kept.length; k++) if (kept[k].id === DEFAULT_LIB[d2].id) { found = true; break; }
-        if (!found) { kept.push(DEFAULT_LIB[d2]); changed = true; }
-      }
-      if (changed) localStorage.setItem(KEY_LIB, JSON.stringify(kept));
-      return kept;
-    } } catch (e) {}
-    localStorage.setItem(KEY_LIB, JSON.stringify(DEFAULT_LIB));
-    return DEFAULT_LIB.slice();
-  }
-  function saveLib(lib) { localStorage.setItem(KEY_LIB, JSON.stringify(lib)); }
-  function getLib() { return loadLib(); }
-  function getSel() {
+  function readJSON(key, fallback) {
     try {
-      var s = JSON.parse(localStorage.getItem(KEY_SEL) || 'null');
-      if (s && s.athan) return s;
-    } catch (e) {}
-    var d = { athan: 'user_adan', alert: 'user_adan' };
-    localStorage.setItem(KEY_SEL, JSON.stringify(d));
-    return d;
+      var v = JSON.parse(localStorage.getItem(key) || 'null');
+      return v || fallback;
+    } catch (e) { return fallback; }
   }
-  function setSel(o) { localStorage.setItem(KEY_SEL, JSON.stringify(o)); }
+  function writeJSON(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
+  }
 
-  var actx = null;
-  function ctx() {
-    if (actx) return actx;
-    try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { actx = null; }
-    return actx;
+  // ===== کتابخانه =====
+  function loadLib() {
+    var lib = readJSON(LIB_KEY, null);
+    if (!lib || !lib.length) lib = DEFAULT_LIB.slice();
+    // ادغام آیتم‌های builtin جدید (اگر نسخه جدیدتری اضافه شد)
+    var have = {};
+    lib.forEach(function (it) { have[it.id] = 1; });
+    DEFAULT_LIB.forEach(function (d) {
+      if (!have[d.id]) {
+        // جایگزینی آیتم قدیمی اگر id یکسان ولی ساختار فرق دارد
+        lib.push(d);
+      }
+    });
+    return lib;
   }
-  function playTone(freqs) {
-    var ac = ctx(); if (!ac) return;
-    if (ac.state === 'suspended') { try { ac.resume(); } catch (e) {} }
-    var t = ac.currentTime;
-    var gap = 0.34;
-    for (var i = 0; i < freqs.length; i++) {
-      var o = ac.createOscillator(), g = ac.createGain();
-      o.type = 'sine'; o.frequency.value = freqs[i];
-      o.connect(g); g.connect(ac.destination);
-      var st = t + i * gap;
-      g.gain.setValueAtTime(0.0001, st);
-      g.gain.exponentialRampToValueAtTime(0.5, st + 0.04);
-      g.gain.exponentialRampToValueAtTime(0.0001, st + gap * 0.92);
-      o.start(st); o.stop(st + gap);
+  function saveLib(lib) { writeJSON(LIB_KEY, lib); }
+
+  function getLib() { return loadLib(); }
+
+  function getById(id) {
+    var lib = loadLib();
+    for (var i = 0; i < lib.length; i++) if (lib[i].id === id) return lib[i];
+    return null;
+  }
+
+  // افزودن صدا (فایل base64 یا URL)
+  function addItem(name, type, data) {
+    var lib = loadLib();
+    var id = 'usr_' + Date.now();
+    lib.push({ id: id, name: name, type: type, data: data, builtin: false });
+    saveLib(lib);
+    return id;
+  }
+
+  // ویرایش (فقط نام — نوع/داده هم قابل تغییر)
+  function updateItem(id, patch) {
+    var lib = loadLib();
+    for (var i = 0; i < lib.length; i++) {
+      if (lib[i].id === id) {
+        if (lib[i].builtin) return null; // builtin قابل ویرایش نیست
+        for (var k in patch) if (Object.prototype.hasOwnProperty.call(patch, k)) lib[i][k] = patch[k];
+        saveLib(lib);
+        return lib[i];
+      }
     }
+    return null;
   }
-  function playItem(item) {
+
+  // حذف (builtin حذف نمی‌شود)
+  function removeItem(id) {
+    var lib = loadLib();
+    var out = [];
+    var removed = false;
+    for (var i = 0; i < lib.length; i++) {
+      if (lib[i].id === id && !lib[i].builtin) { removed = true; continue; }
+      out.push(lib[i]);
+    }
+    if (removed) {
+      saveLib(out);
+      // اگر انتخاب فعلی حذف شد → به builtin اول برگرد
+      var sel = readJSON(SEL_KEY, {});
+      if (sel.athan === id) { sel.athan = DEFAULT_LIB[0].id; writeJSON(SEL_KEY, sel); }
+      if (sel.alert === id) { sel.alert = DEFAULT_LIB[0].id; writeJSON(SEL_KEY, sel); }
+    }
+    return removed;
+  }
+
+  // ===== انتخاب =====
+  function getSel() {
+    var sel = readJSON(SEL_KEY, { athan: 'user_adan', alert: 'user_adan' });
+    // اصلاح خودکار مقادیر نامعتبر (v1.11)
+    var lib = loadLib();
+    var ids = {};
+    lib.forEach(function (it) { ids[it.id] = 1; });
+    if (!ids[sel.athan]) sel.athan = (lib[0] && lib[0].id) || '';
+    if (!ids[sel.alert]) sel.alert = sel.athan;
+    return sel;
+  }
+  function setSel(kind, id) {
+    var sel = getSel();
+    sel[kind] = id;
+    writeJSON(SEL_KEY, sel);
+  }
+
+  // ===== پخش (شروع/مکث/ادامه/توقف) =====
+  var audioEl = null;   // برای type=file
+  var playingId = null;  // چه آیتمی در حال پخش است
+  var digitalStop = null; // توقف اذان دیجیتال
+  var filePlaying = false;  // درخواست پخش فایل داده شده (async)
+
+  function status() {
+    if (digitalStop) {
+      if (window.AthanPlayer && AthanPlayer.isPlaying) return { playing: true, paused: false, id: playingId, mode: 'digital' };
+      digitalStop = null; playingId = null;
+    }
+    if (audioEl && !audioEl.paused) return { playing: true, paused: false, id: playingId, mode: 'file' };
+    if (audioEl && audioEl.paused && (audioEl.currentTime > 0 || filePlaying)) return { playing: false, paused: true, id: playingId, mode: 'file' };
+    return { playing: false, paused: false, id: null, mode: null };
+  }
+
+  // شروع پخش (play اگر جدید، resume اگر مکث)
+  function play(id) {
+    var st = status();
+    if (st.paused && st.id === (id || playingId)) { resume(); return true; }
+    if (st.playing) stop(); // قطع قبلی
+    var sel = getSel();
+    id = id || sel.athan;
+    var item = getById(id);
+    if (!item) item = loadLib()[0];
+    if (!item) return false;
+    playingId = item.id;
+    if (item.type === 'silent') { playingId = null; return true; }
+    if (item.type === 'digital') {
+      if (window.AthanPlayer) {
+        try { AthanPlayer.stop(); } catch (e) {}
+        AthanPlayer.playStyle(item.data || 'standard');
+        digitalStop = true; // نشانه در حال پخش دیجیتال — توقف با AthanPlayer.stop()
+      }
+      return true;
+    }
+    // file — URL یا base64
+    stopFile();
+    audioEl = new Audio(item.data);
+    filePlaying = true;
+    audioEl.onended = function () { stopFile(); playingId = null; };
+    audioEl.onerror = function () { stopFile(); playingId = null; };
+    try { audioEl.play().catch(function () { filePlaying = false; }); } catch (e) { filePlaying = false; }
+    return true;
+  }
+
+  function playItem(id) { return play(id); }
+
+  // مکث (فقط فایل — دیجیتال ساپورت نمی‌کند)
+  // مکث (فایل قابل مکث؛ دیجیتال → توقف کامل — قابل ادامه با play مجدد)
+  function pause() {
+    if (digitalStop) { stop(); return true; }
+    if (audioEl && !audioEl.paused) { audioEl.pause(); return true; }
+    return false;
+  }
+
+  // ادامه از مکث
+  function resume() {
+    if (audioEl && audioEl.paused && audioEl.currentTime > 0) {
+      try { audioEl.play().catch(function () {}); } catch (e) {}
+      return true;
+    }
+    return false;
+  }
+
+  function stopFile() {
+    if (audioEl) { try { audioEl.pause(); audioEl.currentTime = 0; } catch (e) {} }
+    audioEl = null; filePlaying = false;
+  }
+
+  // توقف کامل
+  function stop() {
+    if (digitalStop) {
+      if (window.AthanPlayer) { try { AthanPlayer.stop(); } catch (e) {} }
+      digitalStop = null;
+    }
+    stopFile();
+    playingId = null;
+    return true;
+  }
+
+  // پخش صدای هشدار (کوتاه)
+  function playTone(kind) {
+    kind = kind || 'alert';
+    var id = getSel()[kind] || getSel().athan;
+    var item = getById(id);
     if (!item) return;
-    if (item.type === 'tone') { playTone(item.tone || [330, 392, 523]); return; }
-    if (item.type === 'custom' && item.handler === 'AthanPlayer' && typeof window.AthanPlayer !== 'undefined') {
-      if (item.style && window.AthanPlayer.playStyle) window.AthanPlayer.playStyle(item.style);
-      else window.AthanPlayer.play();
+    if (item.type === 'silent') return;
+    if (item.type === 'digital') {
+      if (window.AthanPlayer) { try { AthanPlayer.stop(); } catch (e) {} AthanPlayer.playStyle(item.data || 'standard'); }
       return;
     }
-    if (item.type === 'file' || item.type === 'url') {
-      try {
-        var a = new Audio(item.data);
-        a.play().catch(function () { if (window.App) App.toast('پخش صدا ممکن نشد'); });
-      } catch (e) { if (window.App) App.toast('خطا در پخش صدا'); }
-    }
+    var a = new Audio(item.data);
+    try { a.play().catch(function () {}); } catch (e) {}
   }
-  function play(which) {
-    var sel = getSel();
-    var id = sel[which] || (which === 'alert' ? 'tone2' : 'tone1');
-    var lib = getLib();
-    var item = null;
-    for (var i = 0; i < lib.length; i++) if (lib[i].id === id) item = lib[i];
-    if (!item) item = lib[0];
-    playItem(item);
-  }
-  function addItem(item) { var lib = getLib(); lib.push(item); saveLib(lib); }
-  function removeItem(id) { saveLib(getLib().filter(function (x) { return x.id !== id; })); }
 
   var Athan = {
-    getLib: getLib, getSel: getSel, setSel: setSel,
-    play: play, playItem: playItem, addItem: addItem, removeItem: removeItem,
-    playTone: playTone, DEFAULT_LIB: DEFAULT_LIB
+    getLib: getLib,
+    getById: getById,
+    addItem: addItem,
+    updateItem: updateItem,
+    removeItem: removeItem,
+    getSel: getSel,
+    setSel: setSel,
+    play: play,
+    playItem: playItem,
+    pause: pause,
+    resume: resume,
+    stop: stop,
+    status: status,
+    playTone: playTone,
+    DEFAULT_LIB: DEFAULT_LIB
   };
-  if (typeof window !== 'undefined') window.Athan = Athan;
-})(typeof window !== 'undefined' ? window : this);
+  window.Athan = Athan;
+})();
