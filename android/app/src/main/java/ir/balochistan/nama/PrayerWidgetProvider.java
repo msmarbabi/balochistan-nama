@@ -78,4 +78,13 @@ public class PrayerWidgetProvider extends AppWidgetProvider {
 
         mgr.updateAppWidget(appWidgetId, views);
     }
+
+    /** آپدیت فوری همه نمونه‌ها (از syncWidgets bridge) — v1.9 */
+    public static void pushUpdate(Context context, AppWidgetManager mgr, JSONObject data) {
+        int[] ids = mgr.getAppWidgetIds(new android.content.ComponentName(context, PrayerWidgetProvider.class));
+        for (int id : ids) {
+            // updateWidget داده را خودش از فایل می‌خواند؛ data فقط برای سازگاری امضاست
+            new PrayerWidgetProvider().updateWidget(context, mgr, id);
+        }
+    }
 }

@@ -169,6 +169,35 @@
         if (App && App.toast) App.toast('خطا در افزودن به تقویم');
       }
     });
+  on('calShareDay', 'click', function () {
+    var d = App.state.selDate;
+    if (!d) { App.toast('روزی انتخاب نشده'); return; }
+    var g = Cal.toGregorian(d.jy, d.jm, d.jd);
+    var h = Cal.gregToHijri(g.gy, g.gm, g.gd, App.state.hijriAdjust || 0);
+    var evs = Events.getDayEvents(d, g, h, {});
+    var jf = App.jalaliFormat ? App.jalaliFormat(d) : (d.jy + '/' + d.jm + '/' + d.jd);
+    var txt = '📅 ' + jf + ' (' + g.gy + '/' + g.gm + '/' + g.gd + ' — قمری ' + h.hy + '/' + h.hm + '/' + h.hd + ')';
+    if (evs.length) {
+      txt += '\n\n';
+      for (var i = 0; i < evs.length; i++) txt += '• ' + evs[i].title + '\n';
+    } else {
+      txt += '\nمناسبت خاصی ثبت نشده';
+    }
+    txt += '\n— ارسال از بلوچستان‌نما';
+    if (window.NativeApp && NativeApp.shareText) NativeApp.shareText(txt, 'مناسبت بلوچستان‌نما');
+    else App.toast('اشتراک در وب پشتیبانی نمی‌شود');
+  });
+
+  on('calExportICS', 'click', function () {
+    var d = App.state.selDate;
+    if (!d) { App.toast('روزی انتخاب نشده'); return; }
+    if (window.ICS) ICS.exportDay(d.jy, d.jm, d.jd);
+  });
+
+  on('calExportYearICS', 'click', function () {
+    if (window.ICS) ICS.exportYear();
+  });
+
 
     // ---------- Initial schedule (after App is ready) ----------
     if (window.Notify) setTimeout(function () { Notify.reschedule(); }, 800);

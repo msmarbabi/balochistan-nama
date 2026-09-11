@@ -235,6 +235,9 @@
         <div class="friday-badge" id="calDayFriday"></div>
         <div class="day-events" id="calDayEvents"></div>
         <button class="btn btn--ghost" id="calAddToCalendar" style="width:100%; margin-top:8px; font-size:13px;">📅 افزودن این روز به تقویم گوشی</button>
+        <button class="btn btn--ghost" id="calShareDay" style="width:100%; margin-top:6px; font-size:13px;">📤 اشتراک‌گذاری این روز</button>
+        <button class="btn btn--ghost" id="calExportICS" style="width:100%; margin-top:6px; font-size:13px;">📆 خروجی ICS این روز</button>
+        <button class="btn btn--ghost" id="calExportYearICS" style="width:100%; margin-top:6px; font-size:13px;">🗓️ خروجی ICS کل سال</button>
         <div class="cal-legend">
           <span class="cal-legend__item"><i class="dot dot-holiday"></i> تعطیل رسمی</span>
           <span class="cal-legend__item"><i class="dot dot-baloch"></i> بلوچی</span>
@@ -426,6 +429,7 @@
             <div class="compass-readout__lbl">جهت دستگاه (از شمال)</div>
           </div>
           <div class="compass-distance" id="compassQiblaInfo">سمت قبله: --° • فاصله: --- کیلومتر</div>
+          <button class="btn btn--ghost" id="qiblaMapBtn" style="width:100%; margin-top:8px; font-size:13px;">🗺️ نقشه قبله (موقعیت تا کعبه)</button>
           <button class="btn btn--primary" id="compassCalibBtn" style="width:100%; margin-top:10px;">🧭 کالیبره کردن قطب‌نما</button>
         </div>
 
@@ -614,6 +618,23 @@
   </div>
 
   <!-- Modal: Converter -->
+  <div class="modal-backdrop" id="modalQiblaMap">
+    <div class="modal" style="width:94%; max-width:560px;">
+      <div class="modal__head">
+        <h3>🗺️ نقشه قبله</h3>
+        <button class="modal__close" id="qiblaMapClose">✕</button>
+      </div>
+      <div class="modal__body" style="padding:0;">
+        <iframe id="qiblaMapFrame" style="width:100%; height:46vh; border:0; display:block;" title="نقشه قبله"></iframe>
+        <div style="padding:10px 14px; font-size:13px; color:var(--muted); line-height:1.9;" id="qiblaMapInfo">
+          در حال محاسبه…
+        </div>
+      </div>
+      <div class="modal__foot" style="display:flex; gap:8px; padding:10px 14px;">
+        <button class="btn btn--primary" id="qiblaMapOpenExternal" style="flex:1;">🌐 باز کردن در مرورگر نقشه</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-backdrop" id="modalConverter">
     <div class="modal">
       <div class="modal__title">🔄 تبدیل تاریخ</div>
@@ -963,6 +984,8 @@
   <script src="js/personalevents.js"></script>
   <script src="js/learn.js"></script>
   <script src="js/rooze.js"></script>
+  <script src="js/ics.js"></script>
+  <script src="js/stats.js"></script>
   <script src="js/notify.js"></script>
   <script src="js/i18n.js"></script>
   <script src="js/extensions.js"></script>

@@ -1307,3 +1307,26 @@ html[data-season="winter"] .season-scene span {
   .compass-ring__label { font-size: 16px; }
   .compass-ring__tick { transform-origin: 50% 116px; }
 }
+
+/* ===== آمار شخصی (v1.9) ===== */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 8px;
+}
+.stat-item {
+  text-align: center;
+  padding: 10px 4px;
+  background: var(--card2, rgba(255,255,255,.04));
+  border-radius: 10px;
+}
+.stat-num {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent, #4ade80);
+}
+.stat-label {
+  font-size: 11px;
+  color: var(--muted, #9ca3af);
+  margin-top: 2px;
+}

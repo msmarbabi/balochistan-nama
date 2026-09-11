@@ -149,6 +149,7 @@
     if (route === 'calendar') renderCalendar();
     if (route === 'prayer') renderPrayer();
     if (route === 'prayer') { Compass && Compass.start(); Compass && Compass.setQibla(Prayer.qiblaBearing(settings.lat, settings.lng)); }
+    if (route === 'prayer') { Compass && Compass.bindQiblaMap && Compass.bindQiblaMap(); }
     if (route !== 'prayer' && Compass && Compass.stop) Compass.stop();
     if (route === 'weather') { Weather.load(); if (window.Compass) Compass.start(); wireCompassCalib(); }
     if (route === 'culture') renderCulture();
@@ -715,6 +716,26 @@
         nextTime: np ? Prayer.formatTime(np.time) : '',
         city: settings.locName || 'بلوچستان'
       };
+      // آب‌وهوا برای ویجت (v1.9)
+      try {
+        var wc = JSON.parse(localStorage.getItem('blx_weather_cache') || 'null');
+        if (wc && wc.weather) {
+          var w = wc.weather;
+          data.weather = {
+            temp: (w.current && w.current.temperature_2m != null) ? Math.round(w.current.temperature_2m) : null,
+            code: (w.current && w.current.weather_code != null) ? w.current.weather_code : null,
+            wind: (w.current && w.current.wind_speed_10m != null) ? Math.round(w.current.wind_speed_10m) : null
+          };
+        }
+      } catch (e) {}
+      // تاریخ‌های سه‌گانه برای ویجت تقویم (v1.9)
+      try {
+        if (state.triple) {
+          data.jalali = Cal.fmtJalaliLong(state.triple.jalali);
+          data.hijri = Cal.fmtHijriLong(state.triple.hijri);
+          data.weekday = Cal.WEEKDAYS_FA_SAT_FIRST[state.triple.weekdaySatFirst];
+        }
+      } catch (e) {}
       // Today's + tomorrow's events for the persistent notification
       try {
         var _todayEvs = Events.getDayEvents(state.triple.jalali, state.triple.greg, state.triple.hijri, { isFriday: state.triple.weekdaySatFirst === 6 });
@@ -731,6 +752,8 @@
         data: JSON.stringify(data),
         directory: 'DATA',
         encoding: 'utf8'
+      }).then(function () {
+        if (window.NativeApp && NativeApp.syncWidgets) { try { NativeApp.syncWidgets(); } catch (e) {} }
       }).catch(function () {});
     } catch (e) {}
   }

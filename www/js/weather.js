@@ -111,7 +111,13 @@
     function finish() {
       if (done < 2) return;
       if (weatherData) {
-        render(weatherData, airData);
+        // اگر کیفیت هوا نیامد ولی کش داریم، از کش تکمیل کن
+        var renderedAir = airData;
+        if (!renderedAir) {
+          var cachedAir = loadCached();
+          renderedAir = (cachedAir && cachedAir.air) ? cachedAir.air : null;
+        }
+        render(weatherData, renderedAir);
       } else {
         // Offline fallback: show cached weather if network failed
         var usedCache = loadCached();

@@ -228,8 +228,77 @@
     }, 60);
   }
 
+  // ===== نقشه قبله (v1.9) =====
+  var KAABA = { lat: 21.4225, lng: 39.8262 };
+  var qiblaMapUrl = null;
+
+  function fmtKm(km) {
+    if (km >= 1000) return (km / 1000).toFixed(1) + ' هزار کیلومتر';
+    return Math.round(km) + ' کیلومتر';
+  }
+
+  function showQiblaMap() {
+    var modal = document.getElementById('modalQiblaMap');
+    var frame = document.getElementById('qiblaMapFrame');
+    var info = document.getElementById('qiblaMapInfo');
+    if (!modal || !frame || !info) return;
+    modal.classList.add('show');
+    var st = (typeof App !== 'undefined' && App.state) ? App.state : null;
+    var lat = (st && st.lat != null) ? st.lat : (st && st.settings && st.settings.lat);
+    var lng = (st && st.lng != null) ? st.lng : (st && st.settings && st.settings.lng);
+    if (lat == null || lng == null || (lat === 0 && lng === 0)) {
+      frame.style.display = 'none';
+      info.textContent = 'ابتدا موقعیت (GPS) را روشن کنید تا نقشه مسیر قبله نمایش داده شود.';
+      return;
+    }
+    frame.style.display = 'block';
+    qiblaMapUrl = 'https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=' +
+      lat + '%2C' + lng + ';' + KAABA.lat + '%2C' + KAABA.lng;
+    frame.src = 'about:blank';
+    setTimeout(function () { frame.src = qiblaMapUrl; }, 60);
+    // محاسبات
+    var R = 6371;
+    var dLat = (KAABA.lat - lat) * Math.PI / 180;
+    var dLng = (KAABA.lng - lng) * Math.PI / 180;
+    var a = Math.sin(dLat / 2) ** 2 + Math.cos(lat * Math.PI / 180) * Math.cos(KAABA.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    var dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    var brg = state.qiblaBearing;
+    info.innerHTML = 'فاصله شما تا کعبه: <b>' + fmtKm(dist) + '</b><br>' +
+      'سمت قبله: <b>' + (brg != null ? Math.round(brg) + '°' : '--') + '</b> از شمال<br>' +
+      '<span style="opacity:.7">نقشه از OpenStreetMap بارگذاری می‌شود (نیاز اینترنت).</span>';
+  }
+
+  function hideQiblaMap() {
+    var modal = document.getElementById('modalQiblaMap');
+    if (modal) modal.classList.remove('show');
+    var frame = document.getElementById('qiblaMapFrame');
+    if (frame) frame.src = 'about:blank';
+  }
+
+  function bindQiblaMap() {
+    var btn = document.getElementById('qiblaMapBtn');
+    if (btn && !btn._bound) { btn.addEventListener('click', showQiblaMap); btn._bound = true; }
+    var close = document.getElementById('qiblaMapClose');
+    if (close && !close._bound) { close.addEventListener('click', hideQiblaMap); close._bound = true; }
+    var ext = document.getElementById('qiblaMapOpenExternal');
+    if (ext && !ext._bound) {
+      ext.addEventListener('click', function () {
+        if (!qiblaMapUrl) return;
+        if (typeof NativeApp !== 'undefined' && NativeApp.openUrl) { try { NativeApp.openUrl(qiblaMapUrl); return; } catch (e) {} }
+        window.open(qiblaMapUrl, '_blank');
+      });
+      ext._bound = true;
+    }
+    var backdrop = document.getElementById('modalQiblaMap');
+    if (backdrop && !backdrop._bound) {
+      backdrop.addEventListener('click', function (ev) { if (ev.target === backdrop) hideQiblaMap(); });
+      backdrop._bound = true;
+    }
+  }
+
   var Compass = {
-    start: start, stop: stop, setQibla: setQibla, state: state
+    start: start, stop: stop, setQibla: setQibla, state: state,
+    showQiblaMap: showQiblaMap, hideQiblaMap: hideQiblaMap, bindQiblaMap: bindQiblaMap
   };
   if (typeof window !== 'undefined') window.Compass = Compass;
 })(typeof window !== 'undefined' ? window : this);

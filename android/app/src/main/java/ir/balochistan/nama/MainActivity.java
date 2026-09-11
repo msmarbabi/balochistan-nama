@@ -6,6 +6,7 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.webkit.JavascriptInterface;
 import android.content.Intent;
+import android.net.Uri;
 import android.provider.CalendarContract;
 import java.util.TimeZone;
 import com.getcapacitor.BridgeActivity;
@@ -39,6 +40,43 @@ public class MainActivity extends BridgeActivity {
                     } catch (Exception e) {
                         // برنامه یادداشت پشتیبانی نمی‌کند - نادیده گرفته می‌شود
                     }
+                }
+
+                @JavascriptInterface
+                public void shareText(String text, String subject) {
+                    try {
+                        Intent send = new Intent(Intent.ACTION_SEND);
+                        send.setType("text/plain");
+                        send.putExtra(Intent.EXTRA_TEXT, text != null ? text : "");
+                        if (subject != null && !subject.isEmpty()) send.putExtra(Intent.EXTRA_SUBJECT, subject);
+                        send = Intent.createChooser(send, "اشتراک‌گذاری");
+                        send.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(send);
+                    } catch (Exception e) { }
+                }
+
+                @JavascriptInterface
+                public void syncWidgets() {
+                    try {
+                        android.appwidget.AppWidgetManager mgr = android.appwidget.AppWidgetManager.getInstance(MainActivity.this);
+                        java.io.File f = new java.io.File(MainActivity.this.getFilesDir(), "widget_data.json");
+                        org.json.JSONObject data = new org.json.JSONObject();
+                        try {
+                            data = new org.json.JSONObject(
+                                new String(java.nio.file.Files.readAllBytes(f.toPath()), "UTF-8"));
+                        } catch (Exception e) { }
+                        PrayerWidgetProvider.pushUpdate(MainActivity.this, mgr, data);
+                        WeatherWidgetProvider.pushUpdate(MainActivity.this, mgr, data);
+                    } catch (Exception e) { }
+                }
+
+                @JavascriptInterface
+                public void openUrl(String url) {
+                    try {
+                        Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(i);
+                    } catch (Exception e) { /* ignore */ }
                 }
 
                 @JavascriptInterface

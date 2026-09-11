@@ -109,10 +109,14 @@
         '<div class="tb-stat"><div class="tb-stat__v" id="tbTotal">' + total + '</div><div class="tb-stat__l">ذکر امروز</div></div>' +
         '<div class="tb-stat"><div class="tb-stat__v" id="tbStreak">' + s.streak + '</div><div class="tb-stat__l">روز متوالی</div></div>' +
       '</div>' +
+      '<div class="card" style="margin-top:12px;" id="statsCard"></div>' +
       '<div style="display:flex; gap:8px; margin-top:10px;">' +
         '<button class="btn btn--ghost" id="tbReset" style="flex:1;">ریست این ذکر</button>' +
         '<button class="btn btn--primary" id="tbVib" style="flex:1;">لرزش: روشن</button>' +
       '</div>';
+
+    // آمار شخصی
+    if (window.Stats) try { Stats.render(); } catch (e) {}
 
     // wire
     var chipsEls = view.querySelectorAll('.tb-chip');
