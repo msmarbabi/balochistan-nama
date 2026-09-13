@@ -736,18 +736,20 @@
         nextTime: np ? Prayer.formatTime(np.time) : '',
         city: settings.locName || 'بلوچستان'
       };
-      // تنظیمات اذان برای سرویس اندروید (v1.11) — پخش با اپ بسته
       try {
+        var _athSel = (typeof Athan !== 'undefined' && Athan.getSel) ? Athan.getById(Athan.getSel().athan) : null;
+        var _athIsFile = !!(_athSel && (_athSel.type === 'file' || _athSel.type === 'file64'));
         data.athan = {
-          enabled: !!(settings.athanAuto && settings.athanSound && settings.persistentNotif),
+          enabled: !!(settings.athanAuto && settings.athanSound && settings.persistentNotif && _athIsFile),
           preEnabled: !!settings.athanPre,
           preMinutes: settings.athanPreMin || 10,
           vibrate: !!settings.athanVibrate,
-          file: '/data/data/ir.balochistan.nama/files/athan_selected.mp3'
+          file: _athIsFile ? '/data/data/ir.balochistan.nama/files/athan_selected.mp3' : ''
         };
         // کپی فایل اذان انتخابی به filesDir برای سرویس (async، بی‌صدا)
-        var selItem = (typeof Athan !== 'undefined' && Athan.getSel) ? Athan.getById(Athan.getSel().athan) : null;
-        if (selItem && selItem.type === 'file' && selItem.data) {
+        // v1.12: پشتیبانی از file64/path (اذانهای دستی) — قبلاً فقط builtin type=file کپی می‌شد
+        var selItem = _athSel;
+        if (_athIsFile && selItem.data && !selItem.path) {
           var src = selItem.data;
           fetch(src).then(function (r) { return r.blob(); }).then(function (blob) {
             return new Promise(function (res) {
@@ -761,6 +763,16 @@
               directory: 'DATA', encoding: 'base64', recursive: true
             });
           }).catch(function () {});
+        } else if (selItem && selItem.path && window.Filesystem) {
+          // آیتم دستی روی دیسک — کپی مستقیم همان فایل برای سرویس
+          try {
+            window.Filesystem.readFile({ path: selItem.path, directory: 'DATA', encoding: 'base64' }).then(function (r) {
+              return window.Filesystem.writeFile({ path: 'athan_selected.mp3', data: r.data, directory: 'DATA', encoding: 'base64', recursive: true });
+            }).catch(function () {});
+          } catch (e) {}
+        } else if (!_athIsFile && window.Filesystem) {
+          // انتخاب دیجیتال/بدون‌صدا — فایل قبلی را پاک کن تا سرویس اذان قدیمی پخش نکند
+          try { window.Filesystem.deleteFile({ path: 'athan_selected.mp3', directory: 'DATA' }).catch(function () {}); } catch (e) {}
         }
       } catch (e) {}
       // آب‌وهوا برای ویجت (v1.9)
@@ -1512,8 +1524,8 @@
     });
     if (as && sel.athan) as.value = sel.athan;
     if (al && sel.alert) al.value = sel.alert;
-    if (as) as.onchange = function () { var s = Athan.getSel(); s.athan = as.value; Athan.setSel(s); };
-    if (al) al.onchange = function () { var s = Athan.getSel(); s.alert = al.value; Athan.setSel(s); };
+    if (as) as.onchange = function () { Athan.setSel('athan', as.value); };
+    if (al) al.onchange = function () { Athan.setSel('alert', al.value); };
   }
   function wireAthan() {
     if (typeof Athan === 'undefined') return;
@@ -1537,7 +1549,7 @@
     function updStatus() {
       if (!statusEl) return;
       var stt = Athan.status();
-      statusEl.textContent = 'وضعیت: ' + (stt.playing ? '▶️ در حال پخش' : (stt.paused ? '⏸️ مکث' : 'متوقف'));
+      statusEl.textContent = 'وضعیت: ' + (stt.loading ? '⏳ آماده‌سازی…' : (stt.playing ? '▶️ در حال پخش' : (stt.paused ? '⏸️ مکث' : 'متوقف')));
     }
     if (test) test.addEventListener('click', function () {
       Athan.play(); // از انتخاب فعلی — یا ادامه از مکث
@@ -1555,20 +1567,28 @@
     });
     setInterval(updStatus, 2000);
 
-    // ===== افزودن از فایل (blob → base64) =====
+    // ===== افزودن از فایل (blob → base64 → ذخیره روی دیسک، نه localStorage) =====
     var addSys = document.getElementById('athanAddSys');
     var file = document.getElementById('athanFile');
     if (addSys && file) addSys.addEventListener('click', function () { file.click(); });
     if (file) file.addEventListener('change', function () {
       var f = file.files[0]; if (!f) return;
       var name = f.name.replace(/\.[^.]+$/, '');
+      toast('در حال افزودن «' + name + '»…');
       var fr = new FileReader();
       fr.onload = function () {
         var b64 = String(fr.result).split(',')[1];
-        Athan.addItem(name, 'file64', b64);
-        refreshAthanSelectors(); renderAthanUserList();
-        toast('صدا اضافه شد: ' + name);
+        Athan.addItemFile(name, b64).then(function (id) {
+          refreshAthanSelectors(); renderAthanUserList();
+          toast('صدا اضافه شد: ' + name + ' ✓');
+        }).catch(function (err) {
+          if (err === 'BIG') toast('❌ فایل خیلی بزرگ است (حداکثر ~۱۸ مگابایت)');
+          else if (err === 'QUOTA') toast('❌ فضای ذخیره پر است — چند صدای اضافی را حذف کن');
+          else if (err === 'NOFS_BIG') toast('❌ فایل بزرگ فقط در نسخه اندروید قابل افزودن است');
+          else toast('❌ خطا در افزودن فایل');
+        });
       };
+      fr.onerror = function () { toast('❌ خواندن فایل ناموفق بود'); };
       fr.readAsDataURL(f);
       file.value = '';
     });
@@ -1643,6 +1663,7 @@
       html += '<div class="note" style="padding:8px; display:flex; align-items:center; justify-content:space-between; gap:8px;" data-athid="' + it.id + '">' +
         '<span style="flex:1; font-size:13px;">🔊 ' + escapeHtml(it.name) + '</span>' +
         '<span style="display:flex; gap:4px;">' +
+        '<button class="btn btn--ghost" data-athact="play" style="padding:4px 10px; font-size:12px;">▶️</button>' +
         '<button class="btn btn--ghost" data-athact="edit" style="padding:4px 10px; font-size:12px;">✏️ ویرایش</button>' +
         '<button class="btn btn--ghost" data-athact="del" style="padding:4px 10px; font-size:12px; color:#f87171;">🗑️ حذف</button>' +
         '</span></div>';
@@ -1660,6 +1681,11 @@
             refreshAthanSelectors(); renderAthanUserList();
             toast('حذف شد');
           }
+        } else if (act === 'play') {
+          // پخش سریع همین آیتم + انتخاب آن به‌عنوان اذان فعال
+          Athan.setSel('athan', id);
+          Athan.playItem(id);
+          toast('▶️ پخش: ' + (Athan.getById(id) || {}).name);
         } else if (act === 'edit') {
           var it = Athan.getById(id);
           if (!it) return;
