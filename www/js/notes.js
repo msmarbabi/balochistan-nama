@@ -24,11 +24,7 @@
     return Cal.toJalaali(t.getFullYear(), t.getMonth() + 1, t.getDate());
   }
 
-  function escapeHtml(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
+  function escapeHtml(s) { return (window.BXUtils ? BXUtils.escapeHtml : function (x) { return String(x == null ? '' : x); })(s); }
 
   function fmtDate(d) {
     if (!d || !d.jy) return '';

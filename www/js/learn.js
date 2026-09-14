@@ -7,11 +7,7 @@
   'use strict';
 
   // escapeHtml helper (local, since app.js's escapeHtml is not in this scope)
-  function escapeHtml(s) {
-    return String(s || '').replace(/[<>&"']/g, function (c) {
-      return { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c];
-    });
-  }
+  function escapeHtml(s) { return (window.BXUtils ? BXUtils.escapeHtml : function (x) { return String(x == null ? '' : x); })(s); }
 
   var VOCAB = [
     { balochi: 'سپاس', fa: 'سپاس / تشکر', note: 'رایج‌ترین واژه تشکر' },
@@ -54,7 +50,7 @@
     { balochi: 'دشت', fa: 'دشت / صحرا', note: '' },
     { balochi: 'کوه', fa: 'کوه', note: 'هم‌معنی با فارسی' },
     { balochi: 'دریا', fa: 'دریا', note: 'هم‌معنی با فارسی' }
-  ];
+  ].concat((window.CultureExtra && CultureExtra.words) ? CultureExtra.words.map(function (w) { return { balochi: w.b, fa: w.fa, note: w.ex || "" }; }) : []);
 
   var PHRASES = [
     { balochi: 'ته چوکی حال انت؟', fa: 'حالت چطوره؟' },

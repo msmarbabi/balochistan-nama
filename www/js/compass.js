@@ -22,6 +22,15 @@
     buildPitchLadder();
     buildHeadingTape();
     updateHud();
+    // v1.13: قبله از مختصات ذخیره‌شده در تنظیمات محاسبه شود — HUD مستقل از صفحه نماز هم قبله را نشان دهد
+    if (state.qiblaBearing == null) {
+      try {
+        var st = JSON.parse(localStorage.getItem('blx_nama_settings') || '{}');
+        if (st.lat && st.lng && typeof Prayer !== 'undefined' && Prayer.qiblaBearing) {
+          setQibla(Prayer.qiblaBearing(st.lat, st.lng));
+        }
+      } catch (e) {}
+    }
     // Try native sensor bridge first (Android sensors)
     if (typeof NativeApp !== 'undefined' && NativeApp.startSensors) {
       NativeApp.startSensors();
@@ -172,8 +181,6 @@
     var pitchEl = document.getElementById('hudPitch');
     var pitchMark = document.getElementById('hudPitchMark');
     var bankInd = document.getElementById('hudBankIndicator');
-    var speedEl = document.getElementById('hudSpeed');
-    var altEl = document.getElementById('hudAlt');
     if (horizon) {
       // pitch moves the horizon (px per degree), roll rotates it
       horizon.style.setProperty('--pitch', (state.pitch * 4) + 'px');
@@ -207,14 +214,28 @@
         ticks[j].style.opacity = (Math.abs(delta) > 90) ? '0' : '1';
       }
     }
-    // Simulated speed / altitude (derived from pitch & roll for fun)
-    if (speedEl) speedEl.textContent = String(Math.max(0, Math.round(180 + Math.abs(state.pitch) * 3))).padStart(3, '0');
-    if (altEl) altEl.textContent = String(Math.max(0, Math.round(2500 + state.pitch * 40))).padStart(4, '0');
+    // v1.13: سرعت/ارتفاع «شبیه‌سازی‌شده» حذف شد — اعداد الکی نباشند.
+    // جایگزین: قبله روی HUD — فلش سبز جهت کعبه نسبت به سمت فعلی گوشی
+    var qiblaEl = document.getElementById('hudQibla');
+    var qiblaTapeEl = document.getElementById('hudQiblaTape');
+    if (qiblaEl) {
+      if (state.qiblaBearing != null) {
+        var dQ = ((state.qiblaBearing - state.azimuth + 540) % 360) - 180; // -180..180
+        var clamped = Math.max(-90, Math.min(90, dQ));
+        qiblaEl.style.transform = 'translateX(-50%) translateX(' + (clamped * 1.05) + 'px)';
+        qiblaEl.style.opacity = (Math.abs(dQ) > 100) ? '0' : '1';
+        qiblaEl.title = 'قبله ' + Math.round(state.qiblaBearing) + '°';
+      } else { qiblaEl.style.opacity = '0'; }
+    }
+    if (qiblaTapeEl) {
+      qiblaTapeEl.textContent = (state.qiblaBearing != null) ? ('قبله: ' + Math.round(state.qiblaBearing) + '°') : '';
+    }
   }
 
   function setQibla(bearing) {
     state.qiblaBearing = bearing;
     updateCompassRing();
+    if (state.active) updateHud(); // v1.13: نشانگر قبله HUD بلافاصله آپدیت شود
   }
 
   var demoTimer = null;

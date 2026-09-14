@@ -57,19 +57,51 @@ public class PrayerNotificationService extends Service {
     private boolean athanVibrate = false;
     private String athanFile = null;   // absolute path or asset URL
     private String nextName = "", nextTime = "--:--", city = "بلوچستان";
+    private String eventToday = null, eventTomorrow = null;
+    private String lastNotifSig = "";   // v1.13: امضای آخرین اعلان — جلوگیری از بازنویسی بی‌مورد
 
+    // v1.13: بهینه‌سازی باتری —
+    //  قبلاً هر ۱۵ ثانیه فایل JSON کامل خوانده و اعلان بازنویسی می‌شد (~۵۷۶۰ بیدارباش شبانه‌روز).
+    //  اکنون: ۱) فایل فقط با تغییر mtime دوباره خوانده می‌شود  ۲) بیدارباش دقیقاً سر وقت رویداد بعدی
+    //  (اذان یا هشدار قبل اذان) با کف ۵ ثانیه و سقف ۵ دقیقه  ۳) اعلان فقط با تغییر محتوا آپدیت می‌شود.
     private final Runnable updater = new Runnable() {
         @Override
         public void run() {
             try {
-                reloadData();
+                if (dataFileChanged()) reloadData();
                 checkAndPlayAthan();
                 checkPreAthanWarning();
                 updateNotification();
             } catch (Exception e) { /* keep service alive */ }
-            handler.postDelayed(this, 15000); // every 15s
+            handler.postDelayed(this, nextDelayMs());
         }
     };
+
+    private long dataLastModified = 0;
+    private boolean dataFileChanged() {
+        File f = new File(getFilesDir(), "widget_data.json");
+        long m = f.lastModified();
+        if (m != dataLastModified) { dataLastModified = m; return true; }
+        return false;
+    }
+
+    /** فاصله تا نزدیک‌ترین رویداد آینده (اذان/هشدار) — بین ۵ ثانیه تا ۵ دقیقه */
+    private long nextDelayMs() {
+        long now = System.currentTimeMillis();
+        long next = Long.MAX_VALUE;
+        if (athanEnabled || preAthanEnabled) {
+            long lead = preAthanMinutes * 60000L;
+            for (Map.Entry<String, Long> e : prayerMillis.entrySet()) {
+                long t = e.getValue();
+                if (athanEnabled && t > now) next = Math.min(next, t);
+                long w = t - lead;
+                if (preAthanEnabled && w > now) next = Math.min(next, w);
+            }
+        }
+        if (next == Long.MAX_VALUE) return 300000L; // رویدادی در کار نیست → ۵ دقیقه
+        long delay = (next - now) + 1500L;          // ۱.۵ ثانیه بعد از خودِ رویداد (پنجره پخش ۹۰ ثانیه است)
+        return Math.max(5000L, Math.min(delay, 300000L));
+    }
 
     public static boolean isRunning() { return running; }
 
@@ -167,6 +199,11 @@ public class PrayerNotificationService extends Service {
             nextName = j.optString("next", nextName);
             nextTime = j.optString("nextTime", nextTime);
             city = j.optString("city", city);
+            // v1.13: مناسبت‌های امروز/فردا از JSON (قبلاً خوانده نمی‌شدند — اعلان بدون مناسبت می‌ماند)
+            String et = j.optString("eventToday", "");
+            String etm = j.optString("eventTomorrow", "");
+            eventToday = et.isEmpty() ? null : et;
+            eventTomorrow = etm.isEmpty() ? null : etm;
         } catch (Exception e) { /* keep defaults */ }
     }
 
@@ -349,7 +386,8 @@ public class PrayerNotificationService extends Service {
         String fajr = "--:--", dhuhr = "--:--", asr = "--:--", maghrib = "--:--", isha = "--:--";
         String next = nextName.isEmpty() ? "نماز بعدی" : nextName;
         String nextT = nextTime;
-        String eventToday = "", eventTomorrow = "";
+        String evToday = (eventToday != null) ? eventToday : "";
+        String evTomorrow = (eventTomorrow != null) ? eventTomorrow : "";
         if (prayerLabels.containsKey("fajr")) fajr = prayerLabels.get("fajr");
         if (prayerLabels.containsKey("dhuhr")) dhuhr = prayerLabels.get("dhuhr");
         if (prayerLabels.containsKey("asr")) asr = prayerLabels.get("asr");
@@ -362,8 +400,8 @@ public class PrayerNotificationService extends Service {
         big.append("نماز بعدی: ").append(next).append(" ").append(nextT).append("\n");
         big.append("فجر ").append(fajr).append(" • ظهر ").append(dhuhr).append(" • عصر ").append(asr).append("\n");
         big.append("مغرب ").append(maghrib).append(" • عشا ").append(isha);
-        if (eventToday != null && !eventToday.isEmpty()) big.append("\n\n📅 امروز: ").append(eventToday);
-        if (eventTomorrow != null && !eventTomorrow.isEmpty()) big.append("\n📅 فردا: ").append(eventTomorrow);
+        if (!evToday.isEmpty()) big.append("\n\n📅 امروز: ").append(evToday);
+        if (!evTomorrow.isEmpty()) big.append("\n📅 فردا: ").append(evTomorrow);
         big.append("\n📍 ").append(city);
 
         Intent launch = getPackageManager().getLaunchIntentForPackage(getPackageName());
@@ -384,6 +422,13 @@ public class PrayerNotificationService extends Service {
     }
 
     private void updateNotification() {
+        // v1.13: اعلان فقط وقتی محتوا واقعاً تغییر کرده بازنویسی شود (صرفه‌جویی باتری/سیستم)
+        String timeStr = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date());
+        String sig = nextName + "|" + nextTime + "|" + city + "|" + eventToday + "|" + eventTomorrow
+            + "|" + prayerLabels.get("fajr") + "|" + prayerLabels.get("dhuhr") + "|" + prayerLabels.get("asr")
+            + "|" + prayerLabels.get("maghrib") + "|" + prayerLabels.get("isha") + "|" + timeStr;
+        if (sig.equals(lastNotifSig)) return;
+        lastNotifSig = sig;
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm != null) nm.notify(NOTIF_ID, buildNotification());
     }

@@ -60,6 +60,12 @@
   };
 
   // ---------- Toast ----------
+  
+  // v1.13: لاگ خطاهای قبلاً خاموش — فقط وقتی blx_debug فعال است چاپ می‌شود (پیش‌فرض خاموش)
+  var __dbgOn = false;
+  try { __dbgOn = !!(JSON.parse(localStorage.getItem('blx_nama_settings') || '{}').blx_debug); } catch (e) {}
+  function dbg(e) { if (__dbgOn && e) try { console.warn('[blx]', e && e.message ? e.message : e); } catch (_) {} }
+
   function toast(msg) {
     var el = document.getElementById('toast');
     if (!el) return;
@@ -107,7 +113,7 @@
       var isNight = now < fajr || now >= maghrib;
       settings.theme = isNight ? 'dark' : 'light';
       applyTheme();
-    } catch (e) {}
+    } catch (e) { dbg(e); }
   }
 
   function currentSeason() {
@@ -157,7 +163,7 @@
     if (route === 'prayer') { Compass && Compass.start(); Compass && Compass.setQibla(Prayer.qiblaBearing(settings.lat, settings.lng)); }
     if (route === 'prayer') { Compass && Compass.bindQiblaMap && Compass.bindQiblaMap(); }
     if (route !== 'prayer' && Compass && Compass.stop) Compass.stop();
-    if (route === 'weather') { Weather.load(); if (window.Compass) Compass.start(); wireCompassCalib(); }
+    if (route === 'weather') { Weather.load(); if (window.Compass) { Compass.start(); Compass.setQibla(Prayer.qiblaBearing(settings.lat, settings.lng)); } wireCompassCalib(); }
     if (route === 'culture') renderCulture();
     if (route === 'notes') { Notes.init(); Notes.renderList('noteList'); }
     // Scroll content to top
@@ -461,7 +467,7 @@
           var _mg = new Date(cell.greg.gy, cell.greg.gm - 1, cell.greg.gd);
           var _moon = Prayer.moonPhase(_mg);
           moonEmoji = ['🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘'][Math.round(_moon * 7)] || '';
-        } catch (e) {}
+        } catch (e) { dbg(e); }
         // Colored dots matching the legend
         var dotArr = [];
         if (hasHoliday) dotArr.push('<i class="dot dot-holiday"></i>');
@@ -769,12 +775,12 @@
             window.Filesystem.readFile({ path: selItem.path, directory: 'DATA', encoding: 'base64' }).then(function (r) {
               return window.Filesystem.writeFile({ path: 'athan_selected.mp3', data: r.data, directory: 'DATA', encoding: 'base64', recursive: true });
             }).catch(function () {});
-          } catch (e) {}
+          } catch (e) { dbg(e); }
         } else if (!_athIsFile && window.Filesystem) {
           // انتخاب دیجیتال/بدون‌صدا — فایل قبلی را پاک کن تا سرویس اذان قدیمی پخش نکند
-          try { window.Filesystem.deleteFile({ path: 'athan_selected.mp3', directory: 'DATA' }).catch(function () {}); } catch (e) {}
+          try { window.Filesystem.deleteFile({ path: 'athan_selected.mp3', directory: 'DATA' }).catch(function () {}); } catch (e) { dbg(e); }
         }
-      } catch (e) {}
+      } catch (e) { dbg(e); }
       // آب‌وهوا برای ویجت (v1.9)
       try {
         var wc = JSON.parse(localStorage.getItem('blx_weather_cache') || 'null');
@@ -786,7 +792,7 @@
             wind: (w.current && w.current.wind_speed_10m != null) ? Math.round(w.current.wind_speed_10m) : null
           };
         }
-      } catch (e) {}
+      } catch (e) { dbg(e); }
       // تاریخ‌های سه‌گانه برای ویجت تقویم (v1.9)
       try {
         if (state.triple) {
@@ -794,7 +800,7 @@
           data.hijri = Cal.fmtHijriLong(state.triple.hijri);
           data.weekday = Cal.WEEKDAYS_FA_SAT_FIRST[state.triple.weekdaySatFirst];
         }
-      } catch (e) {}
+      } catch (e) { dbg(e); }
       // Today's + tomorrow's events for the persistent notification
       try {
         var _todayEvs = Events.getDayEvents(state.triple.jalali, state.triple.greg, state.triple.hijri, { isFriday: state.triple.weekdaySatFirst === 6 });
@@ -805,16 +811,16 @@
         var _tomNames = _tomEvs.map(function (e) { return e.title; }).slice(0, 3).join('، ');
         data.eventToday = _todayNames;
         data.eventTomorrow = _tomNames;
-      } catch (e) {}
+      } catch (e) { dbg(e); }
       window.Filesystem.writeFile({
         path: 'widget_data.json',
         data: JSON.stringify(data),
         directory: 'DATA',
         encoding: 'utf8'
       }).then(function () {
-        if (window.NativeApp && NativeApp.syncWidgets) { try { NativeApp.syncWidgets(); } catch (e) {} }
+        if (window.NativeApp && NativeApp.syncWidgets) { try { NativeApp.syncWidgets(); } catch (e) { dbg(e); } }
       }).catch(function () {});
-    } catch (e) {}
+    } catch (e) { dbg(e); }
   }
     // Render next prayer
     renderNextPrayer();
@@ -911,7 +917,7 @@
     if (btn) btn.addEventListener('click', function () {
       if (typeof App !== 'undefined' && App.toast) App.toast('قطب‌نما در حال کالیبره... گوشی را ۸ شکل بچرخانید 🔄');
       if (typeof NativeApp !== 'undefined' && NativeApp.calibrate) {
-        try { NativeApp.calibrate(); } catch (e) {}
+        try { NativeApp.calibrate(); } catch (e) { dbg(e); }
       }
     });
   }
@@ -946,7 +952,7 @@
             '<div class="culture-daily__fa">' + escapeHtml(vProverb.fa) + '</div>' +
           '</div>';
       }
-    } catch (e) {}
+    } catch (e) { dbg(e); }
 
     // Build tabs
     var tabsHtml = 
@@ -1141,10 +1147,19 @@
     return html;
   }
 
+  // Show 606 Q&A about fasting, with search.
+  // v1.13: بارگذاری تنبل (lazy) — rooze.js (~۳۱۷KB) فقط وقتی تب روزه باز شود لود می‌شود (استارت اپ سبک‌تر)
   function renderRoozeContent() {
-    // Show 606 Q&A about fasting, with search.
-    if (typeof window.RoozeQA === 'undefined' || !window.RoozeQA.length) {
-      return '<div class="text-muted">محتوا در دسترس نیست</div>';
+    if (typeof window.RoozeQA === 'undefined' || !window.RoozeQA || !window.RoozeQA.length) {
+      // در حال بارگذاری — با ابزار مشترک (utils.js loadScript — ضد تکرار)
+      if (!window.__roozeLoading) {
+        window.__roozeLoading = true;
+        BXUtils.loadScript('js/rooze.js?v=113', function () {
+          window.__roozeLoading = false;
+          renderCulture(); // دوباره رندر با داده آماده
+        });
+      }
+      return '<div class="text-muted text-center" style="padding:24px;">⏳ در حال بارگذاری سؤال‌های روزه…</div>';
     }
     var qa = window.RoozeQA;
     var html = '<div class="text-small text-muted" style="margin-bottom:8px;">📖 ' + qa.length + ' سؤال و جواب درباره روزه — از کتاب «روزه (۶۰۶ سؤال و جواب)» دکتر راشد سعد العلیمی</div>' +
@@ -1356,7 +1371,7 @@
         var dt = new Date(g.gy, g.gm - 1, g.gd);
         weekdayStr = Cal.WEEKDAYS_FA_SAT_FIRST[(dt.getDay() + 1) % 7];
         tripleInfo = { jalali: { jy: jy, jm: jm, jd: jd }, greg: g, hijri: h, weekdaySatFirst: (dt.getDay() + 1) % 7 };
-      } catch (e) {}
+      } catch (e) { dbg(e); }
     } else if (converterSource === 'gregorian' && gy && gm && gd) {
       try {
         var j = Cal.toJalaali(gy, gm, gd);
@@ -1367,7 +1382,7 @@
         var dt2 = new Date(gy, gm - 1, gd);
         weekdayStr = Cal.WEEKDAYS_FA_SAT_FIRST[(dt2.getDay() + 1) % 7];
         tripleInfo = { jalali: j, greg: { gy: gy, gm: gm, gd: gd }, hijri: h2, weekdaySatFirst: (dt2.getDay() + 1) % 7 };
-      } catch (e) {}
+      } catch (e) { dbg(e); }
     } else if (converterSource === 'hijri' && hy && hm && hd) {
       try {
         var g2 = Cal.hijriToGreg(hy, hm, hd);
@@ -1377,7 +1392,7 @@
         var dt3 = new Date(g2.gy, g2.gm - 1, g2.gd);
         weekdayStr = Cal.WEEKDAYS_FA_SAT_FIRST[(dt3.getDay() + 1) % 7];
         tripleInfo = { jalali: j2, greg: g2, hijri: { hy: hy, hm: hm, hd: hd }, weekdaySatFirst: (dt3.getDay() + 1) % 7 };
-      } catch (e) {}
+      } catch (e) { dbg(e); }
     }
     // Show weekday + events for the converted date
     var info = weekdayStr ? 'روز هفته: ' + weekdayStr : '';
@@ -1391,13 +1406,13 @@
   }
   function getVal(id) { var el = document.getElementById(id); return el ? (parseInt(el.value, 10) || 0) : 0; }
   function setVal(id, v) { var el = document.getElementById(id); if (el) el.value = v; }
-  function setText(id, txt) { var el = document.getElementById(id); if (el) el.textContent = txt; }
-  function setHtml(id, html) { var el = document.getElementById(id); if (el) el.innerHTML = html; }
-  function escapeHtml(s) {
-    return String(s || '').replace(/[<>&"']/g, function (c) {
-      return { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c];
-    });
+  // setText بهینه (v1.13): فقط وقتی مقدار واقعاً تغییر کرده DOM را بازنویسی می‌کند — حلقه هر ثانیه سبک می‌شود
+  function setText(id, txt) {
+    var el = document.getElementById(id);
+    if (el && el.textContent !== txt) el.textContent = txt;
   }
+  function setHtml(id, html) { var el = document.getElementById(id); if (el) el.innerHTML = html; }
+  function escapeHtml(s) { return (window.BXUtils ? BXUtils.escapeHtml : function (x) { return String(x == null ? '' : x); })(s); }
 
   // ---------- Settings modal ----------
   var settingsSnapshot = null;
@@ -1410,6 +1425,17 @@
     var m = document.getElementById('modalSettings');
     m.classList.add('show');
     setVal('setTheme', settings.theme);
+    // v1.13: منوی انتخاب درجا (bottom sheet) به‌جای select بومی — منو دیگر کل صفحه را نمی‌گیرد
+    if (window.BXSheet) {
+      BXSheet.replaceSelect('setTheme', 'حالت تم');
+      BXSheet.replaceSelect('setMethod', 'روش محاسبه اوقات نماز');
+      BXSheet.replaceSelect('setAsrMode', 'اذان عصر');
+      BXSheet.replaceSelect('setHijriAdj', 'تعدیل تقویم قمری');
+      BXSheet.replaceSelect('setPrayerSingle', 'کدام نماز؟');
+      BXSheet.replaceSelect('setFont', 'اندازه فونت');
+      BXSheet.replaceSelect('setLang', 'زبان رابط');
+      BXSheet.syncAll();
+    }
     // populate method select
     var sel = document.getElementById('setMethod');
     if (sel) {
@@ -1475,7 +1501,7 @@
       } else {
         if (typeof NativeApp !== 'undefined' && NativeApp.stopPersistentNotification) NativeApp.stopPersistentNotification();
       }
-    } catch (e) {}
+    } catch (e) { dbg(e); }
     var athanSnd = document.getElementById('athanSoundToggle');
     if (athanSnd) settings.athanSound = athanSnd.classList.contains('on');
     var sysRng = document.getElementById('athanSystemToggle');
@@ -1526,6 +1552,14 @@
     if (al && sel.alert) al.value = sel.alert;
     if (as) as.onchange = function () { Athan.setSel('athan', as.value); };
     if (al) al.onchange = function () { Athan.setSel('alert', al.value); };
+    // v1.13: منوی انتخاب اذان/هشدار هم با bottom sheet (درجا، نه کل صفحه)
+    if (window.BXSheet) {
+      BXSheet.replaceSelect('athanSelect', 'صدای اذان');
+      BXSheet.replaceSelect('alertSelect', 'صدای هشدار');
+      BXSheet.replaceSelect('athanPreMinSel', 'چند دقیقه قبل از اذان؟');
+      BXSheet.replaceSelect('athanIqamaSel', 'اقامه نماز');
+      BXSheet.syncAll();
+    }
   }
   function wireAthan() {
     if (typeof Athan === 'undefined') return;
@@ -1638,7 +1672,7 @@
         vibT.classList.toggle('on');
         settings.athanVibrate = vibT.classList.contains('on');
         saveSettings();
-        if (settings.athanVibrate && typeof NativeApp !== 'undefined' && NativeApp.vibrate) { try { NativeApp.vibrate(600); } catch (e) {} }
+        if (settings.athanVibrate && typeof NativeApp !== 'undefined' && NativeApp.vibrate) { try { NativeApp.vibrate(600); } catch (e) { dbg(e); } }
       }, true);
     }
     var iqama = document.getElementById('athanIqamaSel');
@@ -1708,7 +1742,7 @@
     var nowH = now.getHours() + now.getMinutes() / 60;
     var names = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha']; // طلوع اذان نیست!
     var played = {};
-    try { played = JSON.parse(localStorage.getItem('blx_athan_played') || '{}'); } catch (e) {}
+    try { played = JSON.parse(localStorage.getItem('blx_athan_played') || '{}'); } catch (e) { dbg(e); }
     for (var i = 0; i < names.length; i++) {
       var k = names[i];
       var t = pt[k];
@@ -1718,8 +1752,8 @@
       // در ۹۰ ثانیه اول وقت
       if (nowH >= t && nowH < t + 1.5 / 60) {
         played[stamp] = 1;
-        try { localStorage.setItem('blx_athan_played', JSON.stringify(played)); } catch (e) {}
-        if (typeof Athan !== 'undefined') { try { Athan.play(); } catch (e) {} }
+        try { localStorage.setItem('blx_athan_played', JSON.stringify(played)); } catch (e) { dbg(e); }
+        if (typeof Athan !== 'undefined') { try { Athan.play(); } catch (e) { dbg(e); } }
       }
     }
   }
@@ -1863,6 +1897,40 @@
     // Settings modal
     document.getElementById('setConfirm').addEventListener('click', function () { applySettingsFromForm(); closeSettings(); if (typeof Ramadan !== 'undefined' && Ramadan.maybeShowBanner) Ramadan.maybeShowBanner('ramadanBanner'); });
     document.getElementById('setCancel').addEventListener('click', cancelSettings);
+
+    // v1.13: پشتیبان‌گیری / بازیابی
+    var bExp = document.getElementById('btnBackupExport');
+    var bImp = document.getElementById('btnBackupImport');
+    var bFile = document.getElementById('backupFileInput');
+    if (bExp && window.BXBackup) bExp.addEventListener('click', function () {
+      bExp.disabled = true;
+      toast('⏳ در حال ساخت فایل پشتیبان…');
+      BXBackup.export().then(function (r) {
+        bExp.disabled = false;
+        if (r === 'shared') toast('✅ پشتیبان آماده و منوی اشتراک باز شد');
+        else if (String(r).indexOf('saved:') === 0) toast('✅ پشتیبان ذخیره شد: ' + r.slice(7));
+        else if (r === 'download') toast('✅ فایل پشتیبان دانلود شد');
+        else toast('⚠️ پشتیبان ساخته نشد — تنظیمات را بررسی کن');
+      }).catch(function () { bExp.disabled = false; toast('❌ خطا در پشتیبان‌گیری'); });
+    });
+    if (bImp && bFile && window.BXBackup) {
+      bImp.addEventListener('click', function () { bFile.click(); });
+      bFile.addEventListener('change', function () {
+        var f = bFile.files[0]; if (!f) return;
+        var fr = new FileReader();
+        fr.onload = function () {
+          if (!confirm('داده‌های فعلی با محتوای فایل پشتیبان جایگزین شود؟')) { bFile.value = ''; return; }
+          BXBackup.import(String(fr.result)).then(function (r) {
+            toast('✅ بازیابی شد: ' + r.keys + ' بخش' + (r.files ? ' + ' + r.files + ' فایل صوتی' : ''));
+            setTimeout(function () { location.reload(); }, 1600);
+          }).catch(function (err) {
+            toast(err === 'BADJSON' ? '❌ فایل خراب است' : '❌ فایل پشتیبان معتبر نیست');
+          });
+        };
+        fr.readAsText(f);
+        bFile.value = '';
+      });
+    }
     document.querySelectorAll('.toggle').forEach(function (t) {
       t.addEventListener('click', function () { t.classList.toggle('on'); });
     });
@@ -1931,10 +1999,11 @@
       }
     }, 30000);
 
-    // Live 1-second countdown refresh
+    // Live 1-second countdown refresh (v1.13: سبک — فقط وقتی نمایشگر مربوطه در دید است و مقادیر تغییر کرده‌اند)
     setInterval(function () {
       state.today = new Date();
-      renderNextPrayer();
+      // شمارش معکوس فقط روی صفحه‌هایی رندر شود که نمایشگر نماز بعدی دارند (home و prayer)
+      if (state.route === 'home' || state.route === 'prayer') renderNextPrayer();
       checkAthan();
     }, 1000);
 
@@ -1959,7 +2028,7 @@
           writeWidgetData();
           NativeApp.startPersistentNotification();
         }
-      } catch (e) {}
+      } catch (e) { dbg(e); }
     }, 1500);
   }
 

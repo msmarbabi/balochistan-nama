@@ -191,10 +191,7 @@
   }
 
   /* ---------- Persian numerals ---------- */
-  var FA_DIGITS = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
-  function toFaDigits(n) {
-    return String(n).replace(/[0-9]/g, function (d) { return FA_DIGITS[+d]; });
-  }
+  function toFaDigits(n) { return (window.BXUtils ? BXUtils.toFaDigits : String)(n); }
   function toLatinDigits(s) {
     return String(s).replace(/[۰-۹]/g, function (d) { return String(FA_DIGITS.indexOf(d)); });
   }

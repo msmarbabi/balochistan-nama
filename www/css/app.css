@@ -47,20 +47,7 @@
   src: url('fonts/Vazirmatn-Black.ttf') format('truetype');
   font-display: swap;
 }
-@font-face {
-  font-family: 'Sahel';
-  font-style: normal;
-  font-weight: 400;
-  src: url('fonts/Sahel.ttf') format('truetype');
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Sahel';
-  font-style: normal;
-  font-weight: 700;
-  src: url('fonts/Sahel-Bold.ttf') format('truetype');
-  font-display: swap;
-}
+/* v1.13: Sahel حذف شد (~۱۵۱KB بی‌مصرف) — همه‌جا با Vazirmatn جایگزین */
 @font-face {
   font-family: 'NotoNastaliq';
   font-style: normal;
@@ -73,7 +60,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; overflow: hidden; }
 body {
-  font-family: 'Vazirmatn', 'Sahel', 'Tahoma', sans-serif;
+  font-family: 'Vazirmatn', 'Tahoma', sans-serif;
   direction: rtl;
   text-align: right;
   -webkit-font-smoothing: antialiased;
@@ -94,9 +81,9 @@ input, textarea, select { font-family: inherit; font-size: inherit; }
    attributes; CSS picks the right palette via attribute selectors.
 */
 :root {
-  --font-body: 'Vazirmatn', 'Sahel', 'Tahoma', sans-serif;
+  --font-body: 'Vazirmatn', 'Tahoma', sans-serif;
   --font-nastaliq: 'NotoNastaliq', 'Vazirmatn', serif;
-  --font-serif: 'Sahel', 'Vazirmatn', serif;
+  --font-serif: 'Vazirmatn', serif;
   --r-sm: 8px; --r-md: 14px; --r-lg: 22px; --r-xl: 32px;
   --sh-soft: 0 4px 18px rgba(0,0,0,.08);
   --sh-med:  0 8px 32px rgba(0,0,0,.14);
@@ -289,28 +276,57 @@ body {
 .nav-icon .ic { display: inline-block; }
 .nav-item.active .ic-sun    { animation: spin-slow 6s linear infinite; }
 .nav-item.active .ic-cal    { animation: flip3d 1.8s ease-in-out infinite; }
-.nav-item.active .ic-mosque { animation: pulse 2.5s ease-in-out infinite; }
+.nav-item.active .ic-mosque { animation: glow-breathe 2.4s ease-in-out infinite; }
 .nav-item.active .ic-compass{ animation: spin-slow 4s linear infinite; }
-.nav-item.active .ic-cloud  { animation: float 3s ease-in-out infinite; }
-.nav-item.active .ic-book   { animation: sway 3s ease-in-out infinite; }
-.nav-item.active .ic-pen    { animation: sway 2.4s ease-in-out infinite; }
+.nav-item.active .ic-cloud  { animation: sun-wobble 2.6s ease-in-out infinite; }
+.nav-item.active .ic-book   { animation: page-turn 2.8s ease-in-out infinite; }
+.nav-item.active .ic-pen    { animation: bead-orbit 2.2s ease-in-out infinite; }
+.nav-item.active .ic-note   { animation: pen-write 2s ease-in-out infinite; }
 
 @keyframes spin-slow { to { transform: rotate(360deg); } }
 @keyframes flip3d {
   0%, 100% { transform: perspective(200px) rotateX(0); }
   50%      { transform: perspective(200px) rotateX(180deg); }
 }
+/* v1.13: انیمیشن‌های پرقدرت و شخصیت‌دار برای همه آیکون‌های داک — قابل دیدن مثل خانه/تقویم */
 @keyframes pulse {
   0%, 100% { transform: scale(1); filter: brightness(1); }
-  50%      { transform: scale(1.08); filter: brightness(1.2); }
+  50%      { transform: scale(1.25); filter: brightness(1.35); }
 }
 @keyframes float {
   0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-3px); }
+  50%      { transform: translateY(-7px); }
 }
 @keyframes sway {
-  0%, 100% { transform: rotate(-6deg); }
-  50%      { transform: rotate(6deg); }
+  0%, 100% { transform: rotate(-10deg); }
+  50%      { transform: rotate(10deg); }
+}
+/* نماز: پژواک نوسانی ماه/مسجد */
+@keyframes glow-breathe {
+  0%, 100% { transform: scale(1) translateY(0); filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
+  50%      { transform: scale(1.18) translateY(-2px); filter: drop-shadow(0 2px 6px var(--accent-glow, rgba(120,190,255,.7))); }
+}
+/* هوا: خورشید/ابر با تابش و چرخش کروی ملایم */
+@keyframes sun-wobble {
+  0%, 100% { transform: rotate(-8deg) scale(1); }
+  50%      { transform: rotate(8deg) scale(1.15); }
+}
+/* فرهنگ: ورق خوردن صفحه */
+@keyframes page-turn {
+  0%, 100% { transform: perspective(200px) rotateY(0) translateY(0); }
+  50%      { transform: perspective(200px) rotateY(25deg) translateY(-3px); }
+}
+/* تسبیح: چرخش دانه تسبیح */
+@keyframes bead-orbit {
+  0%   { transform: rotate(-15deg) scale(1); }
+  40%  { transform: rotate(12deg) scale(1.2); }
+  100% { transform: rotate(-15deg) scale(1); }
+}
+/* یادداشت: قلم نوشتن — نوک‌زدن و چرخش ملایم */
+@keyframes pen-write {
+  0%, 100% { transform: rotate(-8deg) translateY(0); }
+  35%      { transform: rotate(6deg) translateY(-3px); }
+  70%      { transform: rotate(-2deg) translateY(1px); }
 }
 
 /* ---------- View system ---------- */
@@ -461,10 +477,45 @@ body {
   background: var(--fg);
   border-radius: 3px;
   box-shadow: 0 0 6px var(--shadow);
+  z-index: 2;
 }
-.analog__hand--hour { width: 4px; height: 30px; }
-.analog__hand--min  { width: 3px; height: 44px; background: var(--fg); }
-.analog__hand--sec  { width: 1.5px; height: 50px; background: var(--accent); }
+/* v1.13: عقربه‌های بازطراحی — ساعت/دقیقه با نوک پهن (شکل پیکانی) و ثانیه کلاسیک با دنباله */
+.analog__hand--hour {
+  width: 5px; height: 32px;
+  clip-path: polygon(50% 0%, 100% 18%, 72% 100%, 28% 100%, 0% 18%);
+  background: var(--fg);
+}
+.analog__hand--min {
+  width: 4px; height: 46px;
+  clip-path: polygon(50% 0%, 100% 12%, 72% 100%, 28% 100%, 0% 12%);
+  background: var(--fg);
+}
+.analog__hand--sec {
+  width: 2px; height: 54px;
+  background: var(--accent);
+  /* دنباله‌ی قرمز کلاسیک زیر مرکز (به سمت خلاف عقربه) */
+  box-shadow: 0 0 0 0 transparent;
+}
+.analog__hand--sec::after {
+  content: '';
+  position: absolute;
+  left: 50%; bottom: 100%;
+  transform: translateX(-50%);
+  width: 2px; height: 16px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+/* گوشه گرد نوک ثانیه + دایره کوچک روی عقربه (balance wheel) */
+.analog__hand--sec::before {
+  content: '';
+  position: absolute;
+  left: 50%; top: 26%;
+  transform: translateX(-50%);
+  width: 7px; height: 7px;
+  background: transparent;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+}
 .analog__center {
   position: absolute; left: 50%; top: 50%;
   width: 10px; height: 10px;
@@ -988,28 +1039,32 @@ html[data-theme="dark"] .compass-center { background: radial-gradient(circle, #0
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
 }
 /* Speed / altitude tapes */
-.hud-tape {
-  position: absolute; top: 50%; left: 8px; transform: translateY(-50%);
-  width: 46px;
+/* v1.13: نشانگر قبله — جایگزین نوارهای سرعت/ارتفاع الکی */
+.hud-qibla-tape {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
   background: rgba(0,0,0,.45);
   border: 1px solid rgba(0,255,220,.45);
   border-radius: 6px;
-  padding: 4px 2px;
-  text-align: center;
-  z-index: 3;
-}
-.hud-tape--alt { left: auto; right: 8px; }
-.hud-tape__label {
-  font-size: 8px; letter-spacing: 1px;
-  color: rgba(0,255,220,.8);
-  border-bottom: 1px solid rgba(0,255,220,.3);
-  padding-bottom: 2px;
-}
-.hud-tape__value {
-  color: #00ffe0; font-size: 15px; font-weight: 700;
+  padding: 3px 10px;
+  color: #00ffe0; font-size: 11px; font-weight: 700;
   text-shadow: 0 0 6px #00ffe0;
+  z-index: 3;
   font-variant-numeric: tabular-nums;
-  margin-top: 2px;
+}
+.hud-qibla {
+  position: absolute; top: 52%; left: 50%;
+  transform: translateX(-50%);
+  font-size: 20px;
+  transition: transform .25s ease-out, opacity .3s;
+  z-index: 4;
+  filter: drop-shadow(0 0 6px rgba(0,255,220,.8));
+}
+.hud-qibla::after {
+  content: '▼';
+  position: absolute; top: -12px; left: 50%;
+  transform: translateX(-50%);
+  color: #00ffe0; font-size: 10px;
+  text-shadow: 0 0 6px #00ffe0;
 }
 .hud-stats {
   position: absolute; bottom: 8px; left: 0; right: 0;

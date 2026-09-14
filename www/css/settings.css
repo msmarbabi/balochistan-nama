@@ -1,0 +1,28 @@
+/* ============================================================
+   تنظیمات — گروه‌بندی (v1.13)
+   ============================================================ */
+.settings-group-hdr {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent, #4338ca);
+  text-transform: none;
+  letter-spacing: .2px;
+  margin: 18px 0 8px;
+  padding-right: 2px;
+}
+.settings-group-hdr:first-child { margin-top: 2px; }
+/* خط تزئینی بعد از عنوان گروه */
+.settings-group-hdr::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line, rgba(128,128,128,.25));
+  margin-right: 8px;
+}
+
+/* ردیفهای داخل گروه کمی جمع‌وجورتر */
+#modalSettings .setting-row { padding: 9px 0; }
+
+/* بخش اذان صفحه نماز هم همین گروه‌بندی را بگیرد (کلاس مشترک) */
+.settings-card-groups .settings-group-hdr { margin-top: 12px; }

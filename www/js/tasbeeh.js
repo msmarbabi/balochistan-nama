@@ -170,11 +170,7 @@
     }
   }
 
-  function escapeHtml(s) {
-    return String(s || '').replace(/[<>&"']/g, function (c) {
-      return { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c];
-    });
-  }
+  function escapeHtml(s) { return (window.BXUtils ? BXUtils.escapeHtml : function (x) { return String(x == null ? '' : x); })(s); }
 
   var Tasbeeh = { render: render, onTap: onTap };
   if (typeof window !== 'undefined') window.Tasbeeh = Tasbeeh;
