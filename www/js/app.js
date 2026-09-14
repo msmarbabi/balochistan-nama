@@ -920,6 +920,41 @@
         try { NativeApp.calibrate(); } catch (e) { dbg(e); }
       }
     });
+
+    // v1.14: بادقلو (shake) — تشخیص تکان شدید عمودی و ریست آفست قطب‌نما
+    var shakeBtn = document.getElementById('compassShakeBtn');
+    var shakeStatus = document.getElementById('shakeStatus');
+    if (shakeBtn) shakeBtn.addEventListener('click', function () {
+      var status = shakeStatus || document.getElementById('shakeStatus');
+      if (!window.DeviceMotionEvent) {
+        // WebView بدون سنسور — ریست مستقیم
+        if (window.Compass && Compass.resetOffset) Compass.resetOffset();
+        if (status) status.textContent = '✅ آفست ریست شد (حالت دستی)';
+        return;
+      }
+      var lastT = 0, shaked = 0, started = Date.now();
+      if (status) status.textContent = '⏳ گوشی را ۳ بار تکان بده...';
+      function onMotion(ev) {
+        var a = ev.accelerationIncludingGravity;
+        if (!a) return;
+        var mag = Math.abs(a.y) + Math.abs(a.z);
+        var now = Date.now();
+        if (mag > 18 && now - lastT > 400) { lastT = now; shaked++; if (status) status.textContent = '📳 تکان ' + shaked + '/۳'; }
+        if (shaked >= 3 || now - started > 12000) {
+          window.removeEventListener('devicemotion', onMotion, true);
+          if (shaked >= 3) {
+            if (window.Compass && Compass.resetOffset) Compass.resetOffset();
+            if (status) status.textContent = '✅ قطب‌نما ریست شد — بادقلو ثبت شد';
+          } else { if (status) status.textContent = '⌛ خیلی آرام بود — دوباره تلاش کن'; }
+        }
+      }
+      window.addEventListener('devicemotion', onMotion, true);
+    });
+    // v1.14: میکرو-تنظیم دستی ±۱ درجه
+    var adjL = document.getElementById('compAdjL');
+    var adjR = document.getElementById('compAdjR');
+    if (adjL) adjL.addEventListener('click', function () { if (window.Compass && Compass.adjustOffset) Compass.adjustOffset(-1); });
+    if (adjR) adjR.addEventListener('click', function () { if (window.Compass && Compass.adjustOffset) Compass.adjustOffset(1); });
   }
 
   // ---------- Culture view ----------
@@ -1135,17 +1170,33 @@
 
   function renderHistoryContent() {
     if (!Baloch.HISTORY) return '<div class="text-muted">اطلاعات تاریخی موجود نیست</div>';
+    // v1.14: آکاردئون — فقط عنوان نمایش داده می‌شود؛ با کلیک، توضیحات باز/بسته می‌شود (صفحه کوتاه می‌ماند)
     var html = '';
     for (var h = 0; h < Baloch.HISTORY.length; h++) {
       var fact = Baloch.HISTORY[h];
       html +=
-        '<div class="history-card">' +
-          '<div class="history-title">' + escapeHtml(fact.title) + '</div>' +
-          '<div class="history-text">' + escapeHtml(fact.text) + '</div>' +
+        '<div class="acc" id="accH' + h + '">' +
+          '<button class="acc__head" type="button" onclick="BXAccordion.toggle(' + h + ')">' +
+            '<span class="acc__title">' + escapeHtml(fact.title) + '</span>' +
+            '<span class="acc__chev">▾</span>' +
+          '</button>' +
+          '<div class="acc__body">' + escapeHtml(fact.text) + '</div>' +
         '</div>';
     }
     return html;
   }
+
+  // v1.14: کنترل آکاردئون — inline onclick (مقاوم در برابر رندر مجدد)
+  window.BXAccordion = {
+    toggle: function (h) {
+      var item = document.getElementById('accH' + h);
+      if (!item) return;
+      var wasOpen = item.classList.contains('open');
+      // فقط یکی باز بماند
+      document.querySelectorAll('.culture-content .acc.open').forEach(function (o) { o.classList.remove('open'); });
+      if (!wasOpen) item.classList.add('open');
+    }
+  };
 
   // Show 606 Q&A about fasting, with search.
   // v1.13: بارگذاری تنبل (lazy) — rooze.js (~۳۱۷KB) فقط وقتی تب روزه باز شود لود می‌شود (استارت اپ سبک‌تر)

@@ -50,7 +50,8 @@
     { balochi: 'دشت', fa: 'دشت / صحرا', note: '' },
     { balochi: 'کوه', fa: 'کوه', note: 'هم‌معنی با فارسی' },
     { balochi: 'دریا', fa: 'دریا', note: 'هم‌معنی با فارسی' }
-  ].concat((window.CultureExtra && CultureExtra.words) ? CultureExtra.words.map(function (w) { return { balochi: w.b, fa: w.fa, note: w.ex || "" }; }) : []);
+  ].concat((window.CultureExtra && CultureExtra.words) ? CultureExtra.words.map(function (w) { return { balochi: w.b, fa: w.fa, note: w.ex || "" }; }) : [])
+   .concat((window.CultureExtra && CultureExtra.words2) ? CultureExtra.words2.map(function (w) { return { balochi: w.b, fa: w.fa, note: w.ex || "", tag: w.tag || '' }; }) : []);
 
   var PHRASES = [
     { balochi: 'ته چوکی حال انت؟', fa: 'حالت چطوره؟' },
@@ -88,6 +89,7 @@
       var w = items[i];
       html +=
         '<div class="vocab-card">' +
+          (w.tag ? '<div class="vocab-card__tag">' + escapeHtml(w.tag) + '</div>' : '') +
           '<div class="vocab-card__balochi">' + escapeHtml(w.balochi) + '</div>' +
           '<div class="vocab-card__fa">' + escapeHtml(w.fa) + '</div>' +
           (w.note ? '<div class="vocab-card__note">' + escapeHtml(w.note) + '</div>' : '') +

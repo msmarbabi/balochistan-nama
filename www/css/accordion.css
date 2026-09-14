@@ -1,0 +1,27 @@
+/* v1.14: آکاردئون تاریخ — عنوان‌ها جمع‌وجور، توضیحات با کلیک باز می‌شود */
+.acc { border: 1px solid var(--border); border-radius: 12px; margin: 8px 0; overflow: hidden; background: var(--card); }
+.acc__head {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; background: transparent; border: none; cursor: pointer;
+  font-family: inherit; text-align: right; color: var(--fg);
+}
+.acc__title { font-size: 14px; font-weight: 600; }
+.acc__chev { color: var(--muted); font-size: 12px; transition: transform .25s; }
+.acc__body {
+  max-height: 0; overflow: hidden; transition: max-height .3s ease, padding .3s ease;
+  padding: 0 14px; font-size: 13px; line-height: 1.9; color: var(--muted);
+}
+.acc.open .acc__body { max-height: 600px; padding: 4px 14px 12px; }
+.acc.open .acc__chev { transform: rotate(180deg); }
+.acc.open { border-color: var(--accent); }
+.acc__head:active { background: rgba(127,127,127,.08); }
+
+/* v1.14: برچسب گویش روی کارت واژه */
+.vocab-card { position: relative; }
+.vocab-card__tag {
+  position: absolute; top: 8px; left: 8px;
+  font-size: 10px; font-weight: 700; color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: 999px; padding: 1px 8px;
+}

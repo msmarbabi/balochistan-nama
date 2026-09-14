@@ -77,6 +77,10 @@
         if (window.App && App.saveSettings) App.saveSettings();
         if (window.Weather) Weather.load();
         if (window.Notify) Notify.reschedule();
+        // v1.14: قبله برای شهر انتخابی دوباره محاسبه شود — HUD و حلقه قطب‌نما هر شهری که انتخاب شود
+        if (window.Compass && window.Prayer && Compass.setQibla && Prayer.qiblaBearing) {
+          try { Compass.setQibla(Prayer.qiblaBearing(c.lat, c.lng)); } catch (e) {}
+        }
         updateLocationCard();
         if (App) App.toast('موقعیت: ' + c.name);
       });
@@ -107,6 +111,10 @@
         if (window.App && App.saveSettings) App.saveSettings();
         if (window.Weather) Weather.load();
         if (window.Notify) Notify.reschedule();
+        // v1.14: قبله با موقعیت GPS جدید
+        if (window.Compass && window.Prayer && Compass.setQibla && Prayer.qiblaBearing) {
+          try { Compass.setQibla(Prayer.qiblaBearing(s.lat, s.lng)); } catch (e) {}
+        }
         var wc = $('weatherCity'); if (wc) for (var wi = 0; wi < Tools.CITIES.length; wi++) if (Tools.CITIES[wi].name === 'موقعیت فعلی') wc.value = wi;
         updateLocationCard();
         gpsBtn.textContent = '📍';

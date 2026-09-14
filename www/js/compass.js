@@ -21,16 +21,14 @@
     state.active = true;
     buildPitchLadder();
     buildHeadingTape();
+    // v1.14: قبله همیشه از مختصات فعلی تنظیمات — با هر تغییر شهر خودکار به‌روز می‌شود
+    try {
+      var st = JSON.parse(localStorage.getItem('blx_nama_settings') || '{}');
+      if (st.lat && st.lng && typeof Prayer !== 'undefined' && Prayer.qiblaBearing) {
+        setQibla(Prayer.qiblaBearing(st.lat, st.lng));
+      }
+    } catch (e) {}
     updateHud();
-    // v1.13: قبله از مختصات ذخیره‌شده در تنظیمات محاسبه شود — HUD مستقل از صفحه نماز هم قبله را نشان دهد
-    if (state.qiblaBearing == null) {
-      try {
-        var st = JSON.parse(localStorage.getItem('blx_nama_settings') || '{}');
-        if (st.lat && st.lng && typeof Prayer !== 'undefined' && Prayer.qiblaBearing) {
-          setQibla(Prayer.qiblaBearing(st.lat, st.lng));
-        }
-      } catch (e) {}
-    }
     // Try native sensor bridge first (Android sensors)
     if (typeof NativeApp !== 'undefined' && NativeApp.startSensors) {
       NativeApp.startSensors();
@@ -109,21 +107,35 @@
     updateCompassRing();
   }
 
+  // v1.14: آفست دستی قطب‌نما — بادقلو و دکمه‌های میکرو (±۱°) برای جبران انحراف سنسور
+  function resetOffset() {
+    state.manualOffset = 0;
+    updateCompassRing();
+    return state.manualOffset;
+  }
+  function adjustOffset(deg) {
+    state.manualOffset = ((state.manualOffset || 0) + deg + 360) % 360;
+    updateCompassRing();
+    return state.manualOffset;
+  }
+  function getOffset() { return state.manualOffset || 0; }
+
   function updateCompassRing() {
     // The compass ring should rotate so that the actual North points "up" when the phone is aligned.
     // If the phone is rotated by `az` degrees clockwise (from north), we want the N label to appear
     // at angle `az` clockwise from top. So we rotate the ring by -az (counter-clockwise) which puts
     // the physical North at the top.
+    var az = (state.azimuth + (state.manualOffset || 0)) % 360; // v1.14: اعمال آفست دستی
     var ring = document.getElementById('compassRing');
     var needle = document.getElementById('compassNeedle');
     if (ring) {
-      ring.style.setProperty('--ring-rot', (-state.azimuth) + 'deg');
+      ring.style.setProperty('--ring-rot', (-az) + 'deg');
     }
     // The qibla indicator should rotate (within the ring) to point to qibla direction relative to north
     var qibla = document.getElementById('compassQibla');
     if (qibla) {
       // qibla-rot is relative to ring orientation; since ring rotates by -az, we add az
-      qibla.style.setProperty('--qibla-rot', (state.qiblaBearing + state.azimuth) + 'deg');
+      qibla.style.setProperty('--qibla-rot', (state.qiblaBearing + az) + 'deg');
     }
     var degEl = document.getElementById('compassDeg');
     if (degEl) degEl.textContent = Math.round(state.azimuth) + '°';
@@ -319,6 +331,7 @@
 
   var Compass = {
     start: start, stop: stop, setQibla: setQibla, state: state,
+    resetOffset: resetOffset, adjustOffset: adjustOffset, getOffset: getOffset,
     showQiblaMap: showQiblaMap, hideQiblaMap: hideQiblaMap, bindQiblaMap: bindQiblaMap
   };
   if (typeof window !== 'undefined') window.Compass = Compass;
