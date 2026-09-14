@@ -22,6 +22,15 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    // v1.14: خروجیهای جدا برای هر معماری — arm64 / arm7 / universal
+    splits {
+        abi {
+            enable true
+            reset()
+            include 'armeabi-v7a', 'arm64-v8a'
+            universalApk true
+        }
+    }
 }
 
 repositories {
