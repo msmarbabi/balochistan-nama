@@ -682,6 +682,7 @@
   }
 
   window.__serverTimes = serverTimesFor;
+  window.__blxSettings = settings;
   window.__timesMerged = timesMerged;
 
   // ---------- Prayer view ----------

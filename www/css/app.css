@@ -1430,3 +1430,15 @@ html[data-season="winter"] .season-scene span {
 .ayat-card__ar--zekr { font-size: 22px; color: var(--accent); }
 .ayat-card__tr { font-size: 12.5px; color: var(--fg-soft); line-height: 1.9; margin-bottom: 4px; }
 .ayat-card__src { font-size: 10.5px; color: var(--muted); }
+
+
+/* ---------- v1.16: جدول ماهانه اوقات ---------- */
+.mt-table { width:100%; border-collapse:collapse; font-size:12px; }
+.mt-table th, .mt-table td { padding:5px 3px; text-align:center; border-bottom:1px solid var(--line); white-space:nowrap; }
+.mt-table thead th { position:sticky; top:0; background:var(--bg-elev); color:var(--fg-soft); font-size:11px; z-index:2; }
+.mt-table tbody tr:nth-child(even) { background:rgba(127,127,127,.05); }
+.mt-friday td { color:#1a7f37; font-weight:600; }
+.mt-today { outline:2px solid var(--accent); outline-offset:-2px; border-radius:6px; }
+.mt-wd { opacity:.55; font-size:10px; }
+.mt-key { font-weight:700; }
+.mt-hijri { opacity:.65; font-size:10.5px; }
