@@ -170,8 +170,100 @@
     }
     return { hy: year, hm: month, hd: day };
   }
-  function gregToHijri(gy, gm, gd) { return jdnToHijri(gregToJDN(gy, gm, gd)); }
-  function hijriToGreg(hy, hm, hd) { return jdnToGreg(hijriToJDN(hy, hm, hd)); }
+
+  /* ===== v1.16 مرحله ۹: جدول رسمی هجری قمری ایران (persian-calendar.org — GPL-3)
+     186 سال 1264..1449؛ هر ماه یک بیت (1=30 روز، 0=29 روز)؛ مبدأ 1 محرم 1264 = JDN 2396005 */
+  var IR_HIJRI_START = 1264, IR_HIJRI_YEARS = 186, IR_HIJRI_JDN0 = 2396005;
+  var IR_HIJRI_BITS = (function () {
+    var s36 = '8zepc3amyykx1luyir5zjzsbyub1qx811flug82adafqy942rvu4rrelhs07v5epwb67oyx9b2qvyvvcxp3rqg8xnmjqcxdjnbfhxei615mspoat9erpeemshor3exd7fbm1exyumd2xjscgrvnc7z6mcign4hv7p05ob38haxqt169vyt3z7s9d7daq48nft73jdxvg2vsy4erauczydnjzn2slnfhkqv9v26272z1m5rk1pb3swzstxdb81mqha3xs0lfek27q0ay59ciujqjqldxs57lraio1q3j1nhbu5479u29kt42guh9ou0obzuoe1j7iobc3wk3h35zit0d9zzthkntcfxha0knbz1ocv4lzpzov3cuk9ji03ckjdqw8z0z7y0q6jcian3xba3y1yrobx8q3mf5vqvh2r058ug64';
+    var bitsLen = IR_HIJRI_YEARS * 12;
+    var DIG = '0123456789abcdefghijklmnopqrstuvwxyz';
+    var v = 0n;
+    for (var i = 0; i < s36.length; i++) v = v * 36n + BigInt(DIG.indexOf(s36[i]));
+    var out = new Uint8Array(bitsLen);
+    for (var j = bitsLen - 1; j >= 0; j--) { out[j] = Number(v & 1n); v >>= 1n; }
+    return out;
+  })();
+  var IR_HIJRI_CUM = (function () {
+    var cum = new Int32Array(IR_HIJRI_BITS.length + 1), acc = 0;
+    for (var i = 0; i < IR_HIJRI_BITS.length; i++) { cum[i] = acc; acc += IR_HIJRI_BITS[i] ? 30 : 29; }
+    cum[IR_HIJRI_BITS.length] = acc;
+    return cum;
+  })();
+  function irHijriToJdn(hy, hm, hd) {
+    var yi = hy - IR_HIJRI_START;
+    if (yi < 0 || yi >= IR_HIJRI_YEARS || hm < 1 || hm > 12) return null;
+    return IR_HIJRI_JDN0 + IR_HIJRI_CUM[yi * 12 + (hm - 1)] + hd - 1;
+  }
+  function jdnToIrHijri(jdn) {
+    if (jdn < IR_HIJRI_JDN0) return null;
+    var days = jdn - IR_HIJRI_JDN0;
+    var acc = 0;
+    for (var i = 0; i < IR_HIJRI_BITS.length; i++) {
+      var len = IR_HIJRI_BITS[i] ? 30 : 29;
+      if (days < acc + len) return { hy: IR_HIJRI_START + Math.floor(i / 12), hm: (i % 12) + 1, hd: days - acc + 1 };
+      acc += len;
+    }
+    return null;
+  }
+
+
+  /* ===== v1.16: جدول ام‌القری سعودی (۱۳۵۶-۱۵۰۰ هجری — MSARHAN/MIT از persian-calendar) =====
+     عدد ذخیره‌شده = MJD ابتدای هر قمری؛ ماه mام مطلق tm=(y-1)*12+m؛ ایندکس tm-16260 در آرایه */
+  var UQ_BASE_MJD = 28607, UQ_MONTHS = 1741, UQ_TM0 = 16260;
+  var UQ_BITS = (function () {
+    var s36 = '2iy4ohqhzw4dnk82gi66dki6kp2q80asascj6gydhcet8bp43nvt7sotaqjuyt8rnaiboa66di8zswv271vxj1a0yzij0c9mazshtbuoldsdycqkx3d708zvyeujpnbx5w1w5z5uwlfwhib2b33664yd6d67cf7n6n07fpsz7d078j0b6f270ceo0ean6as941zx0nxd7xdafso5wg2e4nagvkzr2c2zv2zbt6i0u006ni99wlblji90qiajqq77la95v1byoie7bb11nthznx2qgtpiydnatnthtg0dvefkb0xqbvgrrqn8c0irwrdryy9ms5t1q37sb6qzz';
+    var DIG = '0123456789abcdefghijklmnopqrstuvwxyz';
+    var v = 0n;
+    for (var i = 0; i < s36.length; i++) v = v * 36n + BigInt(DIG.indexOf(s36[i]));
+    var out = new Uint8Array(UQ_MONTHS);
+    for (var j = UQ_MONTHS - 1; j >= 0; j--) { out[j] = Number(v & 1n); v >>= 1n; }
+    return out;
+  })();
+  var UQ_CUM = (function () {
+    var cum = new Int32Array(UQ_MONTHS), acc = 0;
+    for (var i = 0; i < UQ_MONTHS; i++) { cum[i] = acc; acc += UQ_BITS[i] ? 30 : 29; }
+    return cum;
+  })();
+  function uqToJdn(hy, hm, hd) {
+    var tm = (hy - 1) * 12 + hm;
+    var idx = tm - UQ_TM0 - 1; // nums[i] ابتدای ماه شماره (i + 16261) است
+    if (idx < 0 || idx >= UQ_MONTHS) return null;
+    return 2400000 + UQ_BASE_MJD + UQ_CUM[idx] + hd - 1;
+  }
+  function jdnToUq(jdn) {
+    var mjd = jdn - 2400000 - UQ_BASE_MJD;
+    if (mjd < 0) return null;
+    var lo = 0, hi = UQ_MONTHS - 1;
+    while (lo < hi) { var mid = (lo + hi + 1) >> 1; if (UQ_CUM[mid] <= mjd) lo = mid; else hi = mid - 1; }
+    var tm = lo + UQ_TM0 + 1, hy = Math.floor((tm - 1) / 12) + 1, hm = tm - (hy - 1) * 12;
+    var len = UQ_BITS[lo] ? 30 : 29;
+    var hd = mjd - UQ_CUM[lo] + 1;
+    if (hd > len) return null;
+    return { hy: hy, hm: hm, hd: hd };
+  }
+
+  // انتخاب روش هجری بر اساس تنظیم کاربر: algo | iran | umq (پیش‌فرض: ام‌القری برای اهل سنت)
+  function currentHijriMode() {
+    try { return (JSON.parse(localStorage.getItem('blx_nama_settings') || '{}').hijriCal) || 'algo'; }
+    catch (e) { return 'algo'; }
+  }
+  var _hijriAlgo = jdnToHijri;
+  function jdnToHijriMix(jdn) {
+    var mode = currentHijriMode();
+    if (mode === 'umq') { var q = jdnToUq(jdn); if (q) return q; }
+    if (mode === 'iran' || mode === 'umq') { var o = jdnToIrHijri(jdn); if (o) return o; }
+    return _hijriAlgo(jdn);
+  }
+  function gregToHijri(gy, gm, gd) { return jdnToHijriMix(gregToJDN(gy, gm, gd)); }
+  function gregToHijriAlgo(gy, gm, gd) { return _hijriAlgo(gregToJDN(gy, gm, gd)); }
+  function hijriToGreg(hy, hm, hd) {
+    var mode = currentHijriMode(), j = null;
+    if (mode === 'umq') j = uqToJdn(hy, hm, hd);
+    if (j == null && (mode === 'iran' || mode === 'umq')) j = irHijriToJdn(hy, hm, hd);
+    if (j == null) j = hijriToJDN(hy, hm, hd);
+    return jdnToGreg(j);
+  }
 
   /* ============================================================
      Names
@@ -353,6 +445,8 @@
     hijriToJDN: hijriToJDN,
     jdnToHijri: jdnToHijri,
     gregToHijri: gregToHijri,
+    jdnToIrHijri: jdnToIrHijri, irHijriToJdn: irHijriToJdn, gregToHijriAlgo: gregToHijriAlgo,
+    jdnToUq: jdnToUq, uqToJdn: uqToJdn,
     hijriToGreg: hijriToGreg,
     isHijriLeapYear: isHijriLeapYear,
     hijriMonthLength: hijriMonthLength,

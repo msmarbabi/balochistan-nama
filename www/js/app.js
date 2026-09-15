@@ -12,6 +12,7 @@
     theme: 'auto',
     method: 'karachi',
     hijriAdjust: 0,
+    hijriCal: 'algo',
     notifyPrayer: true,
     notifyEvents: true,
     notifyNotes: true,
@@ -1537,6 +1538,7 @@
       }
     }
     setVal('setHijriAdj', settings.hijriAdjust);
+    setVal('setHijriCal', settings.hijriCal || 'algo');
     setVal('setPrayerAdjAll', settings.prayerAdjAll || 0);
     setVal('setPrayerSingle', settings.prayerAdjSingle ? settings.prayerAdjSingle.prayer : 'fajr');
     setVal('setPrayerSingleAdj', settings.prayerAdjSingle ? (settings.prayerAdjSingle.adj || 0) : 0);
@@ -1591,6 +1593,7 @@
     var methodSel = document.getElementById('setMethod');
     settings.method = methodSel ? methodSel.value : 'karachi';
     settings.hijriAdjust = getVal('setHijriAdj');
+    settings.hijriCal = getVal('setHijriCal') || 'algo';
     settings.notifyPrayer = getToggle('setNotifyPrayer');
     settings.notifyEvents = getToggle('setNotifyEvents');
     settings.notifyNotes = getToggle('setNotifyNotes');
