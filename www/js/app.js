@@ -163,6 +163,7 @@
     if (route === 'prayer') { Compass && Compass.start(); Compass && Compass.setQibla(Prayer.qiblaBearing(settings.lat, settings.lng)); }
     if (route === 'prayer') { Compass && Compass.bindQiblaMap && Compass.bindQiblaMap(); }
     if (route !== 'prayer' && Compass && Compass.stop) Compass.stop();
+    if (route !== 'tasbeeh' && typeof Tasbeeh !== 'undefined' && Tasbeeh.onRouteLeave) Tasbeeh.onRouteLeave(); // v1.16: خاموشی ولوم/صدا هنگام خروج از تسبیح
     if (route === 'weather') { Weather.load(); if (window.Compass) { Compass.start(); Compass.setQibla(Prayer.qiblaBearing(settings.lat, settings.lng)); } wireCompassCalib(); }
     if (route === 'culture') renderCulture();
     if (route === 'notes') { Notes.init(); Notes.renderList('noteList'); }

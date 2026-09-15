@@ -290,3 +290,40 @@
 
 /* v1.16: حالت شنیدن فعال — تسبیح صوتی */
 .tb-voice-live { border-color: var(--accent) !important; animation: glow-breathe 1.6s ease-in-out infinite; }
+
+
+/* v1.16: مودال ذکر دلخواه + تور آموزش */
+.tb-cmodal {
+  display: none; position: fixed; inset: 0; z-index: 210;
+  background: rgba(0,0,0,.5); backdrop-filter: blur(3px);
+  align-items: flex-end; justify-content: center;
+}
+.tb-cmodal.show { display: flex; }
+.tb-cmodal__card {
+  width: 100%; max-width: 420px;
+  background: var(--card); border-radius: 18px 18px 0 0;
+  padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+  animation: sheetUp .22s ease;
+}
+@keyframes sheetUp { from { transform: translateY(60%); opacity: .4; } to { transform: translateY(0); opacity: 1; } }
+.tb-chip--add { border-style: dashed; opacity: .75; }
+
+.tour-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,.6);
+  animation: fadeIn .25s ease;
+}
+.tour-card {
+  position: fixed; z-index: 330;
+  background: var(--card); border: 1px solid var(--accent);
+  border-radius: 14px; padding: 12px 14px;
+  font-size: 13px; line-height: 1.8;
+  box-shadow: 0 12px 32px rgba(0,0,0,.35);
+  max-width: 280px;
+}
+.tour-hl {
+  outline: 3px solid var(--accent) !important;
+  outline-offset: 2px;
+  border-radius: 12px;
+  position: relative;
+}

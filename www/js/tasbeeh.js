@@ -20,6 +20,20 @@
 
   var TODAY_KEY = 'blx_tasbeeh_today';
   var STREAK_KEY = 'blx_tasbeeh_streak';
+  var CUSTOM_KEY = 'blx_tasbeeh_custom'; // v1.16: ذکرهای دلخواه
+
+  function loadCustom() {
+    try { return JSON.parse(localStorage.getItem(CUSTOM_KEY) || '[]') || []; }
+    catch (e) { return []; }
+  }
+  function saveCustom(list) { localStorage.setItem(CUSTOM_KEY, JSON.stringify(list || [])); }
+
+  // v1.16: لیست یکپارچه ذکرها (۷ ثابت + دلخواه‌ها)
+  function allDhikr() {
+    return ADHKAR.concat(loadCustom().map(function (c) {
+      return { id: c.id, name: c.name, arabic: c.text || c.name, fa: 'ذکر شخصی', target: c.target || 0, custom: true };
+    }));
+  }
 
   var current = 0; // index into ADHKAR
 
@@ -68,12 +82,218 @@
 
   function getCount() {
     var o = loadToday();
-    return o.counts[ADHKAR[current].id] || 0;
+    return o.counts[allDhikr()[current].id] || 0;
   }
 
 
   // ===== v1.16: شمارش صوتی ذکر (راه A — SpeechRecognizer سیستمی) =====
   var voiceOn = false;
+  var volOn = false;
+
+  function loadVolPref() { try { return localStorage.getItem('blx_tasbeeh_volmode') === '1'; } catch (e) { return false; } }
+  function saveVolPref(on) { try { localStorage.setItem('blx_tasbeeh_volmode', on ? '1' : '0'); } catch (e) {} }
+
+  function toggleVol() {
+    if (typeof NativeApp === 'undefined' || !NativeApp.setVolumeCountMode) {
+      if (typeof App !== 'undefined' && App.toast) App.toast('🔊 شمارش با ولوم فقط در نسخه اندروید فعال است');
+      return;
+    }
+    volOn = !volOn;
+    try { NativeApp.setVolumeCountMode(volOn); } catch (e) {}
+    saveVolPref(volOn);
+    var b = document.getElementById('tbVol');
+    if (b) {
+      b.classList.toggle('tb-voice-live', volOn);
+      b.textContent = volOn ? '🔊 ولوم: فعال' : '🔊 شمارش با ولوم';
+    }
+    if (typeof App !== 'undefined' && App.toast) App.toast(volOn ? '🔊 دکمههای ولوم میشمارند — بالا = اضافه، پایین = کم' : 'شمارش با ولوم خاموش شد');
+  }
+
+  window.__volumeKey = function (dir) {
+    var view = document.getElementById('view-tasbeeh');
+    if (!view || !view.classList.contains('active')) return; // فقط وقتی تب تسبیح بازه
+    var o = loadToday();
+    var id = allDhikr()[current].id;
+    var n = (o.counts[id] || 0) + (dir === 'up' ? 1 : -1);
+    if (n < 0) n = 0;
+    o.counts[id] = n;
+    saveToday(o); refreshStreak(); syncTbDisplay(o);
+    voiceVib(20);
+  };
+
+  // ===== مودال ذکر دلخواه =====
+  function buildCustomModal() {
+    return '<div class="tb-cmodal" id="tbCustomModal">' +
+      '<div class="tb-cmodal__card">' +
+        '<div style="font-weight:700; margin-bottom:10px;">ذکر دلخواه</div>' +
+        '<input class="input" id="tbZName" placeholder="نام ذکر (مثلاً: یا زهرا)" style="width:100%; margin-bottom:8px;">' +
+        '<input class="input" id="tbZText" placeholder="متن ذکر برای شمارش صوتی (کوتاه بنویس)" style="width:100%; margin-bottom:8px;">' +
+        '<input class="input" id="tbZTarget" type="number" min="0" placeholder="هدف (مثلاً ۱۰۰ — خالی = بی‌نهایت)" style="width:100%; margin-bottom:10px;">' +
+        '<div style="display:flex; gap:8px;">' +
+          '<button class="btn btn--primary" id="tbZSave" style="flex:1;">ذخیره</button>' +
+          '<button class="btn btn--ghost" id="tbZCancel" style="flex:1;">بستن</button>' +
+        '</div>' +
+        '<div id="tbZList" style="margin-top:10px;"></div>' +
+        '<div class="text-small text-muted" style="margin-top:8px; line-height:1.7;">اگه متن ذکر را بنویسی، شمارش صوتی هم همان را میشناسد 🎤</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderCustomList() {
+    var box = document.getElementById('tbZList');
+    if (!box) return;
+    var list = loadCustom();
+    if (!list.length) { box.innerHTML = '<div class="text-small text-muted" style="text-align:center; padding:6px;">هنوز ذکر شخصی نداری</div>'; return; }
+    var h = '';
+    list.forEach(function (c) {
+      h += '<div style="display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--border);">' +
+        '<span style="flex:1; font-size:13px;">' + escapeHtml(c.name) + (c.target ? ' <span class="text-muted text-small">(هدف ' + c.target + ')</span>' : '') + '</span>' +
+        '<button class="btn btn--ghost" data-zedit="' + c.id + '" style="padding:2px 8px; font-size:11px;">✏️</button>' +
+        '<button class="btn btn--ghost" data-zdel="' + c.id + '" style="padding:2px 8px; font-size:11px; color:#f87171;">🗑️</button>' +
+      '</div>';
+    });
+    box.innerHTML = h;
+    box.querySelectorAll('[data-zdel]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var id = b.getAttribute('data-zdel');
+        if (!confirm('این ذکر حذف شود؟')) return;
+        saveCustom(loadCustom().filter(function (c) { return c.id !== id; }));
+        if (allDhikr()[current] && allDhikr()[current].id === id) current = 0;
+        renderCustomList(); render();
+      });
+    });
+    box.querySelectorAll('[data-zedit]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var c = loadCustom().find(function (x) { return x.id === b.getAttribute('data-zedit'); });
+        if (!c) return;
+        document.getElementById('tbZName').value = c.name;
+        document.getElementById('tbZText').value = c.text || '';
+        document.getElementById('tbZTarget').value = c.target || '';
+        document.getElementById('tbZSave').dataset.editing = c.id;
+      });
+    });
+  }
+
+  function openCustomModal() {
+    var m = document.getElementById('tbCustomModal');
+    if (!m) return;
+    document.getElementById('tbZName').value = '';
+    document.getElementById('tbZText').value = '';
+    document.getElementById('tbZTarget').value = '';
+    var sv = document.getElementById('tbZSave');
+    if (sv) delete sv.dataset.editing;
+    renderCustomList();
+    m.classList.add('show');
+  }
+
+  function wireCustomModal() {
+    var add = document.getElementById('tbAddZekr');
+    if (add) add.addEventListener('click', openCustomModal);
+    var m = document.getElementById('tbCustomModal');
+    if (!m) return;
+    m.addEventListener('click', function (e) { if (e.target === m) m.classList.remove('show'); });
+    var cancel = document.getElementById('tbZCancel');
+    if (cancel) cancel.addEventListener('click', function () { m.classList.remove('show'); });
+    var save = document.getElementById('tbZSave');
+    if (save) save.addEventListener('click', function () {
+      var name = document.getElementById('tbZName').value.trim();
+      var text = document.getElementById('tbZText').value.trim();
+      var target = parseInt(document.getElementById('tbZTarget').value, 10) || 0;
+      if (!name) { if (typeof App !== 'undefined' && App.toast) App.toast('نام ذکر را بنویس'); return; }
+      var list = loadCustom();
+      var editing = save.dataset.editing;
+      if (editing) {
+        list = list.map(function (c) { return c.id === editing ? { id: c.id, name: name, text: text, target: target } : c; });
+      } else {
+        list.push({ id: 'c_' + Date.now().toString(36) + Math.floor(Math.random() * 999), name: name, text: text, target: target });
+      }
+      saveCustom(list);
+      m.classList.remove('show');
+      current = allDhikr().length - 1; // برو روی ذکر تازه
+      render();
+      if (typeof App !== 'undefined' && App.toast) App.toast('✅ ذکر «' + name + '» ذخیره شد');
+    });
+  }
+
+  // ===== سوایپ چپ/راست روی صفحه شمارش =====
+  function wireSwipe() {
+    var stage = document.querySelector('.tb-stage');
+    if (!stage || stage.__sw) return;
+    stage.__sw = true;
+    var sx = 0, sy = 0, done = false;
+    stage.addEventListener('touchstart', function (e) {
+      sx = e.touches[0].clientX; sy = e.touches[0].clientY; done = false;
+    }, { passive: true });
+    stage.addEventListener('touchmove', function (e) {
+      if (done) return;
+      var dx = e.touches[0].clientX - sx, dy = e.touches[0].clientY - sy;
+      if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+        window.__volumeKey(dx < 0 ? 'up' : 'down'); // چپ = اضافه، راست = کم
+        done = true;
+      }
+    }, { passive: true });
+  }
+
+  // ===== تور آموزش اولین اجرا =====
+  var TOUR_FLAG = 'blx_tasbeeh_tour_v1';
+  function startTour() {
+    try { if (localStorage.getItem(TOUR_FLAG) === '1') return; } catch (e) { return; }
+    var steps = [
+      { id: 'tbTap',     text: 'دکمه شمارش — هر بار بزنی یکی اضافه میشه ✋' },
+      { id: 'tbVoice',   text: '🎤 شمارش صوتی — ذکرت رو بلند بگو، خودش میشماره و ویبره میده' },
+      { id: 'tbVol',     text: '🔊 دکمههای ولوم گوشی هم میشمارن — حتی با گوشی توی جیب!' },
+      { id: 'tbAddZekr', text: '＋ ذکر دلخواه — هر ذکری که دوست داری بساز' },
+      { id: 'tbRing',    text: 'روی صفحه شمارش انگشتت رو بکش: چپ = اضافه، راست = کم' }
+    ];
+    var ov = document.createElement('div');
+    ov.className = 'tour-overlay';
+    document.body.appendChild(ov);
+    var idx = 0;
+    function cleanup() {
+      try { ov.remove(); } catch (e) {}
+      document.querySelectorAll('.tour-hl').forEach(function (x) {
+        x.classList.remove('tour-hl'); x.style.zIndex = '';
+      });
+      try { localStorage.setItem(TOUR_FLAG, '1'); } catch (e) {}
+    }
+    function show() {
+      if (idx >= steps.length) { cleanup(); return; }
+      var oldCard = ov.querySelector('.tour-card');
+      if (oldCard) oldCard.remove();
+      var st = steps[idx];
+      var el = document.getElementById(st.id);
+      if (!el) { idx++; show(); return; }
+      document.querySelectorAll('.tour-hl').forEach(function (x) { x.classList.remove('tour-hl'); x.style.zIndex = ''; });
+      el.classList.add('tour-hl'); el.style.zIndex = '320';
+      var r = el.getBoundingClientRect();
+      var card = document.createElement('div');
+      card.className = 'tour-card';
+      card.innerHTML = '<div>' + st.text + '</div><div class="text-small text-muted" style="margin-top:8px; opacity:.7;">برای ادامه لمس کن (' + (idx + 1) + '/' + steps.length + ')</div>';
+      ov.appendChild(card);
+      var cw = Math.min(280, window.innerWidth - 32);
+      card.style.width = cw + 'px';
+      var top = r.bottom + 12;
+      if (top + 110 > window.innerHeight) top = Math.max(12, r.top - 118);
+      var left = Math.max(16, Math.min(r.left, window.innerWidth - cw - 16));
+      card.style.top = top + 'px';
+      card.style.left = left + 'px';
+      idx++;
+    }
+    ov.addEventListener('click', show);
+    setTimeout(show, 350);
+  }
+
+  // رفتن از تب تسبیح — خاموشی حالتهای ویژه
+  function onRouteLeave() {
+    if (volOn && typeof NativeApp !== 'undefined' && NativeApp.setVolumeCountMode) {
+      try { NativeApp.setVolumeCountMode(false); } catch (e) {}
+      volOn = false;
+    }
+    if (voiceOn && typeof NativeApp !== 'undefined' && NativeApp.tasbihVoiceStop) {
+      try { NativeApp.tasbihVoiceStop(); } catch (e) {}
+      voiceOn = false;
+    }
+  }
 
   // الگوهای نرمال‌شده (بدون فاصله) برای هر ذکر
   var VOICE_PATTERNS = {
@@ -140,16 +360,25 @@
   }
 
   // ورودی: آرایه متن‌های شنیده‌شده → خروجی: [{id,n,...}]
+  function activePatterns() {
+    var p = {};
+    for (var k in VOICE_PATTERNS) p[k] = VOICE_PATTERNS[k].slice();
+    loadCustom().forEach(function (c) {
+      if (c.text && String(c.text).trim()) p[c.id] = [String(c.text).trim().slice(0, 30)];
+    });
+    return p;
+  }
   function matchCounts(texts) {
     var text = normKey(Array.isArray(texts) ? texts.join(' ') : (texts || ''));
     var used = new Array(text.length + 1);
     for (var u = 0; u < used.length; u++) used[u] = false;
     var hits = [];
-    var ids = Object.keys(VOICE_PATTERNS);
+    var PATS = activePatterns();
+    var ids = Object.keys(PATS);
     // طولانی‌ها اول تا Shortها دابل‌شمارش نکنند
     ids.sort(function (a, b) { return VOICE_PATTERNS[b][0].length - VOICE_PATTERNS[a][0].length; });
     for (var ii = 0; ii < ids.length; ii++) {
-      var id = ids[ii], pats = VOICE_PATTERNS[id], n = 0;
+      var id = ids[ii], pats = PATS[id], n = 0;
       for (var p = 0; p < pats.length; p++) {
         var pat = normKey(pats[p]);
         if (!pat) continue;
@@ -169,7 +398,7 @@
   }
 
   function syncTbDisplay(o) {
-    var dh = ADHKAR[current];
+    var dh = allDhikr()[current];
     var count = o.counts[dh.id] || 0;
     var cEl = document.getElementById('tbCount');
     if (cEl) { cEl.textContent = count; cEl.classList.remove('pop'); void cEl.offsetWidth; cEl.classList.add('pop'); }
@@ -184,12 +413,13 @@
 
   // هدف: تکمیل ذکر — برای ذکر فعال بررسی کن
   function voiceTargets(hits) {
+    var list = allDhikr();
     for (var i = 0; i < hits.length; i++) {
-      for (var a = 0; a < ADHKAR.length; a++) {
-        if (ADHKAR[a].id === hits[i].id && ADHKAR[a].target) {
-          var o = loadToday(), c = o.counts[ADHKAR[a].id] || 0;
-          if (c >= ADHKAR[a].target && c - hits[i].n < ADHKAR[a].target) {
-            if (typeof App !== 'undefined' && App.toast) App.toast('\u2705 ' + ADHKAR[a].name + ' تکمیل شد');
+      for (var a = 0; a < list.length; a++) {
+        if (list[a].id === hits[i].id && list[a].target) {
+          var o = loadToday(), c = o.counts[list[a].id] || 0;
+          if (c >= list[a].target && c - hits[i].n < list[a].target) {
+            if (typeof App !== 'undefined' && App.toast) App.toast('\u2705 ' + list[a].name + ' تکمیل شد');
           }
         }
       }
@@ -200,7 +430,7 @@
     var raw = Array.isArray(texts) ? texts[0] : String(texts || '');
     var hits = matchCounts(texts);
     var logEl = document.getElementById('tbVoiceLog');
-    var nameOf = {}; ADHKAR.forEach(function (d) { nameOf[d.id] = d.name; });
+    var nameOf = {}; allDhikr().forEach(function (d) { nameOf[d.id] = d.name; });
     if (!hits.length) {
       if (logEl) logEl.innerHTML = '<span style="opacity:.55">🔇 «' + escapeHtml(raw) + '» — ذکر شناسایی نشد</span>';
       return;
@@ -257,17 +487,19 @@
   function render() {
     var view = document.getElementById('view-tasbeeh');
     if (!view) return;
-    var dh = ADHKAR[current];
+    var dh = allDhikr()[current];
     var count = getCount();
     var o = loadToday();
     var total = totalToday(o);
     var s = loadStreak();
 
+    var LIST = allDhikr();
     var chips = '';
-    for (var i = 0; i < ADHKAR.length; i++) {
+    for (var i = 0; i < LIST.length; i++) {
       chips += '<button class="tb-chip' + (i === current ? ' active' : '') + '" data-i="' + i + '">' +
-        escapeHtml(ADHKAR[i].name) + '</button>';
+        escapeHtml(LIST[i].name) + '</button>';
     }
+    chips += '<button class="tb-chip tb-chip--add" id="tbAddZekr" title="افزودن ذکر دلخواه">＋ ذکر</button>';
 
     var pct = dh.target ? Math.min(100, Math.round((count / dh.target) * 100)) : 0;
 
@@ -299,8 +531,11 @@
       '</div>' +
       '<div style="display:flex; gap:8px; margin-top:8px; align-items:center;">' +
         '<button class="btn btn--ghost' + (voiceOn ? ' tb-voice-live' : '') + '" id="tbVoice" style="flex:1;">' + (voiceOn ? '🎙️ فعال — گوش میده' : '🎤 شمارش صوتی') + '</button>' +
+        '<button class="btn btn--ghost' + (volOn ? ' tb-voice-live' : '') + '" id="tbVol" style="flex:1;">' + (volOn ? '🔊 ولوم: فعال' : '🔊 شمارش با ولوم') + '</button>' +
       '</div>' +
-      '<div id="tbVoiceLog" class="text-small text-muted" style="margin-top:6px; text-align:center; line-height:1.8;"></div>';
+      '<div id="tbVoiceLog" class="text-small text-muted" style="margin-top:6px; text-align:center; line-height:1.8;"></div>' +
+      '<div class="tour-hint text-small text-muted" style="text-align:center; margin-top:4px; opacity:.7;">💡 روی صفحه شمارش، چپ = اضافه، راست = کم</div>' +
+      buildCustomModal();
 
     // آمار شخصی
     if (window.Stats) try { Stats.render(); } catch (e) {}
@@ -317,7 +552,7 @@
     if (tap) tap.addEventListener('click', onTap);
     var reset = document.getElementById('tbReset');
     if (reset) reset.addEventListener('click', function () {
-      var o2 = loadToday(); o2.counts[ADHKAR[current].id] = 0; saveToday(o2); render();
+      var o2 = loadToday(); o2.counts[allDhikr()[current].id] = 0; saveToday(o2); render();
     });
     var vib = document.getElementById('tbVib');
     if (vib) vib.addEventListener('click', function () {
@@ -327,18 +562,29 @@
     });
     var tbv = document.getElementById('tbVoice');
     if (tbv) tbv.addEventListener('click', toggleVoice);
+    var tbvol = document.getElementById('tbVol');
+    if (tbvol) tbvol.addEventListener('click', toggleVol);
+    wireCustomModal();
+    wireSwipe();
+    if (loadVolPref() && typeof NativeApp !== 'undefined' && NativeApp.setVolumeCountMode) {
+      volOn = true;
+      try { NativeApp.setVolumeCountMode(true); } catch (e) {}
+      var vb = document.getElementById('tbVol');
+      if (vb) { vb.classList.add('tb-voice-live'); vb.textContent = '🔊 ولوم: فعال'; }
+    }
+    startTour();
   }
 
   function onTap() {
     var o = loadToday();
-    var id = ADHKAR[current].id;
+    var id = allDhikr()[current].id;
     o.counts[id] = (o.counts[id] || 0) + 1;
     saveToday(o);
     refreshStreak();
     var count = o.counts[id];
     var cEl = document.getElementById('tbCount');
     if (cEl) cEl.textContent = count;
-    var dh = ADHKAR[current];
+    var dh = allDhikr()[current];
     var pct = dh.target ? Math.min(100, Math.round((count / dh.target) * 100)) : 0;
     var ring = document.getElementById('tbRing');
     if (ring) ring.style.setProperty('--p', pct);
@@ -361,6 +607,6 @@
 
   function escapeHtml(s) { return (window.BXUtils ? BXUtils.escapeHtml : function (x) { return String(x == null ? '' : x); })(s); }
 
-  var Tasbeeh = { render: render, onTap: onTap, matchCounts: matchCounts, normKey: normKey };
+  var Tasbeeh = { render: render, onTap: onTap, matchCounts: matchCounts, normKey: normKey, onRouteLeave: onRouteLeave };
   if (typeof window !== 'undefined') window.Tasbeeh = Tasbeeh;
 })(typeof window !== 'undefined' ? window : this);

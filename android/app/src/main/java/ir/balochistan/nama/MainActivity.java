@@ -19,6 +19,7 @@ public class MainActivity extends BridgeActivity {
     // ===== v1.16: تسبیح صوتی (راه A — SpeechRecognizer سیستمی) =====
     private android.speech.SpeechRecognizer tasbihSr = null;
     private volatile boolean tasbihVoiceActive = false;
+    private volatile boolean volumeCountMode = false;
     private int tasbihErrStreak = 0;
     private final android.os.Handler tasbihHandler = new android.os.Handler(android.os.Looper.getMainLooper());
 
@@ -110,6 +111,22 @@ public class MainActivity extends BridgeActivity {
             }
             tasbihStartLoop();
         } catch (Exception e) { tasbihJs("window.__tasbihVoiceError&&window.__tasbihVoiceError(9002)"); }
+    }
+
+    // v1.16: شمارش ذکر با دکمههای ولوم — فقط وقتی تسبیح حالت ولوم را روشن کرده
+    @Override
+    public boolean dispatchKeyEvent(android.view.KeyEvent event) {
+        try {
+            if (volumeCountMode
+                && event.getAction() == android.view.KeyEvent.ACTION_DOWN
+                && (event.getKeyCode() == android.view.KeyEvent.KEYCODE_VOLUME_UP
+                 || event.getKeyCode() == android.view.KeyEvent.KEYCODE_VOLUME_DOWN)) {
+                final String dir = event.getKeyCode() == android.view.KeyEvent.KEYCODE_VOLUME_UP ? "up" : "down";
+                tasbihJs("window.__volumeKey&&window.__volumeKey('" + dir + "')");
+                return true; // جلوی تغییر صدای مدیا را بگیر
+            }
+        } catch (Exception ig) {}
+        return super.dispatchKeyEvent(event);
     }
 
     @Override
@@ -269,6 +286,11 @@ public class MainActivity extends BridgeActivity {
                     }
                     @JavascriptInterface
                     public boolean tasbihVoiceActive() { return tasbihVoiceActive; }
+                    // v1.16: حالت شمارش با ولوم
+                    @JavascriptInterface
+                    public void setVolumeCountMode(boolean on) { volumeCountMode = on; }
+                    @JavascriptInterface
+                    public boolean isVolumeCountMode() { return volumeCountMode; }
                     // ===== v1.16: کتاب فتاوا (پروژه IslamPP — منبع: islampp.org) =====
                     @JavascriptInterface
                     public String fatwaStatus() {
