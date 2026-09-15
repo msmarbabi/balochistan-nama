@@ -214,6 +214,11 @@
       faHtml += '<div>' + v.lines[j].fa + '</div>';
     }
     setHtml('verseFa', faHtml);
+    // v1.16: آیه + ذکر روز (hedayat_media data)
+    try {
+      var dow = state.today.getDay();
+      BXAyat.render('ayatDayBox', dayOfYear, dow, 'both');
+    } catch (e) { dbg(e); }
 
     // Today's events
     renderDayEvents(t, 'todayEvents');

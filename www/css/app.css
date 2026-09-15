@@ -1400,3 +1400,33 @@ html[data-season="winter"] .season-scene span {
 .fatwa-src b { color: var(--fg); }
 #fatwaResults .acc__title { font-weight: 600; font-size: 13px; line-height: 1.7; }
 #fatwaResults .acc__body { font-size: 12.5px; line-height: 2; color: var(--fg); }
+
+/* ---------- v1.16: آیه و ذکر روز (hedayat_media) ---------- */
+.ayat-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-top: 8px;
+  background: var(--bg-elev2);
+  text-align: center;
+}
+.ayat-card--zekr { border-style: dashed; }
+.ayat-card__badge {
+  display: inline-block;
+  font-size: 10.5px; font-weight: 700;
+  color: var(--accent);
+  background: rgba(127, 127, 127, .1);
+  border-radius: 999px;
+  padding: 2px 10px;
+  margin-bottom: 8px;
+}
+.ayat-card__ar {
+  font-family: var(--font-nastaliq);
+  font-size: 19px;
+  line-height: 2.1;
+  color: var(--fg);
+  margin-bottom: 6px;
+}
+.ayat-card__ar--zekr { font-size: 22px; color: var(--accent); }
+.ayat-card__tr { font-size: 12.5px; color: var(--fg-soft); line-height: 1.9; margin-bottom: 4px; }
+.ayat-card__src { font-size: 10.5px; color: var(--muted); }
