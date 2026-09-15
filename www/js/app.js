@@ -761,6 +761,8 @@
         nextTime: np ? Prayer.formatTime(np.time) : '',
         city: settings.locName || 'بلوچستان'
       };
+      // v1.16: نام فارسی وقت بعدی برای ویجت
+      try { if (np && Prayer.NAMES) data.nextLabel = Prayer.NAMES[np.name] || np.name; } catch (e) { dbg(e); }
       try {
         var _athSel = (typeof Athan !== 'undefined' && Athan.getSel) ? Athan.getById(Athan.getSel().athan) : null;
         var _athIsFile = !!(_athSel && (_athSel.type === 'file' || _athSel.type === 'file64'));
@@ -799,6 +801,13 @@
         } else if (!_athIsFile && window.Filesystem) {
           // انتخاب دیجیتال/بدون‌صدا — فایل قبلی را پاک کن تا سرویس اذان قدیمی پخش نکند
           try { window.Filesystem.deleteFile({ path: 'athan_selected.mp3', directory: 'DATA' }).catch(function () {}); } catch (e) { dbg(e); }
+        }
+      } catch (e) { dbg(e); }
+      // v1.16: ذکر فعال تسبیح برای ویجت
+      try {
+        if (typeof Tasbeeh !== 'undefined' && Tasbeeh.currentInfo) {
+          var ci = Tasbeeh.currentInfo();
+          if (ci) data.tasbih = ci;
         }
       } catch (e) { dbg(e); }
       // آب‌وهوا برای ویجت (v1.9)

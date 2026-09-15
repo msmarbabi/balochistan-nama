@@ -207,6 +207,8 @@ public class MainActivity extends BridgeActivity {
                         } catch (Exception e) { }
                         PrayerWidgetProvider.pushUpdate(MainActivity.this, mgr, data);
                         WeatherWidgetProvider.pushUpdate(MainActivity.this, mgr, data);
+                        NextPrayerWidgetProvider.pushUpdate(MainActivity.this, mgr, data);
+                        TasbihWidgetProvider.pushUpdate(MainActivity.this, mgr, data);
                     } catch (Exception e) { }
                 }
 

@@ -74,6 +74,12 @@ public class PrayerNotificationService extends Service {
         public void run() {
             try {
                 if (dataFileChanged()) reloadData();
+                // v1.16: آپدیت دقیقه‌ای ویجت‌ها (شمارش معکوس وقت بعدی زنده بماند)
+                long nowMin = System.currentTimeMillis() / 60000L;
+                if (nowMin != lastWidgetMin) {
+                    lastWidgetMin = nowMin;
+                    pushWidgets();
+                }
                 // v1.16: برگشت از سایلنت (watchdog — حتی اگر onCompletion نیفتد)
                 if (silentRestoreAt > 0 && android.os.SystemClock.elapsedRealtime() >= silentRestoreAt) {
                     silentRestoreAt = 0;
@@ -88,6 +94,15 @@ public class PrayerNotificationService extends Service {
     };
 
     private long dataLastModified = 0;
+    private long lastWidgetMin = 0;
+
+    private void pushWidgets() {
+        try {
+            android.appwidget.AppWidgetManager mgr = android.appwidget.AppWidgetManager.getInstance(this);
+            NextPrayerWidgetProvider.pushUpdate(this, mgr, null);
+            PrayerWidgetProvider.pushUpdate(this, mgr, null);
+        } catch (Exception ignored) { }
+    }
     private boolean dataFileChanged() {
         File f = new File(getFilesDir(), "widget_data.json");
         long m = f.lastModified();

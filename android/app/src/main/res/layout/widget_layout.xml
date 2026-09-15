@@ -17,7 +17,7 @@
             android:layout_height="wrap_content"
             android:text="🕌 بلوچستان نما"
             android:textColor="#ffd166"
-            android:textSize="16sp"
+            android:textSize="15sp"
             android:textStyle="bold"
             android:gravity="center" />
 
@@ -28,6 +28,26 @@
             android:text="--"
             android:textColor="#a0a0c0"
             android:textSize="12sp"
+            android:gravity="center" />
+
+        <TextView
+            android:id="@+id/widget_hijri"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="#8a8ab0"
+            android:textSize="11sp"
+            android:gravity="center"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/widget_next"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="#7ee0a3"
+            android:textSize="13sp"
+            android:textStyle="bold"
             android:gravity="center"
             android:layout_marginBottom="6dp" />
 
@@ -70,5 +90,15 @@
             android:text="عشا --:--"
             android:textColor="#ffffff"
             android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/widget_city"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="#6a6a90"
+            android:textSize="10sp"
+            android:gravity="center"
+            android:layout_marginTop="4dp" />
     </LinearLayout>
 </FrameLayout>

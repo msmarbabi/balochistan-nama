@@ -607,6 +607,10 @@
 
   function escapeHtml(s) { return (window.BXUtils ? BXUtils.escapeHtml : function (x) { return String(x == null ? '' : x); })(s); }
 
-  var Tasbeeh = { render: render, onTap: onTap, matchCounts: matchCounts, normKey: normKey, onRouteLeave: onRouteLeave };
+  function currentInfo() {
+    var d = allDhikr()[current];
+    return d ? { name: d.name, target: d.target || 0 } : null;
+  }
+  var Tasbeeh = { render: render, onTap: onTap, matchCounts: matchCounts, normKey: normKey, onRouteLeave: onRouteLeave, currentInfo: currentInfo };
   if (typeof window !== 'undefined') window.Tasbeeh = Tasbeeh;
 })(typeof window !== 'undefined' ? window : this);

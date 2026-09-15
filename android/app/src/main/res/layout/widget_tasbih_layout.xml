@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#1a1a2e"
+    android:padding="10dp"
+    android:gravity="center">
+
+    <TextView android:id="@+id/twName"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="تسبیح" android:textColor="#ffd166"
+        android:textSize="12sp" android:gravity="center" android:maxLines="1" android:ellipsize="end" />
+
+    <TextView android:id="@+id/twCount"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="۰" android:textColor="#ffffff"
+        android:textSize="34sp" android:textStyle="bold" android:gravity="center" />
+
+    <LinearLayout
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center" android:layout_marginTop="4dp">
+
+        <TextView android:id="@+id/twReset"
+            android:layout_width="wrap_content" android:layout_height="44dp"
+            android:minWidth="70dp"
+            android:text="↺ صفر" android:textColor="#f0a0a0" android:textSize="13sp"
+            android:gravity="center" android:background="#2a2a45"
+            android:paddingLeft="12dp" android:paddingRight="12dp" android:layout_marginEnd="8dp" />
+
+        <TextView android:id="@+id/twPlus"
+            android:layout_width="wrap_content" android:layout_height="44dp"
+            android:minWidth="110dp"
+            android:text="✚ ذکر" android:textColor="#7ee0a3" android:textSize="15sp" android:textStyle="bold"
+            android:gravity="center" android:background="#24304a"
+            android:paddingLeft="16dp" android:paddingRight="16dp" />
+    </LinearLayout>
+</LinearLayout>
