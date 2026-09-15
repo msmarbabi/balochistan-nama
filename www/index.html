@@ -7,11 +7,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <title>بلوچستان نما</title>
-  <link rel="stylesheet" href="css/app.css?v=142">
-  <link rel="stylesheet" href="css/extras.css?v=142">
-  <link rel="stylesheet" href="css/sheet.css?v=142">
-  <link rel="stylesheet" href="css/settings.css?v=142">
-  <link rel="stylesheet" href="css/accordion.css?v=142">
+  <link rel="stylesheet" href="css/app.css?v=144">
+  <link rel="stylesheet" href="css/extras.css?v=144">
+  <link rel="stylesheet" href="css/sheet.css?v=144">
+  <link rel="stylesheet" href="css/settings.css?v=144">
+  <link rel="stylesheet" href="css/accordion.css?v=144">
 </head>
 <body>
   <div class="season-scene" id="seasonScene"></div>
@@ -378,6 +378,14 @@
         <div class="card">
           <div class="card__title"><span>📚 مدیریت اذان‌های من</span></div>
           <div id="athanUserList" style="display:flex; flex-direction:column; gap:6px;"></div>
+        </div>
+        <div class="card">
+          <div class="card__title">
+            <span>🌐 کتابخانه صدای اذان</span>
+            <button class="btn btn--ghost" id="btnAthanCat" style="font-size:12px; padding:3px 10px;">نمایش ۳۰ صدا ▾</button>
+          </div>
+          <div class="text-small text-muted" style="margin-bottom:6px;">منتخبی از اذانهای مشهور عالم اسلام (مدینه، مکه، حلب، مصر، العفاسی، عبدالباسط، منشاوی، کُردی و…). پیش‌نمایش آنلاین؛ «افزودن» آن را به کتابخانه شما اضافه می‌کند.</div>
+          <div id="athanCatList" style="display:none; flex-direction:column; gap:5px; max-height:420px; overflow:auto;"></div>
         </div>
         <div class="card">
           <div class="card__title">
@@ -1072,42 +1080,43 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/utils.js?v=142"></script>
-  <script src="js/backup.js?v=142"></script>
-  <script src="js/actionsheet.js?v=142"></script>
-  <script src="js/cal.js?v=142"></script>
-  <script src="js/events.js?v=142"></script>
-  <script src="js/culture_extra.js?v=142"></script>
-  <script src="js/baloch.js?v=142"></script>
-  <script src="js/prayertimes.js?v=142"></script>
-  <script src="js/athan.js?v=142"></script>
-  <script src="js/notes.js?v=142"></script>
-  <script src="js/weather.js?v=142"></script>
-  <script src="js/compass.js?v=142"></script>
-  <script src="js/streak.js?v=142"></script>
-  <script src="js/ramadan.js?v=142"></script>
-  <script src="js/clock.js?v=142"></script>
-  <script src="js/app.js?v=142"></script>
-  <script src="js/tasbeeh.js?v=142"></script>
-  <script src="js/tools.js?v=142"></script>
-  <script src="js/athan_player.js?v=142"></script>
-  <script src="js/personalevents.js?v=142"></script>
-  <script src="js/learn.js?v=142"></script>
-  <script src="js/fatwa.js?v=142"></script>
-  <script src="js/ayat_day.js?v=142"></script>
-  <script src="js/ayat.js?v=142"></script>
-  <script src="js/pt_server.js?v=142"></script>
-  <script src="js/monthtable.js?v=142"></script>
-  <script src="js/ics.js?v=142"></script>
-  <script src="js/stats.js?v=142"></script>
+  <script src="js/utils.js?v=144"></script>
+  <script src="js/backup.js?v=144"></script>
+  <script src="js/actionsheet.js?v=144"></script>
+  <script src="js/cal.js?v=144"></script>
+  <script src="js/events.js?v=144"></script>
+  <script src="js/culture_extra.js?v=144"></script>
+  <script src="js/baloch.js?v=144"></script>
+  <script src="js/prayertimes.js?v=144"></script>
+  <script src="js/athan.js?v=144"></script>
+  <script src="js/notes.js?v=144"></script>
+  <script src="js/weather.js?v=144"></script>
+  <script src="js/compass.js?v=144"></script>
+  <script src="js/streak.js?v=144"></script>
+  <script src="js/ramadan.js?v=144"></script>
+  <script src="js/clock.js?v=144"></script>
+  <script src="js/app.js?v=144"></script>
+  <script src="js/tasbeeh.js?v=144"></script>
+  <script src="js/tools.js?v=144"></script>
+  <script src="js/athan_player.js?v=144"></script>
+  <script src="js/personalevents.js?v=144"></script>
+  <script src="js/learn.js?v=144"></script>
+  <script src="js/fatwa.js?v=144"></script>
+  <script src="js/ayat_day.js?v=144"></script>
+  <script src="js/ayat.js?v=144"></script>
+  <script src="js/pt_server.js?v=144"></script>
+  <script src="js/athans_catalog.js?v=144"></script>
+  <script src="js/monthtable.js?v=144"></script>
+  <script src="js/ics.js?v=144"></script>
+  <script src="js/stats.js?v=144"></script>
   <script>
     // init یادداشت یک‌بار در startup — تا دکمه + از صفحه خانه هم کار کند
     document.addEventListener('DOMContentLoaded', function () {
       try { if (window.Notes) Notes.init(); } catch (e) {}
     });
   </script>
-  <script src="js/notify.js?v=142"></script>
-  <script src="js/i18n.js?v=142"></script>
-  <script src="js/extensions.js?v=142"></script>
+  <script src="js/notify.js?v=144"></script>
+  <script src="js/i18n.js?v=144"></script>
+  <script src="js/extensions.js?v=144"></script>
 </body>
 </html>

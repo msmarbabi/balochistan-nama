@@ -1641,6 +1641,8 @@
   }
   function wireAthan() {
     if (typeof Athan === 'undefined') return;
+    if (wireAthan._wired) return; // v1.16 رفع باگ: بایند فقط یک‌بار (قبلاً هر بار تنظیمات باز میشد هندلرها دوبرابر می‌شدند)
+    wireAthan._wired = true;
     var as = document.getElementById('athanSoundToggle');
     if (as) {
       setToggle('athanSoundToggle', settings.athanSound !== false);
@@ -1834,9 +1836,59 @@
     }
 
     renderAthanUserList();
+    var catBtn = document.getElementById('btnAthanCat');
+    if (catBtn) catBtn.addEventListener('click', function () {
+      var list = document.getElementById('athanCatList');
+      if (!list) return;
+      var open = list.style.display !== 'none' && list.style.display !== '';
+      list.style.display = open ? 'none' : 'flex';
+      catBtn.textContent = open ? 'نمایش ۳۰ صدا ▾' : 'بستن ▴';
+      if (!open) renderAthanCatalog();
+    });
   }
 
   // ===== رندر لیست اذان‌های کاربر (ویرایش/حذف) =====
+  // ===== v1.16: کتابخانه آنلاین صدای اذان (مرحله ۴) =====
+  var _catAudio = null, _catPlayingBtn = null;
+  function renderAthanCatalog() {
+    var box = document.getElementById('athanCatList');
+    if (!box || typeof ATHANS_CATALOG === 'undefined') return;
+    var lib = (typeof Athan !== 'undefined') ? Athan.getLib() : [];
+    var added = {};
+    lib.forEach(function (it) { if (it && it.type === 'file' && it.data) added[it.data] = it.name; });
+    var html = '';
+    ATHANS_CATALOG.forEach(function (c, i) {
+      var isAdded = !!added[c.url];
+      html += '<div class="note" style="padding:7px 8px; display:flex; align-items:center; gap:8px;">' +
+        '<span style="flex:1; font-size:12.5px;">' + (i + 1) + '. ' + escapeHtml(c.name) + '</span>' +
+        '<button class="btn btn--ghost" data-catplay="' + i + '" style="padding:3px 9px; font-size:12px;">▶️</button>' +
+        (isAdded
+          ? '<span class="pill" style="font-size:10.5px;">✓ اضافه‌شده</span>'
+          : '<button class="btn btn--ghost" data-catadd="' + i + '" style="padding:3px 9px; font-size:12px;">➕ افزودن</button>') +
+        '</div>';
+    });
+    box.innerHTML = html;
+    box.querySelectorAll('[data-catplay]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var c = ATHANS_CATALOG[parseInt(btn.getAttribute('data-catplay'), 10)];
+        if (_catAudio && _catPlayingBtn === btn) { _catAudio.pause(); _catAudio = null; _catPlayingBtn.textContent = '▶️'; _catPlayingBtn = null; return; }
+        if (_catAudio) { _catAudio.pause(); if (_catPlayingBtn) _catPlayingBtn.textContent = '▶️'; }
+        _catAudio = new Audio(c.url);
+        _catAudio.addEventListener('ended', function () { btn.textContent = '▶️'; _catAudio = null; _catPlayingBtn = null; });
+        _catAudio.addEventListener('error', function () { toast('خطا در پخش — اینترنت؟'); btn.textContent = '▶️'; });
+        _catAudio.play().then(function () { btn.textContent = '⏸'; _catPlayingBtn = btn; }).catch(function () { toast('پخش نشد'); });
+      });
+    });
+    box.querySelectorAll('[data-catadd]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var c = ATHANS_CATALOG[parseInt(btn.getAttribute('data-catadd'), 10)];
+        var id = Athan.addItem(c.name, 'file', c.url);
+        if (id) { toast('«' + c.name + '» اضافه شد ✓'); refreshAthanSelectors(); renderAthanUserList(); renderAthanCatalog(); }
+        else toast('خطا در افزودن');
+      });
+    });
+  }
+
   function renderAthanUserList() {
     var box = document.getElementById('athanUserList');
     if (!box || typeof Athan === 'undefined') return;
