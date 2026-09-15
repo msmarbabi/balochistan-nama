@@ -71,6 +71,189 @@
     return o.counts[ADHKAR[current].id] || 0;
   }
 
+
+  // ===== v1.16: شمارش صوتی ذکر (راه A — SpeechRecognizer سیستمی) =====
+  var voiceOn = false;
+
+  // الگوهای نرمال‌شده (بدون فاصله) برای هر ذکر
+  var VOICE_PATTERNS = {
+    hawq:     ['لا ح حول و لا قوه الا بالله', 'لاحولولا قوه الاالله'],
+    tahlil:   ['لا اله الا الله'],
+    salawat:  ['اللهم صل علی', 'اللهم صلی علی'],
+    subhan:   ['سبحان الله'],
+    istigh:   ['استغفر الله'],
+    takbir:   ['الله اکبر'],
+    hamd:     ['الحمد لله']
+  };
+
+  function normVoice(t) {
+    return String(t || '')
+      .replace(/[\u064B-\u065F\u0670\u0640]/g, '')       // اعراب و کشیده
+      .replace(/[\u200c\u200d\u061F\u060C\u061B\u0648]/g, function (c) { return c === '\u0648' ? 'و' : ''; })
+      .replace(/[\u0622\u0623\u0625\u0671]/g, 'ا')        // آ أ إ ٱ ← ا
+      .replace(/\u0643/g, 'ک')                                // ک عربی←فارسی
+      .replace(/\u064A/g, 'ی')                                // ي عربی←فارسی
+      .replace(/\u0629/g, 'ه')                                // ة←ه
+      .replace(/\u0649/g, 'ی')                                // ى←ی
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  function normKey(t) { return normVoice(t).replace(/ /g, ''); }
+
+  // فاصله لِوِنشتاین با سقف زودهنگام
+  function lev(a, b, maxD) {
+    var la = a.length, lb = b.length;
+    if (Math.abs(la - lb) > maxD) return maxD + 1;
+    var prev = new Array(lb + 1), cur = new Array(lb + 1), i, j;
+    for (j = 0; j <= lb; j++) prev[j] = j;
+    for (i = 1; i <= la; i++) {
+      cur[0] = i; var rowMin = cur[0];
+      var ca = a.charCodeAt(i - 1);
+      for (j = 1; j <= lb; j++) {
+        var cost = ca === b.charCodeAt(j - 1) ? 0 : 1;
+        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost);
+        if (cur[j] < rowMin) rowMin = cur[j];
+      }
+      if (rowMin > maxD) return maxD + 1;
+      var tmp = prev; prev = cur; cur = tmp;
+    }
+    return prev[lb];
+  }
+
+  // شمارش تطبیق‌های غیرهمپوشان یک الگو در متن — with used mask
+  function scanPattern(text, pat, maxD, used) {
+    var n = 0, i = 0;
+    var L = pat.length;
+    while (i + L - 2 <= text.length) {
+      var hit = false;
+      for (var wlen = L - 1; wlen <= L + 1 && i + wlen <= text.length; wlen++) {
+        var skip = false;
+        for (var k = i; k < i + wlen && k < text.length; k++) { if (used[k]) { skip = true; break; } }
+        if (skip) continue;
+        if (lev(text.substr(i, wlen), pat, maxD) <= maxD) { hit = true; for (var m = i; m < i + wlen; m++) used[m] = true; break; }
+      }
+      if (hit) { n++; i += L - 1; }
+      else i += 1;
+    }
+    return n;
+  }
+
+  // ورودی: آرایه متن‌های شنیده‌شده → خروجی: [{id,n,...}]
+  function matchCounts(texts) {
+    var text = normKey(Array.isArray(texts) ? texts.join(' ') : (texts || ''));
+    var used = new Array(text.length + 1);
+    for (var u = 0; u < used.length; u++) used[u] = false;
+    var hits = [];
+    var ids = Object.keys(VOICE_PATTERNS);
+    // طولانی‌ها اول تا Shortها دابل‌شمارش نکنند
+    ids.sort(function (a, b) { return VOICE_PATTERNS[b][0].length - VOICE_PATTERNS[a][0].length; });
+    for (var ii = 0; ii < ids.length; ii++) {
+      var id = ids[ii], pats = VOICE_PATTERNS[id], n = 0;
+      for (var p = 0; p < pats.length; p++) {
+        var pat = normKey(pats[p]);
+        if (!pat) continue;
+        var maxD = pat.length >= 9 ? 2 : 1;
+        n += scanPattern(text, pat, maxD, used);
+      }
+      if (n > 0) hits.push({ id: id, n: n });
+    }
+    return hits;
+  }
+
+  function voiceVib(pattern) {
+    var vib = document.getElementById('tbVib');
+    if (vib && vib.dataset.on === '0') return;
+    if (navigator.vibrate) { try { navigator.vibrate(pattern || 25); } catch (e) {} }
+    else if (typeof NativeApp !== 'undefined' && NativeApp.vibrate) { try { NativeApp.vibrate(60); } catch (e) {} }
+  }
+
+  function syncTbDisplay(o) {
+    var dh = ADHKAR[current];
+    var count = o.counts[dh.id] || 0;
+    var cEl = document.getElementById('tbCount');
+    if (cEl) { cEl.textContent = count; cEl.classList.remove('pop'); void cEl.offsetWidth; cEl.classList.add('pop'); }
+    var pct = dh.target ? Math.min(100, Math.round((count / dh.target) * 100)) : 0;
+    var ring = document.getElementById('tbRing');
+    if (ring) ring.style.setProperty('--p', pct);
+    var totalEl = document.getElementById('tbTotal');
+    if (totalEl) totalEl.textContent = totalToday(o);
+    var streakEl = document.getElementById('tbStreak');
+    if (streakEl) streakEl.textContent = loadStreak().streak;
+  }
+
+  // هدف: تکمیل ذکر — برای ذکر فعال بررسی کن
+  function voiceTargets(hits) {
+    for (var i = 0; i < hits.length; i++) {
+      for (var a = 0; a < ADHKAR.length; a++) {
+        if (ADHKAR[a].id === hits[i].id && ADHKAR[a].target) {
+          var o = loadToday(), c = o.counts[ADHKAR[a].id] || 0;
+          if (c >= ADHKAR[a].target && c - hits[i].n < ADHKAR[a].target) {
+            if (typeof App !== 'undefined' && App.toast) App.toast('\u2705 ' + ADHKAR[a].name + ' تکمیل شد');
+          }
+        }
+      }
+    }
+  }
+
+  window.__tasbihHeard = function (texts) {
+    var raw = Array.isArray(texts) ? texts[0] : String(texts || '');
+    var hits = matchCounts(texts);
+    var logEl = document.getElementById('tbVoiceLog');
+    var nameOf = {}; ADHKAR.forEach(function (d) { nameOf[d.id] = d.name; });
+    if (!hits.length) {
+      if (logEl) logEl.innerHTML = '<span style="opacity:.55">🔇 «' + escapeHtml(raw) + '» — ذکر شناسایی نشد</span>';
+      return;
+    }
+    var o = loadToday(), total = 0, parts = [];
+    for (var i = 0; i < hits.length; i++) {
+      o.counts[hits[i].id] = (o.counts[hits[i].id] || 0) + hits[i].n;
+      total += hits[i].n;
+      parts.push(nameOf[hits[i].id] + ' ×' + hits[i].n);
+    }
+    saveToday(o); refreshStreak(); syncTbDisplay(o); voiceTargets(hits);
+    voiceVib(total === 1 ? [30] : [30, 40, 30]);
+    if (logEl) logEl.innerHTML = '🎤 «' + escapeHtml(raw) + '» ← <b style="color:var(--accent)">' + escapeHtml(parts.join('، ')) + '</b>';
+  };
+
+  window.__tasbihVoiceState = function (st) {
+    var btn = document.getElementById('tbVoice');
+    if (!btn) return;
+    if (st === 'on' || st === 'ready' || st === 'listening') {
+      voiceOn = true;
+      btn.classList.add('tb-voice-live');
+      btn.textContent = st === 'listening' ? '🔴 در حال شنیدن…' : '🎙️ فعال — گوش میده';
+    } else {
+      voiceOn = false;
+      btn.classList.remove('tb-voice-live');
+      btn.textContent = '\ud83c\udfa4 شمارش صوتی';
+    }
+  };
+
+  window.__tasbihVoiceError = function (code) {
+    var msg = 'خطای شنیدن';
+    if (code === 9001) msg = 'سرویس تشخیص گفتار روی این گوشی فعال نیست (بروزرسانی گوگل اپ)';
+    else if (code === 9003) msg = 'مجوز میکروفن رد شد — از تنظیمات اندروید فعالش کن';
+    else if (code === 103) msg = 'مجوز میکروفن لازم است';
+    else if (code === 7 || code === 12 || code === 2) msg = 'تشخیص گفتار به اینترنت/سرویس نیاز دارد — اتصال را چک کن';
+    voiceOn = false;
+    window.__tasbihVoiceState('off');
+    var logEl = document.getElementById('tbVoiceLog');
+    if (logEl) logEl.textContent = '⚠️ ' + msg;
+    if (typeof App !== 'undefined' && App.toast) App.toast('⚠️ ' + msg);
+  };
+
+  function toggleVoice() {
+    if (typeof NativeApp === 'undefined' || !NativeApp.tasbihVoiceStart) {
+      if (typeof App !== 'undefined' && App.toast) App.toast('🎤 شمارش صوتی فقط در نسخه اندروید فعال است');
+      return;
+    }
+    try {
+      if (voiceOn || NativeApp.tasbihVoiceActive()) { NativeApp.tasbihVoiceStop(); window.__tasbihVoiceState('off'); }
+      else { NativeApp.tasbihVoiceStart(); window.__tasbihVoiceState('on'); var lg = document.getElementById('tbVoiceLog'); if (lg) lg.textContent = '⏳ راه‌اندازی میکروفن…'; }
+    } catch (e) { if (typeof App !== 'undefined' && App.toast) App.toast('خطا در راه‌اندازی میکروفن'); }
+  }
+
   function render() {
     var view = document.getElementById('view-tasbeeh');
     if (!view) return;
@@ -113,7 +296,11 @@
       '<div style="display:flex; gap:8px; margin-top:10px;">' +
         '<button class="btn btn--ghost" id="tbReset" style="flex:1;">ریست این ذکر</button>' +
         '<button class="btn btn--primary" id="tbVib" style="flex:1;">لرزش: روشن</button>' +
-      '</div>';
+      '</div>' +
+      '<div style="display:flex; gap:8px; margin-top:8px; align-items:center;">' +
+        '<button class="btn btn--ghost' + (voiceOn ? ' tb-voice-live' : '') + '" id="tbVoice" style="flex:1;">' + (voiceOn ? '🎙️ فعال — گوش میده' : '🎤 شمارش صوتی') + '</button>' +
+      '</div>' +
+      '<div id="tbVoiceLog" class="text-small text-muted" style="margin-top:6px; text-align:center; line-height:1.8;"></div>';
 
     // آمار شخصی
     if (window.Stats) try { Stats.render(); } catch (e) {}
@@ -138,6 +325,8 @@
       vib.dataset.on = on ? '0' : '1';
       vib.textContent = on ? 'لرزش: خاموش' : 'لرزش: روشن';
     });
+    var tbv = document.getElementById('tbVoice');
+    if (tbv) tbv.addEventListener('click', toggleVoice);
   }
 
   function onTap() {
@@ -172,6 +361,6 @@
 
   function escapeHtml(s) { return (window.BXUtils ? BXUtils.escapeHtml : function (x) { return String(x == null ? '' : x); })(s); }
 
-  var Tasbeeh = { render: render, onTap: onTap };
+  var Tasbeeh = { render: render, onTap: onTap, matchCounts: matchCounts, normKey: normKey };
   if (typeof window !== 'undefined') window.Tasbeeh = Tasbeeh;
 })(typeof window !== 'undefined' ? window : this);

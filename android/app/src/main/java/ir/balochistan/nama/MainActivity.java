@@ -14,6 +14,115 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
 
     private static final int REQ_NOTIFICATION = 2001;
+    private static final int REQ_VOICE = 2002;
+
+    // ===== v1.16: تسبیح صوتی (راه A — SpeechRecognizer سیستمی) =====
+    private android.speech.SpeechRecognizer tasbihSr = null;
+    private volatile boolean tasbihVoiceActive = false;
+    private int tasbihErrStreak = 0;
+    private final android.os.Handler tasbihHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+
+    private void tasbihJs(final String script) {
+        try {
+            runOnUiThread(new Runnable() { public void run() {
+                try { getBridge().getWebView().evaluateJavascript(script, null); } catch (Exception ig) {}
+            }});
+        } catch (Exception ig) {}
+    }
+
+    private void tasbihCreateAndListen() {
+        try {
+            if (tasbihSr != null) { try { tasbihSr.destroy(); } catch (Exception ig) {} tasbihSr = null; }
+            tasbihSr = android.speech.SpeechRecognizer.createSpeechRecognizer(this);
+            tasbihSr.setRecognitionListener(new android.speech.RecognitionListener() {
+                @Override public void onReadyForSpeech(android.os.Bundle b) { tasbihJs("window.__tasbihVoiceState&&window.__tasbihVoiceState('ready')"); }
+                @Override public void onBeginningOfSpeech() { tasbihJs("window.__tasbihVoiceState&&window.__tasbihVoiceState('listening')"); }
+                @Override public void onRmsChanged(float v) {}
+                @Override public void onBufferReceived(byte[] b) {}
+                @Override public void onEndOfSpeech() {}
+                @Override public void onError(int err) {
+                    // 5=NO_MATCH 6=TIMEOUT 20=NO_SPEECH → عادی، دوباره گوش بده
+                    if (err == 5 || err == 6 || err == 20) {
+                        tasbihErrStreak = 0;
+                        if (tasbihVoiceActive) tasbihHandler.postDelayed(new Runnable() { public void run() { if (tasbihVoiceActive) tasbihCreateAndListen(); } }, 120);
+                        return;
+                    }
+                    // 10=NETWORK 12=NETWORK_TIMEOUT 2=NETWORK 103=NEED_MIC_PERMISSION …
+                    tasbihErrStreak++;
+                    if (tasbihErrStreak >= 4 || err == 103 || err == 105) {
+                        tasbihVoiceActive = false;
+                        tasbihJs("window.__tasbihVoiceState&&window.__tasbihVoiceState('off')");
+                        tasbihJs("window.__tasbihVoiceError&&window.__tasbihVoiceError(" + err + ")");
+                        return;
+                    }
+                    if (tasbihVoiceActive) tasbihHandler.postDelayed(new Runnable() { public void run() { if (tasbihVoiceActive) tasbihCreateAndListen(); } }, 600);
+                }
+                @Override public void onResults(android.os.Bundle b) {
+                    tasbihErrStreak = 0;
+                    java.util.ArrayList<String> al = b == null ? null : b.getStringArrayList(android.speech.SpeechRecognizer.RESULTS_RECOGNITION);
+                    if (al != null && !al.isEmpty()) {
+                        try {
+                            org.json.JSONArray ja = new org.json.JSONArray();
+                            for (String s : al) ja.put(s);
+                            tasbihJs("window.__tasbihHeard&&window.__tasbihHeard(" + ja.toString() + ")");
+                        } catch (Exception ig) {}
+                    }
+                    if (tasbihVoiceActive) tasbihHandler.postDelayed(new Runnable() { public void run() { if (tasbihVoiceActive) tasbihCreateAndListen(); } }, 150);
+                }
+                @Override public void onPartialResults(android.os.Bundle b) {}
+                @Override public void onEvent(int a, android.os.Bundle b) {}
+            });
+            android.content.Intent ii = new android.content.Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+            ii.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+            ii.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, "fa-IR");
+            ii.putExtra(android.speech.RecognizerIntent.EXTRA_MAX_RESULTS, 3);
+            ii.putExtra(android.speech.RecognizerIntent.EXTRA_PARTIAL_RESULTS, false);
+            ii.putExtra(android.speech.RecognizerIntent.EXTRA_CALLING_PACKAGE, getPackageName());
+            if (android.os.Build.VERSION.SDK_INT >= 23) {
+                ii.putExtra(android.speech.RecognizerIntent.EXTRA_PREFER_OFFLINE, true);
+            }
+            tasbihSr.startListening(ii);
+        } catch (Exception e) {
+            tasbihVoiceActive = false;
+            tasbihJs("window.__tasbihVoiceState&&window.__tasbihVoiceState('off')");
+            tasbihJs("window.__tasbihVoiceError&&window.__tasbihVoiceError(-1)");
+        }
+    }
+
+    private void tasbihStartLoop() {
+        runOnUiThread(new Runnable() { public void run() {
+            if (!android.speech.SpeechRecognizer.isRecognitionAvailable(MainActivity.this)) {
+                tasbihJs("window.__tasbihVoiceError&&window.__tasbihVoiceError(9001)");
+                return;
+            }
+            tasbihVoiceActive = true;
+            tasbihErrStreak = 0;
+            tasbihCreateAndListen();
+            tasbihJs("window.__tasbihVoiceState&&window.__tasbihVoiceState('on')");
+        }});
+    }
+
+    private void tasbihVoiceGrantOrRequest() {
+        try {
+            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{ Manifest.permission.RECORD_AUDIO }, REQ_VOICE);
+                return;
+            }
+            tasbihStartLoop();
+        } catch (Exception e) { tasbihJs("window.__tasbihVoiceError&&window.__tasbihVoiceError(9002)"); }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        try {
+            if (requestCode == REQ_VOICE && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                tasbihStartLoop();
+            } else if (requestCode == REQ_VOICE) {
+                tasbihJs("window.__tasbihVoiceError&&window.__tasbihVoiceError(9003)");
+            }
+        } catch (Exception ig) {}
+    }
 
     private void requestNotificationPermission() {
         try {
@@ -145,6 +254,21 @@ public class MainActivity extends BridgeActivity {
                     public void httpGet(String url, String reqId) {
                         // Weather fetch uses NativeApp.httpGet — fallback via fetch() works
                     }
+                    // ===== v1.16: تسبیح صوتی — شروع/توقف شنیدن =====
+                    @JavascriptInterface
+                    public void tasbihVoiceStart() {
+                        tasbihVoiceGrantOrRequest();
+                    }
+                    @JavascriptInterface
+                    public void tasbihVoiceStop() {
+                        tasbihVoiceActive = false;
+                        runOnUiThread(new Runnable() { public void run() {
+                            try { if (tasbihSr != null) { tasbihSr.destroy(); tasbihSr = null; } } catch (Exception ig) {}
+                        }});
+                        tasbihJs("window.__tasbihVoiceState&&window.__tasbihVoiceState('off')");
+                    }
+                    @JavascriptInterface
+                    public boolean tasbihVoiceActive() { return tasbihVoiceActive; }
                     // ===== v1.16: کتاب فتاوا (پروژه IslamPP — منبع: islampp.org) =====
                     @JavascriptInterface
                     public String fatwaStatus() {
