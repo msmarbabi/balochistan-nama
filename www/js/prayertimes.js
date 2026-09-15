@@ -193,8 +193,36 @@
     maghrib: 'اذان مغرب', isha: 'اذان عشا', midnight: 'نیمه‌شب'
   };
 
+  // v1.16: تنظیمات دستی متمرکز (ادیت همه/تک/سفارشی) — همه مصرف‌کننده‌ها صدا بزنند
+  function applyAdj(times, st) {
+    if (!times || !st) return times;
+    var out = {};
+    for (var k in times) {
+      if (!times.hasOwnProperty(k)) continue;
+      var t = times[k];
+      if (!isFinite(t)) { out[k] = t; continue; }
+      t += (st.prayerAdjAll || 0) / 60;
+      if (st.prayerAdjSingle && st.prayerAdjSingle.prayer === k) t += (st.prayerAdjSingle.adj || 0) / 60;
+      if (st.prayerAdjCustom) {
+        var nameMap = { 'فجر': 'fajr', 'صبح': 'fajr', 'طلوع': 'sunrise', 'ظهر': 'dhuhr', 'عصر': 'asr', 'مغرب': 'maghrib', 'عشا': 'isha', 'امساک': 'imsak' };
+        var faNum = { '۰': 0, '۱': 1, '۲': 2, '۳': 3, '۴': 4, '۵': 5, '۶': 6, '۷': 7, '۸': 8, '۹': 9 };
+        var parts = String(st.prayerAdjCustom).split(',');
+        for (var i = 0; i < parts.length; i++) {
+          var raw = String(parts[i]).replace(/[۰-۹]/g, function (c) { return faNum[c]; }).trim();
+          var m = raw.match(/^([a-zA-Z\u0600-\u06FF]+)\s*([+\-]?\d+)$/);
+          if (!m) continue;
+          var key = nameMap[m[1]] || m[1].toLowerCase();
+          if (key === k) t += (parseInt(m[2], 10) || 0) / 60;
+        }
+      }
+      out[k] = fixHour(t);
+    }
+    return out;
+  }
+
   var Prayer = {
     METHODS: METHODS,
+    applyAdj: applyAdj,
     compute: compute,
     computeLocal: computeLocal,
     formatTime: formatTime,

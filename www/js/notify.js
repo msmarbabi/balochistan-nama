@@ -52,7 +52,7 @@
           var iqamaMin = settings.athanIqama != null ? settings.athanIqama : 15;
           for (var off = 0; off < 7; off++) {
             var day = new Date(base.getTime() + off * 86400000);
-            var times = Prayer.computeLocal(day, settings.lat || 26.84, settings.lng || 60.17, method, tz);
+            var times = (window.__serverTimes && window.__serverTimes(day)) || Prayer.applyAdj(Prayer.computeLocal(day, settings.lat || 26.84, settings.lng || 60.17, method, tz), settings);
             var isFriday = day.getDay() === 5;
             for (var ki = 0; ki < keys.length; ki++) {
               var k = keys[ki];

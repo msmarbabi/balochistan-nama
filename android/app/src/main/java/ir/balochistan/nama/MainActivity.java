@@ -286,8 +286,47 @@ public class MainActivity extends BridgeActivity {
                     @JavascriptInterface
                     public void setStatusBar(String color) {}
                     @JavascriptInterface
-                    public void httpGet(String url, String reqId) {
-                        // Weather fetch uses NativeApp.httpGet — fallback via fetch() works
+                    public void httpGet(String url, final String reqId) {
+                        // v1.16: GET عمومی با callback به window.__httpResult(reqId, ok, data)
+                        final String u = url;
+                        new Thread(new Runnable() {
+                            public void run() {
+                                String ok = "0", body = "";
+                                java.net.HttpURLConnection conn = null;
+                                try {
+                                    java.net.URL ur = new java.net.URL(u);
+                                    conn = (java.net.HttpURLConnection) ur.openConnection();
+                                    conn.setConnectTimeout(20000);
+                                    conn.setReadTimeout(30000);
+                                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) BalochistanNama/1.16");
+                                    int code = conn.getResponseCode();
+                                    java.io.InputStream is = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
+                                    java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(is, "UTF-8"));
+                                    StringBuilder sb = new StringBuilder();
+                                    String line;
+                                    int total = 0;
+                                    while ((line = br.readLine()) != null) {
+                                        sb.append(line).append('\n');
+                                        total += line.length();
+                                        if (total > 12 * 1024 * 1024) break; // سقف ۱۲MB
+                                    }
+                                    br.close();
+                                    if (code == 200) { ok = "1"; body = sb.toString(); }
+                                    else body = "HTTP " + code;
+                                } catch (Exception e) { body = String.valueOf(e.getMessage()); }
+                                finally { if (conn != null) conn.disconnect(); }
+                                final String fok = ok, fbody = body;
+                                runOnUiThread(new Runnable() {
+                                    public void run() {
+                                        try {
+                                            String j = org.json.JSONObject.quote(fbody);
+                                            getBridge().getWebView().evaluateJavascript(
+                                                "window.__httpResult&&window.__httpResult(" + org.json.JSONObject.quote(reqId) + "," + fok + "," + j + ")", null);
+                                        } catch (Exception ig) { }
+                                    }
+                                });
+                            }
+                        }).start();
                     }
                     // ===== v1.16: تسبیح صوتی — شروع/توقف شنیدن =====
                     @JavascriptInterface

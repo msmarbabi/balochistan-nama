@@ -34,6 +34,8 @@
     athanPre: false,
     athanPreMin: 10,
     athanVibrate: false,
+    ptServerOn: false,
+    ptServerUrl: '',
     athanSilent: false,
     athanSilentMin: 1,
     athanIqama: 15,
@@ -108,7 +110,7 @@
     try {
       var tz = (new Date().getTimezoneOffset() / -60) + (settings.dst ? 1 : 0);
       var method = settings.prayerMethod || 14;
-      var times = Prayer.computeLocal(state.today, settings.lat, settings.lng, method, tz);
+      var times = timesMerged(state.today);
       var now = state.today.getHours() + state.today.getMinutes() / 60;
       var fajr = ((times.fajr % 24) + 24) % 24;
       var maghrib = ((times.maghrib % 24) + 24) % 24;
@@ -553,6 +555,23 @@
       '<div class="friday-badge__hadith">' + escapeHtml(fridayHadiths[idx]) + '</div>';
   }
 
+  // v1.16: اوقات از سرور (کش BXPTServer) — اگر ماه/شهر موجود باشد
+  function serverTimesFor(date) {
+    try {
+      if (typeof BXPTServer === 'undefined' || !settings.ptServerOn) return null;
+      var sv = BXPTServer.timesFor(settings.locName || '', date);
+      if (!sv) return null;
+      var out = {};
+      for (var k in sv) {
+        if (!sv.hasOwnProperty(k)) continue;
+        var m = String(sv[k]).match(/^(\d{1,2}):(\d{2})$/);
+        out[k] = m ? (parseInt(m[1], 10) + parseInt(m[2], 10) / 60) : NaN;
+      }
+      // sunrise فقط جهت نمایش؛ بقیه مستقیم
+      return out;
+    } catch (e) { dbg(e); return null; }
+  }
+
   // Render prayer times for the selected calendar day (not just today)
   function renderDayPrayer(cell, jy, jm, jd) {
     var el = document.getElementById('calDayPrayer');
@@ -563,7 +582,7 @@
       var tz = (typeof settings.tz === 'number') ? settings.tz : (-date.getTimezoneOffset() / 60);
       if (settings.dst) tz += 1;
       var method = Prayer.METHODS[settings.method] || Prayer.METHODS.karachi;
-      var times = Prayer.computeLocal(date, settings.lat, settings.lng, method, tz);
+      var times = timesMerged(date);
       var names = [
         { k: 'fajr', label: 'فجر', icon: '🌅' },
         { k: 'sunrise', label: 'طلوع', icon: '☀️' },
@@ -650,41 +669,32 @@
     renderCalendar();
   }
 
+  function timesMerged(date) {
+    var tz = (typeof settings.tz === 'number') ? settings.tz : (-date.getTimezoneOffset() / 60);
+    if (settings.dst) tz += 1;
+    var method = Prayer.METHODS[settings.method] || Prayer.METHODS.karachi;
+    var out = Prayer.computeLocal(date, settings.lat, settings.lng, method, tz);
+    var server = serverTimesFor(date);
+    if (server) {
+      for (var k2 in server) { if (server.hasOwnProperty(k2) && isFinite(server[k2])) out[k2] = server[k2]; }
+    }
+    return Prayer.applyAdj(out, settings);
+  }
+
+  window.__serverTimes = serverTimesFor;
+  window.__timesMerged = timesMerged;
+
   // ---------- Prayer view ----------
   function computeAndRenderPrayer() {
     var tz = (typeof settings.tz === 'number') ? settings.tz : (-state.today.getTimezoneOffset() / 60);
     if (settings.dst) tz += 1;
     var method = Prayer.METHODS[settings.method] || Prayer.METHODS.karachi;
-    var base = Prayer.computeLocal(state.today, settings.lat, settings.lng, method, tz);
-    var adjAll = (settings.prayerAdjAll || 0) / 60;
+    var base = timesMerged(state.today);
     state.prayerTimes = {};
     for (var _k in base) {
-      if (base.hasOwnProperty(_k)) {
-        var t = base[_k] + adjAll;
-        // single adjustment (one prayer only)
-        if (settings.prayerAdjSingle && settings.prayerAdjSingle.prayer === _k) {
-          t += (settings.prayerAdjSingle.adj || 0) / 60;
-        }
-        // custom adjustments: "فجر+5،ظهر-3،عشا+10" (Persian or English names)
-        if (settings.prayerAdjCustom) {
-          var _nameMap = { 'فجر': 'fajr', 'صبح': 'fajr', 'طلوع': 'sunrise', 'ظهر': 'dhuhr', 'عصر': 'asr', 'مغرب': 'maghrib', 'عشا': 'isha', 'امساک': 'imsak' };
-          var _faNum = { '۰': 0, '۱': 1, '۲': 2, '۳': 3, '۴': 4, '۵': 5, '۶': 6, '۷': 7, '۸': 8, '۹': 9 };
-          var _toEn = function (s) { return String(s).replace(/[۰-۹]/g, function (c) { return _faNum[c]; }); };
-          var _parts = String(settings.prayerAdjCustom).split(',');
-          for (var _pi = 0; _pi < _parts.length; _pi++) {
-            var _raw = _toEn(_parts[_pi]).trim();
-            var _m = _raw.match(/^([a-zA-Z]+)\s*([+\-]?\d+)$/i);
-            if (!_m) continue;
-            var _nm = _m[1].toLowerCase();
-            var _key = _nameMap[_nm] || _nm;
-            if (_key === _k) {
-              t += (parseInt(_m[2], 10) || 0) / 60;
-            }
-          }
-        }
-        state.prayerTimes[_k] = t;
-      }
+      if (base.hasOwnProperty(_k)) state.prayerTimes[_k] = base[_k];
     }
+    state.prayerFromServer = !!serverTimesFor(state.today);
     setText('prayerMethod', method.name);
     // Render prayer rows
     var rowsEl = document.getElementById('prayerRows');
@@ -1770,6 +1780,52 @@
       silMin.value = String(settings.athanSilentMin != null ? settings.athanSilentMin : 1);
       silMin.addEventListener('change', function () { settings.athanSilentMin = parseInt(silMin.value, 10) || 0; saveSettings(); });
     }
+    // ===== v1.16: دانلود اوقات از سرور =====
+    var ptsT = document.getElementById('ptServerToggle');
+    var ptsP = document.getElementById('ptServerPanel');
+    var ptsS = document.getElementById('ptServerStatus');
+    var ptsU = document.getElementById('ptServerUrl');
+    if (ptsT) {
+      setToggle('ptServerToggle', !!settings.ptServerOn);
+      if (ptsP) ptsP.style.display = settings.ptServerOn ? '' : 'none';
+      ptsT.addEventListener('click', function (ev) {
+        ev.stopImmediatePropagation();
+        ptsT.classList.toggle('on');
+        settings.ptServerOn = ptsT.classList.contains('on');
+        if (ptsP) ptsP.style.display = settings.ptServerOn ? '' : 'none';
+        saveSettings();
+      }, true);
+    }
+    if (ptsU) {
+      ptsU.value = settings.ptServerUrl || '';
+      ptsU.placeholder = BXPTServer ? (BXPTServer.DEFAULT_URL + ' (پیش‌فرض)') : '';
+      ptsU.addEventListener('change', function () { settings.ptServerUrl = ptsU.value.trim(); saveSettings(); });
+    }
+    function ptsRefreshStatus() {
+      if (!ptsS) return;
+      var list = BXPTServer ? BXPTServer.cachedList() : [];
+      ptsS.textContent = list.length ? ('کش‌شده: ' + list.slice(0, 6).join(' | ') + (list.length > 6 ? ' …' : '')) : 'هنوز داده‌ای دانلود نشده.';
+    }
+    try { ptsRefreshStatus(); } catch (e) { dbg(e); }
+    var ptsD = document.getElementById('ptServerDl');
+    if (ptsD) ptsD.addEventListener('click', function () {
+      if (typeof BXPTServer === 'undefined') { toast('ماژول سرور بارگذاری نشد'); return; }
+      var url = (ptsU && ptsU.value.trim()) || settings.ptServerUrl || BXPTServer.DEFAULT_URL;
+      ptsD.disabled = true;
+      BXPTServer.download(url, settings.locName || '', function (msg) { if (ptsS) ptsS.textContent = msg; }).then(function (n) {
+        toast('✓ دریافت شد');
+        ptsRefreshStatus();
+        try { computeAndRenderPrayer(); renderDashboard(); } catch (e) { dbg(e); }
+      }).catch(function (err) {
+        if (ptsS) ptsS.textContent = '✗ ' + err.message;
+      }).then(function () { ptsD.disabled = false; });
+    });
+    var ptsC = document.getElementById('ptServerClear');
+    if (ptsC) ptsC.addEventListener('click', function () {
+      BXPTServer.clear(); ptsRefreshStatus();
+      try { computeAndRenderPrayer(); renderDashboard(); } catch (e) { dbg(e); }
+    });
+
     var iqama = document.getElementById('athanIqamaSel');
     if (iqama) {
       iqama.value = String(settings.athanIqama != null ? settings.athanIqama : 15);
