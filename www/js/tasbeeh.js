@@ -285,6 +285,7 @@
 
   // رفتن از تب تسبیح — خاموشی حالتهای ویژه
   function onRouteLeave() {
+    if (chain.on) chainStop();
     if (volOn && typeof NativeApp !== 'undefined' && NativeApp.setVolumeCountMode) {
       try { NativeApp.setVolumeCountMode(false); } catch (e) {}
       volOn = false;
@@ -484,6 +485,77 @@
     } catch (e) { if (typeof App !== 'undefined' && App.toast) App.toast('خطا در راه‌اندازی میکروفن'); }
   }
 
+  // ===== v1.16: پخش زنجیره‌ای اذکار (بلندخوانی ترتیبی + اسکرول خودکار) =====
+  var chain = { on: false, i: 0, timer: null, utter: null };
+  function chainStop() {
+    chain.on = false;
+    if (chain.timer) { clearTimeout(chain.timer); chain.timer = null; }
+    try { window.speechSynthesis.cancel(); } catch (e) {}
+    var b = document.getElementById('tbChain');
+    if (b) { b.textContent = '🔁 پخش زنجیره‌ای اذکار'; b.classList.remove('tb-voice-live'); }
+  }
+  function chainStep() {
+    if (!chain.on) return;
+    var list = allDhikr();
+    if (!list.length) { chainStop(); return; }
+    var wrap = list.length;
+    if (chain.i >= wrap) { chainStop(); if (typeof App !== 'undefined' && App.toast) App.toast('✨ زنجیره کامل شد'); return; }
+    current = chain.i;
+    render();
+    var dh = list[chain.i];
+    var arabicEl = document.getElementById('tbArabic');
+    if (arabicEl) { arabicEl.style.outline = '2px solid var(--accent)'; arabicEl.style.outlineOffset = '6px'; arabicEl.style.borderRadius = '8px'; setTimeout(function () { if (arabicEl) { arabicEl.style.outline = 'none'; } }, 900); }
+    try {
+      var act = document.querySelector('.tb-chip.active');
+      if (act && act.scrollIntoView) act.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    } catch (e) {}
+    // بلندخوانی عربی + فارسی
+    var go = function () {
+      if (!chain.on) return;
+      try {
+        var u = new SpeechSynthesisUtterance(dh.arabic + '. ' + (dh.fa || ''));
+        u.lang = 'fa-IR'; u.rate = 0.85; u.pitch = 1;
+        u.onend = function () { chain.timer = setTimeout(function () { chain.i++; chainStep(); }, 1100); };
+        u.onerror = function () { chain.timer = setTimeout(function () { chain.i++; chainStep(); }, 1100); };
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(u);
+      } catch (e) { chain.timer = setTimeout(function () { chain.i++; chainStep(); }, 1500); }
+    };
+    if (dh.target && dh.target > 3) {
+      // تکرار کوتاه هدفمند (حداکثر ۳ بار برای طولانی‌شدن ناخواسته)
+      var reps = Math.min(3, dh.target), k = 0;
+      var once = function () {
+        if (!chain.on) return;
+        if (k++ >= reps) { go(); return; }
+        try {
+          var u2 = new SpeechSynthesisUtterance(dh.arabic);
+          u2.lang = 'fa-IR'; u2.rate = 1;
+          u2.onend = function () { setTimeout(once, 350); };
+          u2.onerror = function () { setTimeout(once, 350); };
+          window.speechSynthesis.cancel(); window.speechSynthesis.speak(u2);
+          var c = loadToday();
+          c.counts[dh.id] = (c.counts[dh.id] || 0) + 1;
+          saveToday(c);
+          var ce = document.getElementById('tbCount');
+          if (ce) ce.textContent = (c.counts[dh.id] || 0);
+        } catch (e) { go(); }
+      };
+      once();
+    } else {
+      go();
+    }
+  }
+  function chainStart() {
+    if ('speechSynthesis' in window) {
+      chain.on = true; chain.i = current || 0;
+      var b = document.getElementById('tbChain');
+      if (b) { b.textContent = '⏹ توقف پخش زنجیره'; b.classList.add('tb-voice-live'); }
+      chainStep();
+    } else if (typeof App !== 'undefined' && App.toast) {
+      App.toast('این دستگاه پخش صوت پشتیبانی نمی‌کند');
+    }
+  }
+
   function render() {
     var view = document.getElementById('view-tasbeeh');
     if (!view) return;
@@ -533,6 +605,9 @@
         '<button class="btn btn--ghost' + (voiceOn ? ' tb-voice-live' : '') + '" id="tbVoice" style="flex:1;">' + (voiceOn ? '🎙️ فعال — گوش میده' : '🎤 شمارش صوتی') + '</button>' +
         '<button class="btn btn--ghost' + (volOn ? ' tb-voice-live' : '') + '" id="tbVol" style="flex:1;">' + (volOn ? '🔊 ولوم: فعال' : '🔊 شمارش با ولوم') + '</button>' +
       '</div>' +
+      '<div style="display:flex; gap:8px; margin-top:8px;">' +
+        '<button class="btn btn--ghost' + (chain.on ? ' tb-voice-live' : '') + '" id="tbChain" style="flex:1;">' + (chain.on ? '⏹ توقف پخش زنجیره' : '🔁 پخش زنجیره‌ای اذکار') + '</button>' +
+      '</div>' +
       '<div id="tbVoiceLog" class="text-small text-muted" style="margin-top:6px; text-align:center; line-height:1.8;"></div>' +
       '<div class="tour-hint text-small text-muted" style="text-align:center; margin-top:4px; opacity:.7;">💡 روی صفحه شمارش، چپ = اضافه، راست = کم</div>' +
       buildCustomModal();
@@ -550,6 +625,8 @@
     });
     var tap = document.getElementById('tbTap');
     if (tap) tap.addEventListener('click', onTap);
+    var chainBtn = document.getElementById('tbChain');
+    if (chainBtn) chainBtn.addEventListener('click', function () { if (chain.on) chainStop(); else chainStart(); });
     var reset = document.getElementById('tbReset');
     if (reset) reset.addEventListener('click', function () {
       var o2 = loadToday(); o2.counts[allDhikr()[current].id] = 0; saveToday(o2); render();
