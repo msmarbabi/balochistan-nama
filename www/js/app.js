@@ -34,6 +34,8 @@
     athanPre: false,
     athanPreMin: 10,
     athanVibrate: false,
+    athanSilent: false,
+    athanSilentMin: 1,
     athanIqama: 15,
     athanFridayOnlyKhotba: false,
     lat: 26.84,
@@ -756,6 +758,7 @@
           preEnabled: !!settings.athanPre,
           preMinutes: settings.athanPreMin || 10,
           vibrate: !!settings.athanVibrate,
+          silent: !!settings.athanSilent, silentMin: settings.athanSilentMin || 1,
           file: _athIsFile ? '/data/data/ir.balochistan.nama/files/athan_selected.mp3' : ''
         };
         // کپی فایل اذان انتخابی به filesDir برای سرویس (async، بی‌صدا)
@@ -1738,6 +1741,34 @@
         saveSettings();
         if (settings.athanVibrate && typeof NativeApp !== 'undefined' && NativeApp.vibrate) { try { NativeApp.vibrate(600); } catch (e) { dbg(e); } }
       }, true);
+    }
+    // v1.16: سایلنت خودکار اذان + درخواست مجوز DND
+    var silT = document.getElementById('athanSilentToggle');
+    if (silT) {
+      setToggle('athanSilentToggle', !!settings.athanSilent);
+      silT.addEventListener('click', function (ev) {
+        ev.stopImmediatePropagation();
+        silT.classList.toggle('on');
+        settings.athanSilent = silT.classList.contains('on');
+        var row = document.getElementById('athanSilentMinRow');
+        if (row) row.style.display = settings.athanSilent ? '' : 'none';
+        saveSettings();
+        if (settings.athanSilent && window.NativeApp && NativeApp.hasDndAccess) {
+          try {
+            if (!NativeApp.hasDndAccess()) {
+              toast('برای سایلنت، دسترسی «مزاحم نشوید» را اجازه بده');
+              if (NativeApp.openDndSettings) NativeApp.openDndSettings();
+            }
+          } catch (e) { dbg(e); }
+        }
+      }, true);
+    }
+    var silRow = document.getElementById('athanSilentMinRow');
+    if (silRow) silRow.style.display = settings.athanSilent ? '' : 'none';
+    var silMin = document.getElementById('athanSilentMinSel');
+    if (silMin) {
+      silMin.value = String(settings.athanSilentMin != null ? settings.athanSilentMin : 1);
+      silMin.addEventListener('change', function () { settings.athanSilentMin = parseInt(silMin.value, 10) || 0; saveSettings(); });
     }
     var iqama = document.getElementById('athanIqamaSel');
     if (iqama) {

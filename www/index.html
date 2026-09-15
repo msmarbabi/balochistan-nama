@@ -7,11 +7,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <title>بلوچستان نما</title>
-  <link rel="stylesheet" href="css/app.css?v=129">
-  <link rel="stylesheet" href="css/extras.css?v=129">
-  <link rel="stylesheet" href="css/sheet.css?v=129">
-  <link rel="stylesheet" href="css/settings.css?v=129">
-  <link rel="stylesheet" href="css/accordion.css?v=129">
+  <link rel="stylesheet" href="css/app.css?v=130">
+  <link rel="stylesheet" href="css/extras.css?v=130">
+  <link rel="stylesheet" href="css/sheet.css?v=130">
+  <link rel="stylesheet" href="css/settings.css?v=130">
+  <link rel="stylesheet" href="css/accordion.css?v=130">
 </head>
 <body>
   <div class="season-scene" id="seasonScene"></div>
@@ -333,6 +333,20 @@
           <div class="setting-row">
             <div><div class="setting-row__label">ویبره هنگام اذان</div><div class="setting-row__desc">لرزش گوشی هنگام اذان و هشدار (پیش‌فرض خاموش)</div></div>
             <div class="toggle" id="athanVibrateToggle"></div>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-row__label">🔕 سایلنت خودکار اذان</div><div class="setting-row__desc">هنگام پخش اذان، زنگ و نوتیفیکیشن گوشی بی‌صدا شود (بعد از اذان برمی‌گردد) — نیاز به مجوز «مزاحم نشوید»</div></div>
+            <div class="toggle" id="athanSilentToggle"></div>
+          </div>
+          <div class="setting-row" id="athanSilentMinRow" style="display:none;">
+            <div><div class="setting-row__label">مدت سایلنتی بعد از اذان</div><div class="setting-row__desc">چند دقیقه بعد از پایان اذان، صدا برگردد؟</div></div>
+            <select class="select" id="athanSilentMinSel" style="max-width:130px;">
+              <option value="0">فوری</option>
+              <option value="1" selected>۱ دقیقه</option>
+              <option value="2">۲ دقیقه</option>
+              <option value="5">۵ دقیقه</option>
+              <option value="10">۱۰ دقیقه</option>
+            </select>
           </div>
           <div class="setting-row">
             <div><div class="setting-row__label">اقامه نماز</div><div class="setting-row__desc">اعلان شمارش معکوس اقامه بعد از اذان (X دقیقه)</div></div>
@@ -1025,40 +1039,40 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/utils.js?v=129"></script>
-  <script src="js/backup.js?v=129"></script>
-  <script src="js/actionsheet.js?v=129"></script>
-  <script src="js/cal.js?v=129"></script>
-  <script src="js/events.js?v=129"></script>
-  <script src="js/culture_extra.js?v=129"></script>
-  <script src="js/baloch.js?v=129"></script>
-  <script src="js/prayertimes.js?v=129"></script>
-  <script src="js/athan.js?v=129"></script>
-  <script src="js/notes.js?v=129"></script>
-  <script src="js/weather.js?v=129"></script>
-  <script src="js/compass.js?v=129"></script>
-  <script src="js/streak.js?v=129"></script>
-  <script src="js/ramadan.js?v=129"></script>
-  <script src="js/clock.js?v=129"></script>
-  <script src="js/app.js?v=129"></script>
-  <script src="js/tasbeeh.js?v=129"></script>
-  <script src="js/tools.js?v=129"></script>
-  <script src="js/athan_player.js?v=129"></script>
-  <script src="js/personalevents.js?v=129"></script>
-  <script src="js/learn.js?v=129"></script>
-  <script src="js/fatwa.js?v=129"></script>
-  <script src="js/ayat_day.js?v=129"></script>
-  <script src="js/ayat.js?v=129"></script>
-  <script src="js/ics.js?v=129"></script>
-  <script src="js/stats.js?v=129"></script>
+  <script src="js/utils.js?v=130"></script>
+  <script src="js/backup.js?v=130"></script>
+  <script src="js/actionsheet.js?v=130"></script>
+  <script src="js/cal.js?v=130"></script>
+  <script src="js/events.js?v=130"></script>
+  <script src="js/culture_extra.js?v=130"></script>
+  <script src="js/baloch.js?v=130"></script>
+  <script src="js/prayertimes.js?v=130"></script>
+  <script src="js/athan.js?v=130"></script>
+  <script src="js/notes.js?v=130"></script>
+  <script src="js/weather.js?v=130"></script>
+  <script src="js/compass.js?v=130"></script>
+  <script src="js/streak.js?v=130"></script>
+  <script src="js/ramadan.js?v=130"></script>
+  <script src="js/clock.js?v=130"></script>
+  <script src="js/app.js?v=130"></script>
+  <script src="js/tasbeeh.js?v=130"></script>
+  <script src="js/tools.js?v=130"></script>
+  <script src="js/athan_player.js?v=130"></script>
+  <script src="js/personalevents.js?v=130"></script>
+  <script src="js/learn.js?v=130"></script>
+  <script src="js/fatwa.js?v=130"></script>
+  <script src="js/ayat_day.js?v=130"></script>
+  <script src="js/ayat.js?v=130"></script>
+  <script src="js/ics.js?v=130"></script>
+  <script src="js/stats.js?v=130"></script>
   <script>
     // init یادداشت یک‌بار در startup — تا دکمه + از صفحه خانه هم کار کند
     document.addEventListener('DOMContentLoaded', function () {
       try { if (window.Notes) Notes.init(); } catch (e) {}
     });
   </script>
-  <script src="js/notify.js?v=129"></script>
-  <script src="js/i18n.js?v=129"></script>
-  <script src="js/extensions.js?v=129"></script>
+  <script src="js/notify.js?v=130"></script>
+  <script src="js/i18n.js?v=130"></script>
+  <script src="js/extensions.js?v=130"></script>
 </body>
 </html>

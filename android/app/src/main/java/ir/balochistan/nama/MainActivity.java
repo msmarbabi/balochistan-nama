@@ -210,6 +210,24 @@ public class MainActivity extends BridgeActivity {
                     } catch (Exception e) { }
                 }
 
+                // v1.16: سایلنت خودکار اذان — مجوز «مزاحم نشوید»
+                @JavascriptInterface
+                public boolean hasDndAccess() {
+                    try {
+                        android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                        return nm != null && nm.isNotificationPolicyAccessGranted();
+                    } catch (Exception e) { return false; }
+                }
+
+                @JavascriptInterface
+                public void openDndSettings() {
+                    try {
+                        Intent i = new Intent(android.provider.Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS);
+                        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(i);
+                    } catch (Exception e) { }
+                }
+
                 @JavascriptInterface
                 public void openUrl(String url) {
                     try {

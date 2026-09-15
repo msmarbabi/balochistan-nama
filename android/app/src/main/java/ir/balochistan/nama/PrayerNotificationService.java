@@ -56,6 +56,11 @@ public class PrayerNotificationService extends Service {
     private int preAthanMinutes = 10;
     private boolean athanVibrate = false;
     private String athanFile = null;   // absolute path or asset URL
+
+    // v1.16: سایلنت خودکار حین اذان — گوشی سایلنت، بعد از X دقیقه برگشت
+    private boolean athanSilent = false;
+    private int athanSilentMin = 1;
+    private long silentRestoreAt = 0;  // elapsedRealtime؛ 0 = برنامه‌ای نیست
     private String nextName = "", nextTime = "--:--", city = "بلوچستان";
     private String eventToday = null, eventTomorrow = null;
     private String lastNotifSig = "";   // v1.13: امضای آخرین اعلان — جلوگیری از بازنویسی بی‌مورد
@@ -69,6 +74,11 @@ public class PrayerNotificationService extends Service {
         public void run() {
             try {
                 if (dataFileChanged()) reloadData();
+                // v1.16: برگشت از سایلنت (watchdog — حتی اگر onCompletion نیفتد)
+                if (silentRestoreAt > 0 && android.os.SystemClock.elapsedRealtime() >= silentRestoreAt) {
+                    silentRestoreAt = 0;
+                    endSilent();
+                }
                 checkAndPlayAthan();
                 checkPreAthanWarning();
                 updateNotification();
@@ -110,6 +120,13 @@ public class PrayerNotificationService extends Service {
         super.onCreate();
         running = true;
         createChannels();
+                // v1.16: سایلنت خودکار حین اذان — اگر سرویس در حالت سایلنت ری‌استارت شده باشد، فوری برگشت
+                if (getSharedPreferences("athan_prefs", Context.MODE_PRIVATE).getBoolean("silent_active", false)) {
+                    getSharedPreferences("athan_prefs", Context.MODE_PRIVATE).edit()
+                        .putBoolean("silent_active", false).remove("silent_prev_ringer").apply();
+                    android.media.AudioManager am0 = (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                    if (am0 != null) am0.setRingerMode(android.media.AudioManager.RINGER_MODE_NORMAL);
+                }
         startForeground(NOTIF_ID, buildNotification());
         handler.post(updater);
     }
@@ -193,6 +210,9 @@ public class PrayerNotificationService extends Service {
                 preAthanEnabled = athan.optBoolean("preEnabled", false);
                 preAthanMinutes = athan.optInt("preMinutes", 10);
                 athanVibrate = athan.optBoolean("vibrate", false);
+                // v1.16: سایلنت خودکار
+                athanSilent = athan.optBoolean("silent", false);
+                athanSilentMin = athan.optInt("silentMin", 1);
                 String file = athan.optString("file", "");
                 athanFile = (file != null && !file.isEmpty()) ? file : null;
             }
@@ -245,6 +265,7 @@ public class PrayerNotificationService extends Service {
             writePlayedStamp(stamp);
             showAthanNotification(prayerKey);
             if (athanVibrate) vibratePattern();
+            if (athanSilent) beginSilent(prayerKey);
 
             player = new MediaPlayer();
             if (athanFile.startsWith("http")) {
@@ -264,12 +285,15 @@ public class PrayerNotificationService extends Service {
                 @Override public void onCompletion(MediaPlayer mp) {
                     releasePlayer();
                     cancelAthanNotification();
+                    // v1.16: X دقیقه بعد از پایان اذان، برگشت از سایلنت
+                    if (athanSilent) silentRestoreAt = android.os.SystemClock.elapsedRealtime() + Math.max(0, athanSilentMin) * 60000L;
                 }
             });
             player.setOnErrorListener(new MediaPlayer.OnErrorListener() {
                 @Override public boolean onError(MediaPlayer mp, int what, int extra) {
                     releasePlayer();
                     cancelAthanNotification();
+                    if (athanSilent) silentRestoreAt = android.os.SystemClock.elapsedRealtime();
                     return true;
                 }
             });
@@ -293,6 +317,50 @@ public class PrayerNotificationService extends Service {
     private void stopAthan() {
         releasePlayer();
         cancelAthanNotification();
+        if (athanSilent) { silentRestoreAt = android.os.SystemClock.elapsedRealtime(); }
+    }
+
+    // ================= v1.16: سایلنت خودکار حین اذان =================
+    private void dbgLog(String msg) {
+        try { android.util.Log.d("BLX-PrayerSvc", msg); } catch (Throwable ignore) {}
+    }
+
+    /** نیاز به مجوز «دسترسی حالت مزاحم نشو» دارد — از MainActivity.openDndSettings() */
+    private void beginSilent(String prayerKey) {
+        try {
+            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm == null || !nm.isNotificationPolicyAccessGranted()) {
+                dbgLog("silent: skip — no DND access");
+                return;
+            }
+            android.media.AudioManager am = (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (am == null) return;
+            android.content.SharedPreferences p = getSharedPreferences("athan_prefs", Context.MODE_PRIVATE);
+            if (!p.getBoolean("silent_active", false)) {
+                int prev = am.getRingerMode();
+                if (prev == android.media.AudioManager.RINGER_MODE_NORMAL
+                        || prev == android.media.AudioManager.RINGER_MODE_VIBRATE) {
+                    p.edit().putInt("silent_prev_ringer", prev).putBoolean("silent_active", true).apply();
+                    am.setRingerMode(android.media.AudioManager.RINGER_MODE_SILENT);
+                    dbgLog("silent: ON (" + faPrayerName(prayerKey) + ", prev=" + prev + ")");
+                }
+            }
+            // تور ایمنی: حتی اگر onCompletion نیفتد، حداکثر ۳۰ دقیقه بعد برگشت
+            silentRestoreAt = android.os.SystemClock.elapsedRealtime() + 30 * 60000L;
+        } catch (Throwable t) { dbgLog("silent err " + t); }
+    }
+
+    private void endSilent() {
+        try {
+            android.content.SharedPreferences p = getSharedPreferences("athan_prefs", Context.MODE_PRIVATE);
+            if (!p.getBoolean("silent_active", false)) return;
+            int prev = p.getInt("silent_prev_ringer", android.media.AudioManager.RINGER_MODE_NORMAL);
+            android.media.AudioManager am = (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (am != null) am.setRingerMode(prev);
+            p.edit().putBoolean("silent_active", false).remove("silent_prev_ringer").apply();
+            silentRestoreAt = 0;
+            dbgLog("silent: OFF (restored " + prev + ")");
+        } catch (Throwable t) { dbgLog("silent off err " + t); }
     }
 
     private void vibratePattern() {
