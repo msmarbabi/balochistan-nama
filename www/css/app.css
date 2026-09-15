@@ -1385,3 +1385,18 @@ html[data-season="winter"] .season-scene span {
   color: var(--muted, #9ca3af);
   margin-top: 2px;
 }
+
+
+/* ---------- v1.16: تب فتاوا ---------- */
+.fatwa-src {
+  font-size: 11px; line-height: 1.8;
+  color: var(--muted);
+  background: rgba(127, 127, 127, .08);
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+}
+.fatwa-src b { color: var(--fg); }
+#fatwaResults .acc__title { font-weight: 600; font-size: 13px; line-height: 1.7; }
+#fatwaResults .acc__body { font-size: 12.5px; line-height: 2; color: var(--fg); }

@@ -145,6 +145,121 @@ public class MainActivity extends BridgeActivity {
                     public void httpGet(String url, String reqId) {
                         // Weather fetch uses NativeApp.httpGet — fallback via fetch() works
                     }
+                    // ===== v1.16: کتاب فتاوا (پروژه IslamPP — منبع: islampp.org) =====
+                    @JavascriptInterface
+                    public String fatwaStatus() {
+                        try {
+                            java.io.File f = new java.io.File(getFilesDir(), "fatwa.db");
+                            org.json.JSONObject o = new org.json.JSONObject();
+                            boolean ready = f.exists() && f.length() > 1000000;
+                            o.put("ready", ready);
+                            o.put("size", f.exists() ? f.length() : 0);
+                            if (ready) {
+                                android.database.sqlite.SQLiteDatabase db = android.database.sqlite.SQLiteDatabase
+                                    .openDatabase(f.getAbsolutePath(), null, android.database.sqlite.SQLiteDatabase.OPEN_READONLY);
+                                android.database.Cursor c = db.rawQuery("SELECT COUNT(*) FROM data", null);
+                                if (c.moveToFirst()) o.put("count", c.getInt(0));
+                                c.close(); db.close();
+                            }
+                            return o.toString();
+                        } catch (Exception e) { return "{\"ready\":false}"; }
+                    }
+                    @JavascriptInterface
+                    public void fatwaDownload(final String url) {
+                        new Thread(new Runnable() {
+                            @Override public void run() {
+                                java.io.InputStream in = null; java.util.zip.GZIPInputStream gin = null;
+                                java.io.BufferedOutputStream bos = null;
+                                try {
+                                    java.net.HttpURLConnection cn = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+                                    cn.setConnectTimeout(20000); cn.setReadTimeout(30000);
+                                    cn.setRequestProperty("User-Agent", "BalochistanNama/1.16");
+                                    long expected = 50700000L; // حجم بازِشده تقریبی (۵۰.۷MB)
+                                    in = new java.io.BufferedInputStream(cn.getInputStream());
+                                    gin = new java.util.zip.GZIPInputStream(in);
+                                    java.io.File tmp = new java.io.File(getFilesDir(), "fatwa.db.dl");
+                                    bos = new java.io.BufferedOutputStream(new java.io.FileOutputStream(tmp));
+                                    byte[] buf = new byte[16384]; long done = 0; int r; int lastPct = -1;
+                                    while ((r = gin.read(buf)) > 0) {
+                                        bos.write(buf, 0, r); done += r;
+                                        int pct = (int) (done * 100 / expected);
+                                        if (pct > 100) pct = 100;
+                                        if (pct >= lastPct + 5) {
+                                            lastPct = pct;
+                                            final int p = pct;
+                                            runOnUiThread(new Runnable() { public void run() {
+                                                try { getBridge().getWebView().evaluateJavascript("window.__fatwaProgress&&window.__fatwaProgress(" + p + ")", null); } catch (Exception e) {}
+                                            }});
+                                        }
+                                    }
+                                    bos.flush(); bos.close(); bos = null; gin.close(); gin = null; cn.disconnect();
+                                    java.io.File out = new java.io.File(getFilesDir(), "fatwa.db");
+                                    if (out.exists()) out.delete();
+                                    if (!tmp.renameTo(out)) throw new Exception("rename-failed");
+                                    runOnUiThread(new Runnable() { public void run() {
+                                        try { getBridge().getWebView().evaluateJavascript("window.__fatwaDone&&window.__fatwaDone()", null); } catch (Exception e) {}
+                                    }});
+                                } catch (final Exception e) {
+                                    try { if (bos != null) bos.close(); } catch (Exception ig) {}
+                                    try { if (gin != null) gin.close(); } catch (Exception ig) {}
+                                    final String msg = (e.getMessage() == null ? "خطای دانلود" : e.getMessage()).replace("\"", "'").replace("\\", "");
+                                    runOnUiThread(new Runnable() { public void run() {
+                                        try { getBridge().getWebView().evaluateJavascript("window.__fatwaFail&&window.__fatwaFail(\"" + msg + "\")", null); } catch (Exception ig) {}
+                                    }});
+                                }
+                            }
+                        }).start();
+                    }
+                    @JavascriptInterface
+                    public String fatwaSearch(String query, int limit) {
+                        java.io.File f = new java.io.File(getFilesDir(), "fatwa.db");
+                        if (!f.exists()) return "[]";
+                        android.database.sqlite.SQLiteDatabase db = null; android.database.Cursor c = null;
+                        try {
+                            db = android.database.sqlite.SQLiteDatabase.openDatabase(f.getAbsolutePath(), null, android.database.sqlite.SQLiteDatabase.OPEN_READONLY);
+                            String q = query.trim().toLowerCase();
+                            String like = "%" + q + "%";
+                            int len = Math.max(1, q.length());
+                            // رتبه‌بندی بومی: تعداد تکرار کلیدواژه در سؤال+جواب (REPLACE trick)
+                            c = db.rawQuery(
+                                "SELECT id, question, substr(answer,1,500), LENGTH(answer), " +
+                                "(LENGTH(lower(question)||' '||lower(answer)) - LENGTH(REPLACE(lower(question)||' '||lower(answer), ?, ' '))) / ? AS hits " +
+                                "FROM data WHERE question LIKE ? OR answer LIKE ? ORDER BY hits DESC LIMIT ?",
+                                new String[]{ q, String.valueOf(len), like, like, String.valueOf(Math.max(5, Math.min(50, limit))) });
+                            org.json.JSONArray arr = new org.json.JSONArray();
+                            while (c.moveToNext()) {
+                                org.json.JSONObject o = new org.json.JSONObject();
+                                o.put("i", c.getInt(0)); o.put("q", c.getString(1));
+                                o.put("a", c.getString(2)); o.put("len", c.getInt(3)); o.put("hits", c.getInt(4));
+                                arr.put(o);
+                            }
+                            return arr.toString();
+                        } catch (Exception e) { return "[]"; }
+                        finally {
+                            try { if (c != null) c.close(); } catch (Exception ig) {}
+                            try { if (db != null) db.close(); } catch (Exception ig) {}
+                        }
+                    }
+                    @JavascriptInterface
+                    public String fatwaGet(int id) {
+                        java.io.File f = new java.io.File(getFilesDir(), "fatwa.db");
+                        if (!f.exists()) return "null";
+                        android.database.sqlite.SQLiteDatabase db = null; android.database.Cursor c = null;
+                        try {
+                            db = android.database.sqlite.SQLiteDatabase.openDatabase(f.getAbsolutePath(), null, android.database.sqlite.SQLiteDatabase.OPEN_READONLY);
+                            c = db.rawQuery("SELECT question, answer FROM data WHERE id=?", new String[]{ String.valueOf(id) });
+                            if (c.moveToFirst()) {
+                                org.json.JSONObject o = new org.json.JSONObject();
+                                o.put("q", c.getString(0)); o.put("a", c.getString(1));
+                                return o.toString();
+                            }
+                            return "null";
+                        } catch (Exception e) { return "null"; }
+                        finally {
+                            try { if (c != null) c.close(); } catch (Exception ig) {}
+                            try { if (db != null) db.close(); } catch (Exception ig) {}
+                        }
+                    }
                     @JavascriptInterface
                     public void createNote(String title, String body) {
                         try {

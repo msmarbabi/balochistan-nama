@@ -998,6 +998,7 @@
         '<button class="culture-tab' + (cultureTab === 'history' ? ' active' : '') + '" data-tab="history">🏛️ تاریخ</button>' +
         '<button class="culture-tab' + (cultureTab === 'learn' ? ' active' : '') + '" data-tab="learn">🗣️ یادگیری</button>' +
         '<button class="culture-tab' + (cultureTab === 'rooze' ? ' active' : '') + '" data-tab="rooze">☪️ روزه</button>' +
+        '<button class="culture-tab' + (cultureTab === 'fatwa' ? ' active' : '') + '" data-tab="fatwa">⚖️ فتاوا</button>' +
         '<button class="culture-tab' + (cultureTab === 'quiz' ? ' active' : '') + '" data-tab="quiz">🧠 آزمون</button>' +
       '</div>';
     
@@ -1024,11 +1025,14 @@
       }
     } else if (cultureTab === 'rooze') {
       contentHtml = renderRoozeContent();
+    } else if (cultureTab === 'fatwa') {
+      contentHtml = '<div id="fatwaTab"></div>'; // v1.16: کتاب فتاوا
     } else if (cultureTab === 'quiz') {
       contentHtml = renderQuizContent();
     }
     
     container.innerHTML = tabsHtml + '<div class="culture-content">' + dailyHtml + contentHtml + '</div>';
+    if (cultureTab === 'fatwa' && window.BXFatwa) BXFatwa.render('fatwaTab'); // v1.16
     
     // Wire tab clicks
     container.querySelectorAll('.culture-tab').forEach(function(tab) {
@@ -1227,7 +1231,10 @@
     var el = document.getElementById('roozeList');
     if (!el) return;
     var query = String(q || '').trim().toLowerCase();
-    var filtered = query ? qa.filter(function (item) { return (item.q || '').toLowerCase().indexOf(query) >= 0 || (item.a || '').toLowerCase().indexOf(query) >= 0; }) : qa;
+    // v1.16: جستجوی رتبه‌دار (چندکلمه‌ای OR + امتیاز تطابق — مثل الگوی IslamPP)
+    var filtered = query && window.BXUtils
+      ? BXUtils.rankSearch(qa, query, { fields: [function (it) { return it.q || ''; }, function (it) { return it.a || ''; }] })
+      : qa;
     if (filtered.length === 0) {
       el.innerHTML = '<div class="text-muted text-center" style="padding:20px;">موردی یافت نشد</div>';
       return;

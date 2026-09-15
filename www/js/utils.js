@@ -29,6 +29,31 @@
     document.head.appendChild(s);
   }
 
+  // v1.16: جستجوی رتبه‌دار — کلمات کلیدی OR، امتیاز تطابق، مرتب‌سازی
+  // opts: { fields: [fn(item)->text, ...], limit } — فیلد اول (سؤال) ۳ برابر وزن دارد
+  function rankSearch(items, query, opts) {
+    opts = opts || {};
+    var words = String(query || '').trim().toLowerCase().split(/\s+/).filter(function (w) { return w.length >= 2; });
+    if (!words.length) return (opts.limit ? items.slice(0, opts.limit) : items);
+    var fields = opts.fields || [function (x) { return String(x); }];
+    var scored = [];
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i], s = 0;
+      for (var w = 0; w < words.length; w++) {
+        for (var f = 0; f < fields.length; f++) {
+          var val = '';
+          try { val = String(fields[f](it) || '').toLowerCase(); } catch (e) { continue; }
+          if (val.indexOf(words[w]) >= 0) s += (f === 0 ? 3 : 1);
+        }
+      }
+      if (s > 0) scored.push({ it: it, s: s });
+    }
+    scored.sort(function (a, b) { return b.s - a.s; });
+    var out = [];
+    for (var k = 0; k < scored.length; k++) out.push(scored[k].it);
+    return opts.limit ? out.slice(0, opts.limit) : out;
+  }
+
   // debounce سبک
   function debounce(fn, ms) {
     var t = null;
@@ -43,6 +68,7 @@
     escapeHtml: escapeHtml,
     toFaDigits: toFaDigits,
     toEnDigits: toEnDigits,
+    rankSearch: rankSearch,
     loadScript: loadScript,
     debounce: debounce
   };
