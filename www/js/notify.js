@@ -93,6 +93,29 @@
           }
         }
 
+        // --- v1.16 مرحله ۷: یادآوری اذکار صبح/شام/خواب ---
+        var ADHKAR_NOTIFS = [
+          { key: 'Sobh', timeKey: 'sobhTime', def: '07:00', title: '🌅 اذکار صبحگاهی',
+            body: 'أَصْبَحْنَا وَ أَصْبَحَ المُلْكُ لِلّٰهِ — سبحان‌الله ۳۳، الحمدللَّه ۳۳، الله‌اکبر ۳۴' },
+          { key: 'Sham', timeKey: 'shamTime', def: '18:00', title: '🌇 اذکار شامگاهی',
+            body: 'أَمْسَیْنَا وَ أَمْسَی المُلْكُ لِلّٰه — حوقله: لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللّٰهِ' },
+          { key: 'Khab', timeKey: 'khabTime', def: '22:30', title: '🌙 اذکار قبل از خواب',
+            body: 'آیةالکرسی + تسبیحات اربعه + صلوات — با ذکر خدا بخواب' }
+        ];
+        ADHKAR_NOTIFS.forEach(function (A) {
+          var on = settings['notifyAdhkar' + A.key];
+          if (!on) return;
+          var tp = String(settings[A.timeKey] || A.def).split(':');
+          var hh2 = parseInt(tp[0], 10) || 7, mm2 = parseInt(tp[1], 10) || 0;
+          for (var off2 = 0; off2 < 7; off2++) {
+            var d2 = new Date(); d2.setHours(0, 0, 0, 0);
+            d2.setDate(d2.getDate() + off2);
+            d2.setHours(hh2, mm2, 0, 0);
+            if (d2.getTime() <= Date.now()) continue;
+            notes.push({ id: id++, title: A.title, body: A.body, schedule: { at: d2 }, sound: 'default' });
+          }
+        });
+
         // --- Event notifications (morning digest: today + tomorrow) ---
         if (settings.notifyEvents && typeof Events !== 'undefined' && Events.getDayEvents) {
           var st = (typeof App !== 'undefined' && App.getState) ? App.getState() : null;

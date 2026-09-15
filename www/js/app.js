@@ -15,6 +15,8 @@
     notifyPrayer: true,
     notifyEvents: true,
     notifyNotes: true,
+    notifyAdhkarSobh: false, notifyAdhkarSham: false, notifyAdhkarKhab: false,
+    sobhTime: '07:00', shamTime: '18:00', khabTime: '22:30',
     faDigits: true,
     seasonFx: true,
     fontScale: 1,
@@ -1542,6 +1544,28 @@
     setToggle('setNotifyPrayer', settings.notifyPrayer);
     setToggle('setNotifyEvents', settings.notifyEvents);
     setToggle('setNotifyNotes', settings.notifyNotes);
+    // v1.16: توگل‌ها و ساعت‌های یادآوری اذکار
+    [['Sobh', 'sobhTimeRow', 'sobhTime'], ['Sham', 'shamTimeRow', 'shamTime'], ['Khab', 'khabTimeRow', 'khabTime']].forEach(function (m) {
+      var tg = document.getElementById('setNotifyAdhkar' + m[0]);
+      var row = document.getElementById(m[1]);
+      var inp = document.getElementById(m[2]);
+      if (tg) {
+        tg.classList.toggle('on', !!settings['notifyAdhkar' + m[0]]);
+        if (row) row.style.display = settings['notifyAdhkar' + m[0]] ? '' : 'none';
+        tg.addEventListener('click', function (ev) {
+          ev.stopImmediatePropagation(); // جلوگیری از توگل عمومی (v1.16)
+          tg.classList.toggle('on');
+          settings['notifyAdhkar' + m[0]] = tg.classList.contains('on');
+          if (row) row.style.display = settings['notifyAdhkar' + m[0]] ? '' : 'none';
+          saveSettings();
+          if (typeof Notify !== "undefined") { try { Notify.reschedule(); } catch (e) {} }
+        }, true);
+      }
+      if (inp) {
+        inp.value = settings[m[2]] || (m[0] === 'Sobh' ? '07:00' : m[0] === 'Sham' ? '18:00' : '22:30');
+        inp.addEventListener('change', function () { settings[m[2]] = inp.value; saveSettings(); if (typeof Notify !== "undefined") { try { Notify.reschedule(); } catch (e) {} } });
+      }
+    });
     setToggle('setFaDigits', settings.faDigits);
     setToggle('setSeasonFx', settings.seasonFx);
     setToggle('setDst', settings.dst);

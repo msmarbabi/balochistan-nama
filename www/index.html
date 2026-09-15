@@ -7,11 +7,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <title>بلوچستان نما</title>
-  <link rel="stylesheet" href="css/app.css?v=147">
-  <link rel="stylesheet" href="css/extras.css?v=147">
-  <link rel="stylesheet" href="css/sheet.css?v=147">
-  <link rel="stylesheet" href="css/settings.css?v=147">
-  <link rel="stylesheet" href="css/accordion.css?v=147">
+  <link rel="stylesheet" href="css/app.css?v=150">
+  <link rel="stylesheet" href="css/extras.css?v=150">
+  <link rel="stylesheet" href="css/sheet.css?v=150">
+  <link rel="stylesheet" href="css/settings.css?v=150">
+  <link rel="stylesheet" href="css/accordion.css?v=150">
 </head>
 <body>
   <div class="season-scene" id="seasonScene"></div>
@@ -879,6 +879,40 @@
           </div>
           <div class="toggle on" id="setNotifyNotes"></div>
         </div>
+        <!-- v1.16 مرحله ۷: یادآوری اذکار -->
+        <div class="setting-row">
+          <div>
+            <div class="setting-row__label">🌅 یادآوری اذکار صبحگاهی</div>
+            <div class="setting-row__desc">صبح بعد از طلوع — اذکار صباح را یادآوری کند</div>
+          </div>
+          <div class="toggle" id="setNotifyAdhkarSobh"></div>
+        </div>
+        <div class="setting-row" id="sobhTimeRow" style="display:none;">
+          <div><div class="setting-row__label">ساعت یادآوری صبح</div></div>
+          <input class="input" id="sobhTime" type="time" value="07:00" style="width:auto;">
+        </div>
+        <div class="setting-row">
+          <div>
+            <div class="setting-row__label">🌇 یادآوری اذکار شامگاهی</div>
+            <div class="setting-row__desc">عصر قبل از غروب — اذکار مساء را یادآوری کند</div>
+          </div>
+          <div class="toggle" id="setNotifyAdhkarSham"></div>
+        </div>
+        <div class="setting-row" id="shamTimeRow" style="display:none;">
+          <div><div class="setting-row__label">ساعت یادآوری عصر</div></div>
+          <input class="input" id="shamTime" type="time" value="18:00" style="width:auto;">
+        </div>
+        <div class="setting-row">
+          <div>
+            <div class="setting-row__label">🌙 یادآوری اذکار قبل از خواب</div>
+            <div class="setting-row__desc">شب — تسبیحات، آیت‌الکرسی و خواب با ذکر خدا</div>
+          </div>
+          <div class="toggle" id="setNotifyAdhkharKhab"></div>
+        </div>
+        <div class="setting-row" id="khabTimeRow" style="display:none;">
+          <div><div class="setting-row__label">ساعت یادآوری خواب</div></div>
+          <input class="input" id="khabTime" type="time" value="22:30" style="width:auto;">
+        </div>
         <div class="settings-group-hdr">🖼 نمایش</div>
         <div class="setting-row">
           <div>
@@ -1080,43 +1114,43 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/utils.js?v=147"></script>
-  <script src="js/backup.js?v=147"></script>
-  <script src="js/actionsheet.js?v=147"></script>
-  <script src="js/cal.js?v=147"></script>
-  <script src="js/events.js?v=147"></script>
-  <script src="js/culture_extra.js?v=147"></script>
-  <script src="js/baloch.js?v=147"></script>
-  <script src="js/prayertimes.js?v=147"></script>
-  <script src="js/athan.js?v=147"></script>
-  <script src="js/notes.js?v=147"></script>
-  <script src="js/weather.js?v=147"></script>
-  <script src="js/compass.js?v=147"></script>
-  <script src="js/streak.js?v=147"></script>
-  <script src="js/ramadan.js?v=147"></script>
-  <script src="js/clock.js?v=147"></script>
-  <script src="js/app.js?v=147"></script>
-  <script src="js/tasbeeh.js?v=147"></script>
-  <script src="js/tools.js?v=147"></script>
-  <script src="js/athan_player.js?v=147"></script>
-  <script src="js/personalevents.js?v=147"></script>
-  <script src="js/learn.js?v=147"></script>
-  <script src="js/fatwa.js?v=147"></script>
-  <script src="js/ayat_day.js?v=147"></script>
-  <script src="js/ayat.js?v=147"></script>
-  <script src="js/pt_server.js?v=147"></script>
-  <script src="js/athans_catalog.js?v=147"></script>
-  <script src="js/monthtable.js?v=147"></script>
-  <script src="js/ics.js?v=147"></script>
-  <script src="js/stats.js?v=147"></script>
+  <script src="js/utils.js?v=150"></script>
+  <script src="js/backup.js?v=150"></script>
+  <script src="js/actionsheet.js?v=150"></script>
+  <script src="js/cal.js?v=150"></script>
+  <script src="js/events.js?v=150"></script>
+  <script src="js/culture_extra.js?v=150"></script>
+  <script src="js/baloch.js?v=150"></script>
+  <script src="js/prayertimes.js?v=150"></script>
+  <script src="js/athan.js?v=150"></script>
+  <script src="js/notes.js?v=150"></script>
+  <script src="js/weather.js?v=150"></script>
+  <script src="js/compass.js?v=150"></script>
+  <script src="js/streak.js?v=150"></script>
+  <script src="js/ramadan.js?v=150"></script>
+  <script src="js/clock.js?v=150"></script>
+  <script src="js/app.js?v=150"></script>
+  <script src="js/tasbeeh.js?v=150"></script>
+  <script src="js/tools.js?v=150"></script>
+  <script src="js/athan_player.js?v=150"></script>
+  <script src="js/personalevents.js?v=150"></script>
+  <script src="js/learn.js?v=150"></script>
+  <script src="js/fatwa.js?v=150"></script>
+  <script src="js/ayat_day.js?v=150"></script>
+  <script src="js/ayat.js?v=150"></script>
+  <script src="js/pt_server.js?v=150"></script>
+  <script src="js/athans_catalog.js?v=150"></script>
+  <script src="js/monthtable.js?v=150"></script>
+  <script src="js/ics.js?v=150"></script>
+  <script src="js/stats.js?v=150"></script>
   <script>
     // init یادداشت یک‌بار در startup — تا دکمه + از صفحه خانه هم کار کند
     document.addEventListener('DOMContentLoaded', function () {
       try { if (window.Notes) Notes.init(); } catch (e) {}
     });
   </script>
-  <script src="js/notify.js?v=147"></script>
-  <script src="js/i18n.js?v=147"></script>
-  <script src="js/extensions.js?v=147"></script>
+  <script src="js/notify.js?v=150"></script>
+  <script src="js/i18n.js?v=150"></script>
+  <script src="js/extensions.js?v=150"></script>
 </body>
 </html>
