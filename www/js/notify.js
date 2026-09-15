@@ -56,6 +56,7 @@
             var isFriday = day.getDay() === 5;
             for (var ki = 0; ki < keys.length; ki++) {
               var k = keys[ki];
+              if (settings.notifyPrayers && settings.notifyPrayers[k] === false) continue; // مرحله ۱۰: انتخابی
               var hm = times[k];
               if (isNaN(hm)) continue;
               var hh = Math.floor(hm), mm = Math.round((hm - hh) * 60);

@@ -16,6 +16,7 @@
     notifyPrayer: true,
     notifyEvents: true,
     notifyNotes: true,
+    notifyPrayers: { fajr: true, dhuhr: true, asr: true, maghrib: true, isha: true },
     notifyAdhkarSobh: false, notifyAdhkarSham: false, notifyAdhkarKhab: false,
     sobhTime: '07:00', shamTime: '18:00', khabTime: '22:30',
     faDigits: true,
@@ -197,6 +198,17 @@
       h = adj;
     }
     setText('heroHijri', 'هجری قمری: ' + Cal.fmtHijriLong(h));
+    // v1.16 مرحله ۱۰: نام سال + قمر در عقرب در هیرو
+    try {
+      var extra = [];
+      var qd = Cal.qamarDarAqrab(state.today);
+      if (qd.qa) extra.push('☾ قمر در عقرب');
+      var zyn = Cal.zodiacYear(state.today.getFullYear());
+      if (zyn) extra.push('سال ' + zyn);
+      var elx = document.getElementById('heroExtra');
+      if (elx) elx.textContent = extra.join(' • ');
+      setText('heroZodiac', '🐴 سال ' + zyn + (extra.indexOf('☾ قمر در عقرب') >= 0 ? ' • ☾ قمر در عقرب' : ''));
+    } catch (e) { dbg(e); }
     setText('clockSeason', settings.dst ? 'تابستان ☀️' : '');
 
     // Moon phase
@@ -1492,6 +1504,21 @@
         info += ' • ' + evs.slice(0, 3).map(function (ev) { return ev.title; }).join(' • ');
       }
     }
+    // v1.16 مرحله ۱۰: نام سال + قمر در عقرب
+    if (tripleInfo) {
+      try {
+        var zy = Cal.zodiacYear(tripleInfo.greg.gy);
+        var hn = Cal.hijriYearName(tripleInfo.hijri.hy);
+        info += ' 🐴 ' + zy + (hn ? ' • قمری: ' + hn : '');
+        var qd = Cal.qamarDarAqrab(new Date(tripleInfo.greg.gy, tripleInfo.greg.gm - 1, tripleInfo.greg.gd, 15));
+        if (qd.qa) {
+          var hh = function (x) { return x == null ? '' : String(Math.floor(x)).padStart(2, '0') + ':' + String(Math.round((x % 1) * 60)).padStart(2, '0'); };
+          info += qd.enter != null && qd.exit != null
+            ? ' • ☾ قمر در عقرب: ' + hh(qd.enter) + ' تا ' + hh(qd.exit)
+            : qd.enter != null ? ' • ☾ ورود ماه به عقرب: ' + hh(qd.enter) : ' • ☾ خروج ماه از عقرب: ' + hh(qd.exit);
+        }
+      } catch (e) { dbg(e); }
+    }
     setText('cvWeekday', info);
   }
   function getVal(id) { var el = document.getElementById(id); return el ? (parseInt(el.value, 10) || 0) : 0; }
@@ -1546,6 +1573,29 @@
     setToggle('setNotifyPrayer', settings.notifyPrayer);
     setToggle('setNotifyEvents', settings.notifyEvents);
     setToggle('setNotifyNotes', settings.notifyNotes);
+    // v1.16 مرحله ۱۰: انتخاب اذان‌های یادآوری
+    (function () {
+      var box = document.getElementById('prayerNotifPills');
+      if (!box) return;
+      var NP = [['fajr', 'صبح'], ['dhuhr', 'ظهر'], ['asr', 'عصر'], ['maghrib', 'مغرب'], ['isha', 'عشا']];
+      if (!settings.notifyPrayers) settings.notifyPrayers = { fajr: true, dhuhr: true, asr: true, maghrib: true, isha: true };
+      function drawPn() {
+        box.innerHTML = NP.map(function (p) {
+          var on = settings.notifyPrayers[p[0]] !== false;
+          return '<button data-pn="' + p[0] + '" style="border:1px solid ' + (on ? 'var(--accent)' : 'var(--line)') + ';border-radius:999px;padding:3px 10px;font-size:11.5px;background:' + (on ? 'rgba(212,175,55,.14)' : 'transparent') + ';color:' + (on ? 'var(--accent)' : 'var(--fg-soft)') + ';">' + p[1] + (on ? ' ✓' : '') + '</button>';
+        }).join('');
+        box.querySelectorAll('[data-pn]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var k = b.getAttribute('data-pn');
+            settings.notifyPrayers[k] = settings.notifyPrayers[k] === false;
+            saveSettings();
+            drawPn();
+            if (typeof Notify !== "undefined") { try { Notify.reschedule(); } catch (e) {} }
+          });
+        });
+      }
+      drawPn();
+    })();
     // v1.16: توگل‌ها و ساعت‌های یادآوری اذکار
     [['Sobh', 'sobhTimeRow', 'sobhTime'], ['Sham', 'shamTimeRow', 'shamTime'], ['Khab', 'khabTimeRow', 'khabTime']].forEach(function (m) {
       var tg = document.getElementById('setNotifyAdhkar' + m[0]);

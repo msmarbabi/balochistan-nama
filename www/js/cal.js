@@ -282,6 +282,60 @@
     return (jsDay + 1) % 7;
   }
 
+  /* ===== v1.16 مرحله ۱۰: نام سال، قمر در عقرب، برج ===== */
+  var ZODIAC_YEARS = ['موش','گاو','پلنگ','خرگوش','اژدها','مار','اسب','گوسفند','میمون','مرغ','سگ','خوک'];
+  function zodiacYear(gy) { return ZODIAC_YEARS[((gy + 3) % 12 + 12) % 12]; }
+  // نام سنتی سال قمری (۳۰ساله — منابع عامه؛ برای اطلاع‌رسانی نه احکام)
+  var HIJRI_YEAR_NAMES = ['ذات‌الصدر','ذات‌الانتصاب','الأسد','الذراع','القصر','الشاهقة','الهدمة','الدم','الفرق','آزهر','المشهرة','الامامة','الخلفة','التراث','الشبكة','المخزقة','الدامغة','الطامة','الاهزمة','الرقاد','الزلزال','الفتق','الخلاص','الطمع','الجلاء','القرار','الجراد','الفرجة','الاجتماع','الاشتباه'];
+  function hijriYearName(hy) { return HIJRI_YEAR_NAMES[((hy - 1) % 30 + 30) % 30]; }
+  // موقعیت خورشید و ماه (Meeus کم‌دقت) → طول جغرافیایی درجه‌ای
+  function sunLon(d) {
+    var M = dtr((357.529 + 0.98560028 * d) % 360);
+    var L = (280.459 + 0.98564736 * d);
+    var lam = L + 1.915 * Math.sin(M) + 0.020 * Math.sin(2 * M);
+    return (lam % 360 + 360) % 360;
+  }
+  function moonLon(d) {
+    var Ld = 218.316 + 13.176396 * d;
+    var D = dtr((297.850 + 12.190749 * d) % 360);
+    var Ms = dtr((357.529 + 0.98560028 * d) % 360);
+    var Mm = dtr((134.963 + 13.064993 * d) % 360);
+    var F = dtr((93.272 + 13.229350 * d) % 360);
+    var lam = Ld
+      + 6.289 * Math.sin(Mm)
+      - 1.274 * Math.sin(2 * D - Mm)
+      + 0.658 * Math.sin(2 * D)
+      + 0.214 * Math.sin(2 * Mm)
+      - 0.186 * Math.sin(Ms)
+      - 0.114 * Math.sin(2 * F);
+    return (lam % 360 + 360) % 360;
+  }
+  var ZODIAC_SIGNS = ['حمل (برج)','ثوره','جوزا','سرطان','اسد','سنبله','میزان','عقرب','قوس','جدی','دلو','حوت'];
+  function zodiacOfLon(lon) { return ZODIAC_SIGNS[Math.floor(lon / 30) % 12]; }
+  // قمر در عقرب: ماه در برج عقرب (۲۱۰°–۲۴۰°) — تا ساعت ۱۲ شب
+  function qamarDarAqrab(dateObj) {
+    var jdn = gregToJDN(dateObj.getFullYear(), dateObj.getMonth() + 1, dateObj.getDate());
+    var d = jdn + (dateObj.getHours() - 12) / 24 + dateObj.getMinutes() / 1440 - 2451545.0; // از ۲۰۰۰/۱/۱ ۱۲:۰۰
+    var dNoon = jdn - 2451545.0 + 0.0; // ظهر امروز
+    var lamNoon = moonLon(dNoon);
+    var lamMid = moonLon(dNoon + 0.5);
+    var inScorp = function (x) { return x >= 210 && x < 240; };
+    var atNoon = inScorp(lamNoon), atMid = inScorp(lamMid);
+    if (!atNoon && !atMid) return { qa: false };
+    // زمان ورود به عقرب یا خروج (تقریب خطی در نیم‌روز)
+    var enterH = null, exitH = null;
+    var span = (lamMid - lamNoon + 360) % 360 || 14;
+    if (atNoon && !atMid) { // خروج در این نیمه
+      var need = (240 - lamNoon + 360) % 360;
+      exitH = 12 + (need / span) * 12;
+    } else if (!atNoon && atMid) { // ورود
+      var need2 = (210 - lamNoon + 360) % 360;
+      enterH = 12 + (need2 / span) * 12;
+    } else { exitH = 24; } // کل نیمه در عقرب
+    return { qa: true, enter: enterH, exit: exitH };
+  }
+
+  function dtr(x) { return x * Math.PI / 180; }
   /* ---------- Persian numerals ---------- */
   function toFaDigits(n) { return (window.BXUtils ? BXUtils.toFaDigits : String)(n); }
   function toLatinDigits(s) {
@@ -447,6 +501,7 @@
     gregToHijri: gregToHijri,
     jdnToIrHijri: jdnToIrHijri, irHijriToJdn: irHijriToJdn, gregToHijriAlgo: gregToHijriAlgo,
     jdnToUq: jdnToUq, uqToJdn: uqToJdn,
+    zodiacYear: zodiacYear, hijriYearName: hijriYearName, qamarDarAqrab: qamarDarAqrab, moonLon: moonLon, sunLon: sunLon, zodiacOfLon: zodiacOfLon,
     hijriToGreg: hijriToGreg,
     isHijriLeapYear: isHijriLeapYear,
     hijriMonthLength: hijriMonthLength,
