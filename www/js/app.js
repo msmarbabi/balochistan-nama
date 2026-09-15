@@ -1856,6 +1856,21 @@
         if (ptsS) ptsS.textContent = '✗ ' + err.message;
       }).then(function () { ptsD.disabled = false; });
     });
+    var nmD = document.getElementById('ptNamooDl');
+    if (nmD) nmD.addEventListener('click', function () {
+      if (typeof BXPTServer === 'undefined') { toast('ماژول سرور بارگذاری نشد'); return; }
+      var city = settings.locName || '';
+      if (!city) { toast('نام شهر خالی است'); return; }
+      nmD.disabled = true;
+      if (ptsS) ptsS.textContent = 'در حال دریافت از نامو…';
+      BXPTServer.downloadNamoo(city).then(function (r) {
+        toast('✓ ' + r.days + ' روز از نامو گرفته شد');
+        if (ptsS) ptsS.textContent = 'کش‌شده: ' + r.mkey + ' · ' + city;
+        try { computeAndRenderPrayer(); renderDashboard(); } catch (e) { dbg(e); }
+      }).catch(function (err) {
+        if (ptsS) ptsS.textContent = '✗ ' + err.message;
+      }).then(function () { nmD.disabled = false; });
+    });
     var ptsC = document.getElementById('ptServerClear');
     if (ptsC) ptsC.addEventListener('click', function () {
       BXPTServer.clear(); ptsRefreshStatus();

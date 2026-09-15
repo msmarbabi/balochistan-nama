@@ -157,6 +157,19 @@
     clear: function () { try { localStorage.removeItem(KEY); } catch (e) { } }
   };
 
+  // v1.16 مرحله ۸: دانلود اوقات از سایت نامو (صفحه تک‌شهر) — نام فارسی encode می‌شود
+  function downloadNamoo(cityName) {
+    var url = 'https://namoodev.ir/athan-times/' + encodeURIComponent(cityName || '');
+    return httpGet(url).then(function (html) {
+      var parsed = parseNamoo(html, cityName || '');
+      if (!parsed || !Object.keys(parsed.days).length) {
+        throw new Error('نامو این شهر را ندارد یا صفحه معتبر نبود — از دکمه دانلود سرور استفاده کن');
+      }
+      storeEntry(parsed.mkey, cityName || '', parsed.days);
+      return { mkey: parsed.mkey, days: Object.keys(parsed.days).length };
+    });
+  }
+  BXPTServer.downloadNamoo = downloadNamoo;
   BXPTServer._parseNamoo = parseNamoo;
   BXPTServer._pmonth = pmonth;
   global.BXPTServer = BXPTServer;
