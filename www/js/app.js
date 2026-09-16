@@ -1040,7 +1040,7 @@
         '<button class="culture-tab' + (cultureTab === 'proverbs' ? ' active' : '') + '" data-tab="proverbs">💬 ضرب‌المثل</button>' +
         '<button class="culture-tab' + (cultureTab === 'stories' ? ' active' : '') + '" data-tab="stories">📖 داستان</button>' +
         '<button class="culture-tab' + (cultureTab === 'history' ? ' active' : '') + '" data-tab="history">🏛️ تاریخ</button>' +
-        '<button class="culture-tab' + (cultureTab === 'learn' ? ' active' : '') + '" data-tab="learn">🗣️ یادگیری</button>' +
+        
         '<button class="culture-tab' + (cultureTab === 'rooze' ? ' active' : '') + '" data-tab="rooze">☪️ روزه</button>' +
         '<button class="culture-tab' + (cultureTab === 'fatwa' ? ' active' : '') + '" data-tab="fatwa">⚖️ فتاوا</button>' +
         '<button class="culture-tab' + (cultureTab === 'quiz' ? ' active' : '') + '" data-tab="quiz">🧠 آزمون</button>' +
@@ -1055,18 +1055,6 @@
       contentHtml = renderStoriesContent();
     } else if (cultureTab === 'history') {
       contentHtml = renderHistoryContent();
-    } else if (cultureTab === 'learn') {
-      if (typeof Learn !== 'undefined') {
-        contentHtml =
-          '<div class="section-title">🗣️ واژه‌های بلوچی</div>' +
-          Learn.renderVocab() +
-          '<div class="section-title">💬 جمله‌های روزمره</div>' +
-          Learn.renderPhrases() +
-          '<div class="section-title">🧠 بلوچی را حدس بزن</div>' +
-          Learn.renderQuiz();
-      } else {
-        contentHtml = '<div class="text-muted">ماژول یادگیری در دسترس نیست</div>';
-      }
     } else if (cultureTab === 'rooze') {
       contentHtml = renderRoozeContent();
     } else if (cultureTab === 'fatwa') {
@@ -1089,10 +1077,6 @@
     // Wire quiz interactions
     if (cultureTab === 'quiz') {
       wireQuizEvents();
-    }
-    // Wire learn quiz
-    if (cultureTab === 'learn' && typeof Learn !== 'undefined' && Learn.wireQuiz) {
-      Learn.wireQuiz();
     }
     // Wire poem share buttons
     container.querySelectorAll('.poem-share').forEach(function(btn) {
@@ -1161,9 +1145,12 @@
   }
 
   function renderPoetryContent() {
-    var html = '';
+    if (!Baloch.POEMS || !Baloch.POEMS.length) return '<div class="text-muted">شعری موجود نیست</div>';
+    var desc = '<div class="text-small text-muted" style="margin-bottom:8px;">📜 اشعار شاعران بلوچستان — روی نام شاعر ضربه بزن تا شعر باز شود</div>';
+    var html = desc;
     for (var p = 0; p < Baloch.POEMS.length; p++) {
-      var poem = Baloch.POEMS[p];      var linesHtml = '';
+      var poem = Baloch.POEMS[p];
+      var linesHtml = '';
       for (var l = 0; l < poem.lines.length; l++) {
         linesHtml += '<div>' + escapeHtml(poem.lines[l].balochi) + '</div>';
       }
@@ -1172,15 +1159,19 @@
         faHtml += '<div>' + escapeHtml(poem.lines[f].fa) + '</div>';
       }
       html +=
-        '<div class="poem">' +
-          '<div class="poem__poet">' + escapeHtml(poem.poetFull) + '</div>' +
-          '<div class="poem__year">' + escapeHtml(poem.yearRange) + '</div>' +
-          '<div class="poem__balochi">' + linesHtml + '</div>' +
-          '<div class="poem__fa">' + faHtml + '</div>' +
-          (poem.bio ? '<div class="poet-bio">' + escapeHtml(poem.bio) + '</div>' : '') +
-          '<div style="display:flex; gap:6px; margin-top:8px;">' +
-            '<button class="btn btn--ghost poem-play" data-idx="' + p + '" style="font-size:12px;">🔊 پخش شعر</button>' +
-            '<button class="btn btn--ghost poem-share" data-idx="' + p + '" style="font-size:12px;">🖼️ اشتراک تصویر</button>' +
+        '<div class="acc" id="accP' + p + '">' +
+          '<button class="acc__head" type="button" onclick="BXAccordion.toggleP(' + p + ')">' +
+            '<span class="acc__title">📜 ' + escapeHtml(poem.poetFull) + ' <span style="opacity:.5;font-size:10.5px;">(' + escapeHtml(poem.yearRange || '') + ')</span></span>' +
+            '<span class="acc__chev">▾</span>' +
+          '</button>' +
+          '<div class="acc__body">' +
+            '<div class="poem__balochi" dir="rtl">' + linesHtml + '</div>' +
+            '<div class="poem__fa" dir="rtl" style="margin-top:8px;">' + faHtml + '</div>' +
+            (poem.bio ? '<div class="poet-bio">' + escapeHtml(poem.bio) + '</div>' : '') +
+            '<div style="display:flex; gap:6px; margin-top:8px;">' +
+              '<button class="btn btn--ghost poem-play" data-idx="' + p + '" style="font-size:12px;">🔊 پخش شعر</button>' +
+              '<button class="btn btn--ghost poem-share" data-idx="' + p + '" style="font-size:12px;">🖼️ اشتراک تصویر</button>' +
+            '</div>' +
           '</div>' +
         '</div>';
     }
@@ -1188,14 +1179,19 @@
   }
 
   function renderProverbsContent() {
-    var html = '';
+    if (!Baloch.PROVERBS || !Baloch.PROVERBS.length) return '<div class="text-muted">ضرب‌المثلی موجود نیست</div>';
+    var html = '<div class="text-small text-muted" style="margin-bottom:8px;">💬 ضرب‌المثل‌های بلوچی — روی هر ضرب‌المثل ضربه بزن تا معنایش باز شود</div>';
     for (var v = 0; v < Baloch.PROVERBS.length; v++) {
       var pr = Baloch.PROVERBS[v];
+      var body = (pr.fa ? '<div class="proverb__fa" style="margin-bottom:6px;">' + escapeHtml(pr.fa) + '</div>' : '') +
+        (pr.note ? '<div class="proverb__note">' + escapeHtml(pr.note) + '</div>' : '');
       html +=
-        '<div class="proverb">' +
-          '<div class="proverb__balochi">' + escapeHtml(pr.balochi) + '</div>' +
-          '<div class="proverb__fa">' + escapeHtml(pr.fa) + '</div>' +
-          (pr.note ? '<div class="proverb__note">' + escapeHtml(pr.note) + '</div>' : '') +
+        '<div class="acc" id="accV' + v + '">' +
+          '<button class="acc__head" type="button" onclick="BXAccordion.toggleV(' + v + ')">' +
+            '<span class="acc__title">💬 ' + escapeHtml(pr.balochi) + '</span>' +
+            '<span class="acc__chev">▾</span>' +
+          '</button>' +
+          '<div class="acc__body">' + body + '</div>' +
         '</div>';
     }
     return html;
@@ -1203,14 +1199,19 @@
 
   function renderStoriesContent() {
     if (!Baloch.STORIES) return '<div class="text-muted">داستانی موجود نیست</div>';
-    var html = '';
+    var html = '<div class="text-small text-muted" style="margin-bottom:8px;">📖 حکایت‌ها و داستان‌های بلوچستان — روی هر داستان ضربه بزن</div>';
     for (var s = 0; s < Baloch.STORIES.length; s++) {
       var story = Baloch.STORIES[s];
       html +=
-        '<div class="story-card">' +
-          '<div class="story-title">' + escapeHtml(story.title) + '</div>' +
-          '<div class="story-text">' + escapeHtml(story.text) + '</div>' +
-          (story.moral ? '<div class="story-moral">پند: ' + escapeHtml(story.moral) + '</div>' : '') +
+        '<div class="acc" id="accS' + s + '">' +
+          '<button class="acc__head" type="button" onclick="BXAccordion.toggleS(' + s + ')">' +
+            '<span class="acc__title">📖 ' + escapeHtml(story.title) + '</span>' +
+            '<span class="acc__chev">▾</span>' +
+          '</button>' +
+          '<div class="acc__body">' +
+            '<div class="story-text">' + escapeHtml(story.text) + '</div>' +
+            (story.moral ? '<div class="story-moral">پند: ' + escapeHtml(story.moral) + '</div>' : '') +
+          '</div>' +
         '</div>';
     }
     return html;
@@ -1236,14 +1237,18 @@
 
   // v1.14: کنترل آکاردئون — inline onclick (مقاوم در برابر رندر مجدد)
   window.BXAccordion = {
-    toggle: function (h) {
-      var item = document.getElementById('accH' + h);
+    _t: function (id) {
+      var item = document.getElementById(id);
       if (!item) return;
       var wasOpen = item.classList.contains('open');
-      // فقط یکی باز بماند
       document.querySelectorAll('.culture-content .acc.open').forEach(function (o) { o.classList.remove('open'); });
       if (!wasOpen) item.classList.add('open');
-    }
+    },
+    toggle: function (h) { this._t('accH' + h); },   // تاریخ
+    toggleP: function (p) { this._t('accP' + p); },  // شعر
+    toggleV: function (v) { this._t('accV' + v); },  // ضرب‌المثل
+    toggleS: function (s) { this._t('accS' + s); },  // داستان
+    toggleR: function (n) { this._t('accR' + n); }   // روزه
   };
 
   // Show 606 Q&A about fasting, with search.
@@ -1287,9 +1292,12 @@
     for (var i = 0; i < filtered.length; i++) {
       var item = filtered[i];
       html +=
-        '<div class="rooze-item">' +
-          '<div class="rooze-item__q">❓ ' + escapeHtml(item.n + '. ' + item.q) + '</div>' +
-          '<div class="rooze-item__a">✅ ' + escapeHtml(item.a) + '</div>' +
+        '<div class="acc" id="accR' + item.n + '">' +
+          '<button class="acc__head" type="button" onclick="BXAccordion.toggleR(' + item.n + ')">' +
+            '<span class="acc__title">❓ ' + escapeHtml(item.q.length > 90 ? item.q.slice(0, 90) + '…' : item.q) + '</span>' +
+            '<span class="acc__chev">▾</span>' +
+          '</button>' +
+          '<div class="acc__body"><div class="rooze-item__a">✅ ' + escapeHtml(item.a) + '</div></div>' +
         '</div>';
     }
     el.innerHTML = html;
@@ -1307,14 +1315,16 @@
   }
 
   function renderQuizContent() {
+    // v1.16 مرحله ۱۳: آزمون روزه از ۶۰۶ پرسش (RoozeQA)
+    if (cultureTab === 'quiz' && quizState && quizState.category === 'rooze') return renderQuizRun();
     if (!Baloch.QUIZ) return '<div class="text-muted">آزمونی موجود نیست</div>';
     
     if (!quizState || quizState.category !== cultureTab) {
-      var categories = Object.keys(Baloch.QUIZ);
+      var categories = Object.keys(Baloch.QUIZ).concat(['rooze']);
       var html = '<div class="quiz-select">' +
         '<div class="section-title">انتخاب دسته‌بندی آزمون</div>' +
         '<div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;">';
-      var labels = { poetry: '📜 شعر', proverbs: '💬 ضرب‌المثل', stories: '📖 داستان', history: '🏛️ تاریخ' };
+      var labels = { poetry: '📜 شعر', proverbs: '💬 ضرب‌المثل', stories: '📖 داستان', history: '🏛️ تاریخ', rooze: '🍚 روزه (۶۰۶)' };
       for (var c = 0; c < categories.length; c++) {
         var cat = categories[c];
         html +=
@@ -1326,8 +1336,13 @@
       return html;
     }
     
-    // Show active quiz question
+    // Show active quiz question (v1.16: به تابع مستقل منتقل شد — روزه هم استفاده می‌کند)
+    return renderQuizRun();
+  }
+
+  function renderQuizRun() {
     var qs = quizState;
+    if (!qs) return '';
     if (qs.index >= qs.questions.length) {
       // Quiz finished
       var score = qs.score || 0;
@@ -1371,6 +1386,42 @@
       );
   }
 
+  // v1.16 مرحله ۱۳: ساخت آزمون روزه از RoozeQA (۴ گزینه‌ای)
+  function startRoozeQuiz() {
+    if (typeof window.RoozeQA === 'undefined') {
+      if (!window.__roozeLoading) {
+        window.__roozeLoading = true;
+        BXUtils.loadScript('js/rooze.js?v=113', function () {
+          window.__roozeLoading = false;
+          startRoozeQuiz();
+        });
+      }
+      return;
+    }
+    var qa = (window.RoozeQA || []).slice();
+    if (qa.length < 8) return;
+    var picked = [], used = {}, guardAll = 0;
+    while (picked.length < 12 && Object.keys(used).length < qa.length - 4 && guardAll++ < 400) {
+      var it = qa[Math.floor(Math.random() * qa.length)];
+      if (used[it.n] || !it.q || !it.a || it.a.length < 8) continue;
+      used[it.n] = 1;
+      var wrongs = [], wused = {}, guard = 0;
+      while (wrongs.length < 3 && guard++ < 60) {
+        var w = qa[Math.floor(Math.random() * qa.length)];
+        if (w.n === it.n || wused[w.n] || !w.a || w.a === it.a || w.a.length < 8) continue;
+        wused[w.n] = 1;
+        wrongs.push(w.a.length > 90 ? w.a.slice(0, 90) + '…' : w.a);
+      }
+      if (wrongs.length < 3) continue;
+      var correct = it.a.length > 90 ? it.a.slice(0, 90) + '…' : it.a;
+      var opts = [correct].concat(wrongs);
+      for (var k = opts.length - 1; k > 0; k--) { var r2 = Math.floor(Math.random() * (k + 1)); var t3 = opts[k]; opts[k] = opts[r2]; opts[r2] = t3; }
+      picked.push({ question: it.q, options: opts, correct: opts.indexOf(correct) });
+    }
+    quizState = { category: 'rooze', questions: picked, index: 0, score: 0, answered: undefined };
+    renderCulture();
+  }
+
   function wireQuizEvents() {
     var container = document.getElementById('view-culture');
     if (!container) return;
@@ -1379,6 +1430,7 @@
     container.querySelectorAll('.quiz-start-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
         var category = btn.dataset.category;
+        if (category === 'rooze') { startRoozeQuiz(); return; }
         if (!Baloch.QUIZ[category]) return;
         var questions = Baloch.QUIZ[category].slice(); // copy
         // Shuffle questions
