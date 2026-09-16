@@ -1870,6 +1870,52 @@
       silMin.addEventListener('change', function () { settings.athanSilentMin = parseInt(silMin.value, 10) || 0; saveSettings(); });
     }
     // ===== v1.16: دانلود اوقات از سرور =====
+    // ===== v1.16 مرحله ۱۱: مودال آموزش نماز و وضو =====
+    (function () {
+      var modal = document.getElementById('modalLessons');
+      var body = document.getElementById('lsBody');
+      var current = 'wudu';
+      function esc2(x) { return window.BXUtils && BXUtils.escapeHtml ? BXUtils.escapeHtml(String(x == null ? '' : x)) : String(x); }
+      function renderLs() {
+        if (!body || typeof BXLessons === 'undefined') return;
+        document.querySelectorAll('.ls-tab').forEach(function (t) { t.classList.toggle('active', t.getAttribute('data-ls') === current); });
+        if (current === 'rakat') {
+          body.innerHTML = BXLessons.rakat.map(function (r, i) {
+            return '<div class="ls-step"><div class="ls-step__head"><div class="ls-step__num">' + (i + 1) + '</div>' +
+              '<div class="ls-step__t">' + esc2(r.t) + '</div></div>' +
+              '<div class="ls-step__body"><div class="ls-step__fa">' + esc2(r.fa) + '</div></div></div>';
+          }).join('') +
+          '<div class="text-small text-muted" style="padding:8px;"> تعداد رکعت‌های نماز اهل‌سنت حنفی. قنوت وتر و نوافل بیشتر در بخش ذکرها آمده است.</div>';
+        } else {
+          var src = current === 'wudu' ? BXLessons.wudu : BXLessons.salat;
+          body.innerHTML = src.map(function (st, i) {
+            var svg = BXLessons.figure(st.svg, current === 'wudu' ? false : true);
+            return '<div class="ls-step"><div class="ls-step__head" data-step="' + i + '">' +
+              '<div class="ls-step__num">' + (i + 1) + '</div><div class="ls-step__t">' + esc2(st.t) + '</div>' +
+              '<div style="font-size:11px;color:var(--muted);">▾</div></div>' +
+              '<div class="ls-step__body"><div class="ls-step__svg">' + svg + '</div>' +
+              '<div style="flex:1;">' +
+              (st.ar ? '<div class="ls-step__ar" dir="rtl">' + esc2(st.ar) + '</div>' : '') +
+              '<div class="ls-step__fa">' + esc2(st.fa) + '</div></div></div></div>';
+          }).join('');
+        }
+        body.querySelectorAll('.ls-step__head').forEach(function (hd) {
+          hd.addEventListener('click', function () { hd.parentElement.classList.toggle('open'); });
+        });
+      }
+      var open = document.getElementById('btnLessons');
+      if (open) open.addEventListener('click', function () {
+        renderLs();
+        modal.classList.add('show');
+      });
+      var close = document.getElementById('lsClose');
+      if (close) close.addEventListener('click', function () { modal.classList.remove('show'); });
+      if (modal) modal.addEventListener('click', function (ev) { if (ev.target === modal) modal.classList.remove('show'); });
+      document.querySelectorAll('.ls-tab').forEach(function (t) {
+        t.addEventListener('click', function () { current = t.getAttribute('data-ls'); renderLs(); });
+      });
+    })();
+
     var ptsT = document.getElementById('ptServerToggle');
     var ptsP = document.getElementById('ptServerPanel');
     var ptsS = document.getElementById('ptServerStatus');

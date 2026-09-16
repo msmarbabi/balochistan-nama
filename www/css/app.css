@@ -1442,3 +1442,15 @@ html[data-season="winter"] .season-scene span {
 .mt-wd { opacity:.55; font-size:10px; }
 .mt-key { font-weight:700; }
 .mt-hijri { opacity:.65; font-size:10.5px; }
+
+/* ---------- v1.16: درس‌های نماز و وضو ---------- */
+.ls-tab.active { border-color: var(--accent); color: var(--accent); }
+.ls-step { border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px; overflow: hidden; background: var(--bg-elev2); }
+.ls-step__head { display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; }
+.ls-step__num { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+.ls-step__t { font-size: 13.5px; font-weight: 600; flex: 1; }
+.ls-step__body { padding: 0 12px 12px; display: none; }
+.ls-step.open .ls-step__body { display: flex; gap: 12px; }
+.ls-step__svg { flex-shrink: 0; }
+.ls-step__ar { font-size: 15px; line-height: 2; margin-bottom: 6px; color: var(--fg); }
+.ls-step__fa { font-size: 12.5px; line-height: 1.9; color: var(--fg-soft); }
