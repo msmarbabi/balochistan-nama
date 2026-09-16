@@ -7,11 +7,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <title>بلوچستان نما</title>
-  <link rel="stylesheet" href="css/app.css?v=159">
-  <link rel="stylesheet" href="css/extras.css?v=159">
-  <link rel="stylesheet" href="css/sheet.css?v=159">
-  <link rel="stylesheet" href="css/settings.css?v=159">
-  <link rel="stylesheet" href="css/accordion.css?v=159">
+  <link rel="stylesheet" href="css/app.css?v=163">
+  <link rel="stylesheet" href="css/extras.css?v=163">
+  <link rel="stylesheet" href="css/sheet.css?v=163">
+  <link rel="stylesheet" href="css/settings.css?v=163">
+  <link rel="stylesheet" href="css/accordion.css?v=163">
 </head>
 <body>
   <div class="season-scene" id="seasonScene"></div>
@@ -816,12 +816,71 @@
   </div>
 
   <!-- Modal: Settings -->
-  <div class="modal-backdrop" id="modalSettings">
-    <div class="modal" style="max-width:420px;">
-      <div class="modal__title">⚙️ تنظیمات</div>
-      <div class="modal__body" style="max-height:60vh; overflow-y:auto;">
-        <div class="settings-group-hdr">🎨 ظاهر</div>
-        <div class="setting-row">
+<div class="modal-backdrop" id="modalSettings">
+    <div class="modal" style="max-width:420px;padding:0;overflow:hidden;">
+      <!-- صفحه اصلی تنظیمات -->
+      <div class="set-home" id="setHome">
+        <div class="set-hero">
+          <div class="set-hero__logo">🕌</div>
+          <div class="set-hero__txt">
+            <div class="set-hero__name">بلوچستان‌نما</div>
+            <div class="set-hero__ver">نسخه 1.16 • آفلاین و بدون تبلیغ</div>
+          </div>
+        </div>
+        <div class="set-searchwrap">
+          <input class="input" id="setSearch" placeholder="🔍 جستجو در تنظیمات…" autocomplete="off">
+        </div>
+        <div class="set-results" id="setResults" style="display:none;"></div>
+        <div class="set-cards">
+      <button class="set-card" data-sp="appearance" style="--ic:#8e6bbf;">
+        <span class="set-card__ic">🎨</span>
+        <span class="set-card__txt"><b>ظاهر و شخصی‌سازی</b><i>حالت تیره و استایل برنامه</i></span>
+        <span class="set-card__chev">‹</span>
+      </button>
+      <button class="set-card" data-sp="times" style="--ic:#2e9e6b;">
+        <span class="set-card__ic">🕌</span>
+        <span class="set-card__txt"><b>اوقات شرعی</b><i>روش محاسبه، تقویم قمری، ادیت دستی</i></span>
+        <span class="set-card__chev">‹</span>
+      </button>
+      <button class="set-card" data-sp="notifs" style="--ic:#e8912e;">
+        <span class="set-card__ic">🔔</span>
+        <span class="set-card__txt"><b>اذان و اعلان‌ها</b><i>صدای اذان، یادآوری‌ها، سایلنت</i></span>
+        <span class="set-card__chev">‹</span>
+      </button>
+      <button class="set-card" data-sp="display" style="--ic:#3a7bd5;">
+        <span class="set-card__ic">🖼️</span>
+        <span class="set-card__txt"><b>نمایش و صفحه</b><i>اعداد، فونت، فصلی، DST</i></span>
+        <span class="set-card__chev">‹</span>
+      </button>
+      <button class="set-card" data-sp="data" style="--ic:#7a8798;">
+        <span class="set-card__ic">💾</span>
+        <span class="set-card__txt"><b>داده و پشتیبان‌گیری</b><i>بکاپ، بازیابی</i></span>
+        <span class="set-card__chev">‹</span>
+      </button>
+      <button class="set-card set-card--gold" data-sp="creator" style="--ic:#d4af37;">
+        <span class="set-card__ic">👤</span>
+        <span class="set-card__txt"><b>سازنده برنامه</b><i>میثم اربابی — آشنا شوید</i></span>
+        <span class="set-card__chev">‹</span>
+      </button>
+      <button class="set-card" data-sp="about" style="--ic:#3ba7a0;">
+        <span class="set-card__ic">ℹ️</span>
+        <span class="set-card__txt"><b>توضیحات برنامه</b><i>قدردانی، لایسنس، به‌روزرسانی</i></span>
+        <span class="set-card__chev">‹</span>
+      </button>
+        </div>
+        <div class="set-foot">با ❤️ ساخته شده در بلوچستان — <a href="#" id="setFootAbout" style="color:var(--accent);">توضیحات برنامه</a></div>
+      </div>
+      <!-- نمای پنل -->
+      <div class="set-view" id="setView" hidden>
+        <div class="set-view__head">
+          <button class="set-back" id="setBack">→</button>
+          <div class="set-view__title" id="setViewTitle">تنظیمات</div>
+        </div>
+        <div class="set-view__body modal__body" style="max-height:64vh;overflow-y:auto;">
+        <section class="sp" id="sp-appearance" data-title="🎨 ظاهر">
+          <div class="sp__hdr"><span>🎨</span><div><div class="sp__t">🎨 ظاهر</div><div class="sp__d">حالت تیره و استایل برنامه</div></div></div>
+          
+        <div class="setting-row" data-s="حالت تم روشن / تاریک / خودکار">
           <div>
             <div class="setting-row__label">حالت تم</div>
             <div class="setting-row__desc">روشن / تاریک / خودکار</div>
@@ -832,15 +891,19 @@
             <option value="dark">تاریک</option>
           </select>
         </div>
-        <div class="settings-group-hdr">🕌 اوقات نماز</div>
-        <div class="setting-row">
+        
+        </section>
+        <section class="sp" id="sp-times" data-title="🕌 اوقات نماز">
+          <div class="sp__hdr"><span>🕌</span><div><div class="sp__t">🕌 اوقات نماز</div><div class="sp__d">روش محاسبه، تقویم قمری، ادیت دستی</div></div></div>
+          
+        <div class="setting-row" data-s="روش محاسبه‌ی اوقات نماز کراچی حنفی (پیش‌فرض)">
           <div>
             <div class="setting-row__label">روش محاسبه‌ی اوقات نماز</div>
             <div class="setting-row__desc">کراچی حنفی (پیش‌فرض)</div>
           </div>
           <select class="select" id="setMethod"></select>
         </div>
-        <div class="setting-row">
+        <div class="setting-row" data-s="اذان عصر حالت عصر بر اساس مذهب">
           <div>
             <div class="setting-row__label">اذان عصر</div>
             <div class="setting-row__desc">حالت عصر بر اساس مذهب</div>
@@ -851,14 +914,14 @@
             <option value="Hanafi">حنفی</option>
           </select>
         </div>
-        <div class="setting-row">
+        <div class="setting-row" data-s="اعلان همیشگی اوقات شرعی نماز بعدی و ساعت همیشه روی نوار اعلا">
           <div>
             <div class="setting-row__label">اعلان همیشگی اوقات شرعی</div>
             <div class="setting-row__desc">نماز بعدی و ساعت همیشه روی نوار اعلان‌ها</div>
           </div>
           <div class="toggle" id="setPersistentNotif"></div>
         </div>
-        <div class="setting-row">
+        <div class="setting-row" data-s="روش تقویم قمری ام‌القری = مکه/سعودیه (رسمی هرجا؛ پیشنهاد اهل">
           <div>
             <div class="setting-row__label">روش تقویم قمری</div>
             <div class="setting-row__desc">ام‌القری = مکه/سعودیه (رسمی هرجا؛ پیشنهاد اهل‌سنت) • رسمی ایران ±۱ روز فرق داره</div>
@@ -869,7 +932,7 @@
             <option value="algo" selected>الگوریتم کویتی</option>
           </select>
         </div>
-        <div class="setting-row">
+        <div class="setting-row" data-s="تعدیل تقویم قمری ±۲ روز برای تطابق با رؤیت هلال">
           <div>
             <div class="setting-row__label">تعدیل تقویم قمری</div>
             <div class="setting-row__desc">±۲ روز برای تطابق با رؤیت هلال</div>
@@ -882,14 +945,14 @@
             <option value="2">۲+</option>
           </select>
         </div>
-        <div class="setting-row">
+        <div class="setting-row" data-s="تنظیم دستی — اعمال روی همه نمازهای یومیه ±دقیقه روی همهٔ اوق">
           <div>
             <div class="setting-row__label">تنظیم دستی — اعمال روی همه نمازهای یومیه</div>
             <div class="setting-row__desc">±دقیقه روی همهٔ اوقات (مثلاً +۶۰)</div>
           </div>
           <input class="input" id="setPrayerAdjAll" type="number" placeholder="۰" style="width:90px;">
         </div>
-        <div class="setting-row">
+        <div class="setting-row" data-s="تنظیم دستی — اعمال روی تکی اعمال ±دقیقه فقط روی یک نماز">
           <div style="flex:1; min-width:130px;">
             <div class="setting-row__label">تنظیم دستی — اعمال روی تکی</div>
             <div class="setting-row__desc">اعمال ±دقیقه فقط روی یک نماز</div>
@@ -905,29 +968,33 @@
             <input class="input" id="setPrayerSingleAdj" type="number" placeholder="±د" style="width:70px;">
           </div>
         </div>
-        <div class="setting-row">
+        <div class="setting-row" data-s="تنظیم دستی — اعمال دلخواه فرمت: فجر+۵،ظهر-۳،عشا+۱۰">
           <div>
             <div class="setting-row__label">تنظیم دستی — اعمال دلخواه</div>
             <div class="setting-row__desc">فرمت: فجر+۵،ظهر-۳،عشا+۱۰</div>
           </div>
           <input class="input" id="setPrayerCustom" type="text" placeholder="فجر+۵،ظهر-۳" style="width:170px;">
         </div>
-        <div class="settings-group-hdr">🔔 اعلان‌ها</div>
-        <div class="setting-row">
+        
+        </section>
+        <section class="sp" id="sp-notifs" data-title="🔔 اعلان‌ها">
+          <div class="sp__hdr"><span>🔔</span><div><div class="sp__t">🔔 اعلان‌ها</div><div class="sp__d">صدای اذان، یادآوری‌ها، سایلنت</div></div></div>
+          
+        <div class="setting-row" data-s="اعلان اوقات نماز هشدار قبل از هر اذان">
           <div>
             <div class="setting-row__label">اعلان اوقات نماز</div>
             <div class="setting-row__desc">هشدار قبل از هر اذان</div>
           </div>
           <div class="toggle on" id="setNotifyPrayer"></div>
         </div>
-        <div class="setting-row">
+        <div class="setting-row" data-s="اعلان مناسبت‌ها صبح روزهای تعطیل و مناسبت‌دار">
           <div>
             <div class="setting-row__label">اعلان مناسبت‌ها</div>
             <div class="setting-row__desc">صبح روزهای تعطیل و مناسبت‌دار</div>
           </div>
           <div class="toggle on" id="setNotifyEvents"></div>
         </div>
-        <div class="setting-row">
+        <div class="setting-row" data-s="یادآور یادداشت‌ها یادآوری تولد و یادداشت‌ها">
           <div>
             <div class="setting-row__label">یادآور یادداشت‌ها</div>
             <div class="setting-row__desc">یادآوری تولد و یادداشت‌ها</div>
@@ -935,75 +1002,79 @@
           <div class="toggle on" id="setNotifyNotes"></div>
         </div>
         <!-- v1.16 مرحله ۷: یادآوری اذکار -->
-        <div class="setting-row" id="prayerNotifRow">
+        <div class="setting-row" data-s="کدام اذان‌ها یادآوری شوند؟" id="prayerNotifRow">
           <div>
             <div class="setting-row__label">کدام اذان‌ها یادآوری شوند؟</div>
             <div class="setting-row__desc" id="prayerNotifPills" style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap;"></div>
           </div>
         </div>
-        <div class="setting-row">
+        <div class="setting-row" data-s="🌅 یادآوری اذکار صبحگاهی صبح بعد از طلوع — اذکار صباح را یادآ">
           <div>
             <div class="setting-row__label">🌅 یادآوری اذکار صبحگاهی</div>
             <div class="setting-row__desc">صبح بعد از طلوع — اذکار صباح را یادآوری کند</div>
           </div>
           <div class="toggle" id="setNotifyAdhkarSobh"></div>
         </div>
-        <div class="setting-row" id="sobhTimeRow" style="display:none;">
+        <div class="setting-row" data-s="ساعت یادآوری صبح" id="sobhTimeRow" style="display:none;">
           <div><div class="setting-row__label">ساعت یادآوری صبح</div></div>
           <input class="input" id="sobhTime" type="time" value="07:00" style="width:auto;">
         </div>
-        <div class="setting-row">
+        <div class="setting-row" data-s="🌇 یادآوری اذکار شامگاهی عصر قبل از غروب — اذکار مساء را یادآ">
           <div>
             <div class="setting-row__label">🌇 یادآوری اذکار شامگاهی</div>
             <div class="setting-row__desc">عصر قبل از غروب — اذکار مساء را یادآوری کند</div>
           </div>
           <div class="toggle" id="setNotifyAdhkarSham"></div>
         </div>
-        <div class="setting-row" id="shamTimeRow" style="display:none;">
+        <div class="setting-row" data-s="ساعت یادآوری عصر" id="shamTimeRow" style="display:none;">
           <div><div class="setting-row__label">ساعت یادآوری عصر</div></div>
           <input class="input" id="shamTime" type="time" value="18:00" style="width:auto;">
         </div>
-        <div class="setting-row">
+        <div class="setting-row" data-s="🌙 یادآوری اذکار قبل از خواب شب — تسبیحات، آیت‌الکرسی و خواب ">
           <div>
             <div class="setting-row__label">🌙 یادآوری اذکار قبل از خواب</div>
             <div class="setting-row__desc">شب — تسبیحات، آیت‌الکرسی و خواب با ذکر خدا</div>
           </div>
           <div class="toggle" id="setNotifyAdhkharKhab"></div>
         </div>
-        <div class="setting-row" id="khabTimeRow" style="display:none;">
+        <div class="setting-row" data-s="ساعت یادآوری خواب" id="khabTimeRow" style="display:none;">
           <div><div class="setting-row__label">ساعت یادآوری خواب</div></div>
           <input class="input" id="khabTime" type="time" value="22:30" style="width:auto;">
         </div>
-        <div class="settings-group-hdr">🖼 نمایش</div>
-        <div class="setting-row">
+        
+        </section>
+        <section class="sp" id="sp-display" data-title="🖼 نمایش">
+          <div class="sp__hdr"><span>🖼️</span><div><div class="sp__t">🖼 نمایش</div><div class="sp__d">اعداد، فونت، فصلی، DST</div></div></div>
+          
+        <div class="setting-row" data-s="اعداد فارسی تاریخ‌ها فارسی، ساعت لاتین">
           <div>
             <div class="setting-row__label">اعداد فارسی</div>
             <div class="setting-row__desc">تاریخ‌ها فارسی، ساعت لاتین</div>
           </div>
           <div class="toggle on" id="setFaDigits"></div>
         </div>
-        <div class="setting-row">
+        <div class="setting-row" data-s="افکت فصلی ذرات متحرک در پس‌زمینه">
           <div>
             <div class="setting-row__label">افکت فصلی</div>
             <div class="setting-row__desc">ذرات متحرک در پس‌زمینه</div>
           </div>
           <div class="toggle on" id="setSeasonFx"></div>
         </div>
-        <div class="setting-row">
+        <div class="setting-row" data-s="ساعت تابستانه (DST) افزودن ۱ ساعت به ساعت رسمی در صورت نیاز ">
           <div>
             <div class="setting-row__label">ساعت تابستانه (DST)</div>
             <div class="setting-row__desc">افزودن ۱ ساعت به ساعت رسمی در صورت نیاز (ایران فعلاً غیرفعال)</div>
           </div>
           <div class="toggle" id="setDst"></div>
         </div>
-        <div class="setting-row">
+        <div class="setting-row" data-s="حالت شب خودکار تغییر تم به تاریک پس از غروب آفتاب (بر اساس ا">
           <div>
             <div class="setting-row__label">حالت شب خودکار</div>
             <div class="setting-row__desc">تغییر تم به تاریک پس از غروب آفتاب (بر اساس اوقات شرعی)</div>
           </div>
           <div class="toggle" id="setAutoNight"></div>
         </div>
-        <div class="setting-row">
+        <div class="setting-row" data-s="اندازه فونت کوچک / متوسط / بزرگ">
           <div>
             <div class="setting-row__label">اندازه فونت</div>
             <div class="setting-row__desc">کوچک / متوسط / بزرگ</div>
@@ -1015,14 +1086,14 @@
             <option value="1.3">خیلی بزرگ</option>
           </select>
         </div>
-        <div class="setting-row">
+        <div class="setting-row" data-s="نوار نماز همیشه بالا نمایش نماز بعدی در پایین صفحه">
           <div>
             <div class="setting-row__label">نوار نماز همیشه بالا</div>
             <div class="setting-row__desc">نمایش نماز بعدی در پایین صفحه</div>
           </div>
           <div class="toggle on" id="setStickyPrayer"></div>
         </div>
-        <div class="setting-row">
+        <div class="setting-row" data-s="فارسی یا بلوچی">
           <div>
             <div class="setting-row__label" data-i18n="lang.label">زبان رابط</div>
             <div class="setting-row__desc">فارسی یا بلوچی</div>
@@ -1032,8 +1103,12 @@
             <option value="bal">بلوچی</option>
           </select>
         </div>
-        <div class="settings-group-hdr">💾 داده‌ها</div>
-        <div class="setting-row">
+        
+        </section>
+        <section class="sp" id="sp-data" data-title="💾 داده‌ها">
+          <div class="sp__hdr"><span>💾</span><div><div class="sp__t">💾 داده‌ها</div><div class="sp__d">بکاپ، بازیابی</div></div></div>
+          
+        <div class="setting-row" data-s="پشتیبان‌گیری و بازیابی ذخیره همه داده‌ها (یادداشت‌ها، مناسبت">
           <div>
             <div class="setting-row__label">پشتیبان‌گیری و بازیابی</div>
             <div class="setting-row__desc">ذخیره همه داده‌ها (یادداشت‌ها، مناسبت‌ها، اذان‌ها، تنظیمات) در یک فایل — برای انتقال به گوشی دیگر</div>
@@ -1048,6 +1123,70 @@
       <div class="modal__actions">
         <button class="btn btn--ghost" id="setCancel">لغو</button>
         <button class="btn btn--primary" id="setConfirm">تایید</button>
+        </section>
+        <section class="sp" data-noform="1" id="sp-creator" data-title="سازنده برنامه">
+          <div class="sp__hdr sp__hdr--gold"><span>👤</span><div><div class="sp__t">سازنده برنامه</div><div class="sp__d">آشنا شوید</div></div></div>
+          <div class="cr-hero">
+            <div class="cr-avatar">م</div>
+            <div class="cr-name">میثم اربابی</div>
+            <div class="cr-role">سازنده و توسعه‌دهنده بلوچستان‌نما</div>
+            <div class="cr-quote">«ساخته‌شده با ♥ برای مردم بلوچستان — چون هیچ برنامه‌ای اوقات شرعیِ درست‌ومیزانِ منطقه‌ی ما را نداشت»</div>
+          </div>
+          <div class="setting-row" data-s="تلگرام ارتباط">
+            <div><div class="setting-row__label">💬 تلگرام</div><div class="setting-row__desc">ارتباط مستقیم و گزارش مشکلات</div></div>
+            <a class="cr-link" href="https://t.me/MArbabiii" target="_blank">@MArbabiii ›</a>
+          </div>
+          <div class="setting-row" data-s="ایمیل ارتباط">
+            <div><div class="setting-row__label">✉️ ایمیل</div><div class="setting-row__desc">پیشنهادها و همکاری</div></div>
+            <a class="cr-link" href="mailto:mnmarbabi@gmail.com">mnmarbabi@gmail.com ›</a>
+          </div>
+          <div class="setting-row" data-s="شماره تماس">
+            <div><div class="setting-row__label">📞 شماره تماس</div><div class="setting-row__desc">پاسخ‌گویی در ساعات کاری</div></div>
+            <span class="cr-link">....</span>
+          </div>
+        </section>
+        <section class="sp" data-noform="1" id="sp-about" data-title="توضیحات برنامه">
+          <div class="sp__hdr sp__hdr--gold"><span>ℹ️</span><div><div class="sp__t">توضیحات برنامه</div><div class="sp__d">قدردانی، لایسنس، به‌روزرسانی</div></div></div>
+          <div class="ab-block">
+            <div class="ab-t">🕌 بلوچستان‌نما</div>
+            <div class="ab-d">تقویم سه‌گانه، اوقات شرعی اهل‌سنت با الگوریتم حنفی، قبله‌نما، تسبیح صوتی، فتاوا، فرهنگ و تاریخ بلوچستان — کاملاً آفلاین و بدون تبلیغ.</div>
+          </div>
+          <div class="setting-row" data-s="گیت هاب ریپو سورس">
+            <div><div class="setting-row__label">🐙 مخزن گیت‌هاب (سورس کد)</div><div class="setting-row__desc">github.com/msmarbabi/balochistan-nama</div></div>
+            <a class="cr-link" href="https://github.com/msmarbabi/balochistan-nama" target="_blank">مشاهده ›</a>
+          </div>
+          <div class="setting-row" data-s="بروزرسانی چک آپدیت">
+            <div><div class="setting-row__label">🔄 چک‌کننده به‌روزرسانی</div><div class="setting-row__desc">بررسی نسخه جدید از گیت‌هاب</div></div>
+            <button class="btn btn--ghost" id="btnUpdateCheck" style="min-width:86px;">بررسی</button>
+          </div>
+          <div class="text-small" id="updateStatus" style="padding:0 14px 8px;color:var(--muted);"></div>
+          <div class="ab-block">
+            <div class="ab-t">🙏 قدردانی و منابع</div>
+            <div class="ab-d">
+              • <b>PrayTimes</b> — موتور محاسبه اوقات شرعی (LGPL)<br>
+              • <b>jalaali-js</b> — الگوریتم تقویم جلالی (MIT)<br>
+              • <b>persian-calendar</b> — جدول‌های هجری رسمی ایران و ام‌القری (GPL-3 / MIT)<br>
+              • <b>حصن‌المسلم</b> — متن اذکار و ادعیه<br>
+              • <b>نامو (namoodev.ir)</b> — داده اوقات شهرها<br>
+              • <b>Open-Meteo</b> — داده آب‌وهوا<br>
+              • <b>Developer-N/Athans</b> — صداهای اذان (GitHub)<br>
+              • و شما — کاربران عزیز بلوچستان‌نما 💛
+            </div>
+          </div>
+          <div class="ab-block">
+            <div class="ab-t">⚖️ لایسنس</div>
+            <div class="ab-d">این برنامه تحت لایسنس <b>GPL-3.0</b> منتشر می‌شود — سورس کامل در دسترس است:<br>
+            <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" style="color:var(--accent);">متن کامل لایسنس GNU GPL-3 ›</a></div>
+          </div>
+          <div class="ab-block" style="text-align:center;padding-bottom:16px;">
+            <div style="font-size:11px;color:var(--muted);">نسخه <b>1.16</b> • ساخته‌شده در بلوچستان 🇮🇷</div>
+          </div>
+        </section>
+        </div>
+        <div class="modal__footer" style="border-top:1px solid var(--line);padding:10px 14px;display:flex;gap:8px;">
+          <button class="btn btn--ghost" id="setCancel" style="flex:1;">لغو</button>
+          <button class="btn btn--primary" id="setConfirm" style="flex:2;">تایید</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1175,45 +1314,45 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/utils.js?v=159"></script>
-  <script src="js/backup.js?v=159"></script>
-  <script src="js/actionsheet.js?v=159"></script>
-  <script src="js/cal.js?v=159"></script>
-  <script src="js/events.js?v=159"></script>
-  <script src="js/culture_extra.js?v=159"></script>
-  <script src="js/baloch.js?v=159"></script>
-  <script src="js/prayertimes.js?v=159"></script>
-  <script src="js/athan.js?v=159"></script>
-  <script src="js/notes.js?v=159"></script>
-  <script src="js/weather.js?v=159"></script>
-  <script src="js/compass.js?v=159"></script>
-  <script src="js/streak.js?v=159"></script>
-  <script src="js/ramadan.js?v=159"></script>
-  <script src="js/clock.js?v=159"></script>
-  <script src="js/app.js?v=159"></script>
-  <script src="js/tasbeeh.js?v=159"></script>
-  <script src="js/tools.js?v=159"></script>
-  <script src="js/athan_player.js?v=159"></script>
-  <script src="js/personalevents.js?v=159"></script>
-  <script src="js/learn.js?v=159"></script>
-  <script src="js/fatwa.js?v=159"></script>
-  <script src="js/ayat_day.js?v=159"></script>
-  <script src="js/ayat.js?v=159"></script>
-  <script src="js/pt_server.js?v=159"></script>
-  <script src="js/athans_catalog.js?v=159"></script>
-  <script src="js/adhkar_lib.js?v=159"></script>
-  <script src="js/lessons.js?v=159"></script>
-  <script src="js/monthtable.js?v=159"></script>
-  <script src="js/ics.js?v=159"></script>
-  <script src="js/stats.js?v=159"></script>
+  <script src="js/utils.js?v=163"></script>
+  <script src="js/backup.js?v=163"></script>
+  <script src="js/actionsheet.js?v=163"></script>
+  <script src="js/cal.js?v=163"></script>
+  <script src="js/events.js?v=163"></script>
+  <script src="js/culture_extra.js?v=163"></script>
+  <script src="js/baloch.js?v=163"></script>
+  <script src="js/prayertimes.js?v=163"></script>
+  <script src="js/athan.js?v=163"></script>
+  <script src="js/notes.js?v=163"></script>
+  <script src="js/weather.js?v=163"></script>
+  <script src="js/compass.js?v=163"></script>
+  <script src="js/streak.js?v=163"></script>
+  <script src="js/ramadan.js?v=163"></script>
+  <script src="js/clock.js?v=163"></script>
+  <script src="js/app.js?v=163"></script>
+  <script src="js/tasbeeh.js?v=163"></script>
+  <script src="js/tools.js?v=163"></script>
+  <script src="js/athan_player.js?v=163"></script>
+  <script src="js/personalevents.js?v=163"></script>
+  <script src="js/learn.js?v=163"></script>
+  <script src="js/fatwa.js?v=163"></script>
+  <script src="js/ayat_day.js?v=163"></script>
+  <script src="js/ayat.js?v=163"></script>
+  <script src="js/pt_server.js?v=163"></script>
+  <script src="js/athans_catalog.js?v=163"></script>
+  <script src="js/adhkar_lib.js?v=163"></script>
+  <script src="js/lessons.js?v=163"></script>
+  <script src="js/monthtable.js?v=163"></script>
+  <script src="js/ics.js?v=163"></script>
+  <script src="js/stats.js?v=163"></script>
   <script>
     // init یادداشت یک‌بار در startup — تا دکمه + از صفحه خانه هم کار کند
     document.addEventListener('DOMContentLoaded', function () {
       try { if (window.Notes) Notes.init(); } catch (e) {}
     });
   </script>
-  <script src="js/notify.js?v=159"></script>
-  <script src="js/i18n.js?v=159"></script>
-  <script src="js/extensions.js?v=159"></script>
+  <script src="js/notify.js?v=163"></script>
+  <script src="js/i18n.js?v=163"></script>
+  <script src="js/extensions.js?v=163"></script>
 </body>
 </html>

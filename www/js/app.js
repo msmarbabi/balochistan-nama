@@ -1589,10 +1589,115 @@
     if (settingsSnapshot) { settings = settingsSnapshot; settingsSnapshot = null; }
     closeSettings();
   }
+  // ===== v1.16: ناوبری تنظیمات کارت‌محور =====
+  function openSettingsPanel(id, flashRow) {
+    var home = document.getElementById('setHome');
+    var view = document.getElementById('setView');
+    if (!home || !view) return;
+    home.hidden = true; view.hidden = false;
+    view.querySelectorAll('.sp').forEach(function (p) { p.classList.remove('active'); });
+    var panel = view.querySelector('#sp-' + id);
+    if (panel) {
+      panel.classList.add('active');
+      var t = document.getElementById('setViewTitle');
+      if (t) t.textContent = panel.getAttribute('data-title') || 'تنظیمات';
+      // فوتر تایید فقط برای پنل‌های دارای تنظیم
+      var foot = view.querySelector('.modal__footer');
+      if (foot) foot.style.display = panel.hasAttribute('data-noform') ? 'none' : '';
+    }
+    if (flashRow && panel) {
+      var row = Array.prototype.find.call(panel.querySelectorAll('.setting-row'), function (r) {
+        return (r.getAttribute('data-s') || '').indexOf(flashRow) >= 0;
+      });
+      if (row) {
+        row.classList.remove('flash'); void row.offsetWidth; row.classList.add('flash');
+        setTimeout(function () { row.scrollIntoView({ block: 'center' }); }, 60);
+      }
+    }
+  }
+  function closeSettingsPanel() {
+    var home = document.getElementById('setHome');
+    var view = document.getElementById('setView');
+    if (!home || !view) return;
+    view.hidden = true; home.hidden = false;
+  }
+  function wireSettingsNav() {
+    if (wireSettingsNav._wired) return;
+    wireSettingsNav._wired = true;
+    document.querySelectorAll('.set-card').forEach(function (c) {
+      c.addEventListener('click', function () { openSettingsPanel(c.getAttribute('data-sp')); });
+    });
+    var back = document.getElementById('setBack');
+    if (back) back.addEventListener('click', closeSettingsPanel);
+    var foot = document.getElementById('setFootAbout');
+    if (foot) foot.addEventListener('click', function (ev) { ev.preventDefault(); openSettingsPanel('about'); });
+    // جستجو
+    var inp = document.getElementById('setSearch');
+    var res = document.getElementById('setResults');
+    if (inp && res) {
+      var ROWS = [];
+      document.querySelectorAll('#setView .sp .setting-row[data-s]').forEach(function (r) {
+        ROWS.push({ sp: r.closest('.sp').id.replace('sp-', ''), t: r.getAttribute('data-s'), el: r });
+      });
+      inp.addEventListener('input', function () {
+        var q = inp.value.trim();
+        if (q.length < 2) { res.style.display = 'none'; return; }
+        var hits = ROWS.filter(function (r) { return r.t.indexOf(q) >= 0; }).slice(0, 8);
+        res.innerHTML = hits.length ? hits.map(function (r, i) {
+          var spTitle = (document.getElementById('sp-' + r.sp) || { getAttribute: function () { return ''; } }).getAttribute('data-title');
+          return '<button data-i="' + i + '">' + escapeHtml(r.t.slice(0, 40)) + '<small>' + spTitle + '</small></button>';
+        }).join('') : '<button disabled style="color:var(--muted);">چیزی پیدا نشد</button>';
+        res.style.display = 'block';
+        res.querySelectorAll('button[data-i]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var hit = hits[parseInt(b.getAttribute('data-i'), 10)];
+            res.style.display = 'none'; inp.value = '';
+            openSettingsPanel(hit.sp, hit.t.slice(0, 12));
+          });
+        });
+      });
+    }
+    // چک آپدیت
+    var ub = document.getElementById('btnUpdateCheck');
+    if (ub) ub.addEventListener('click', function () {
+      var st = document.getElementById('updateStatus');
+      if (st) st.textContent = '⏳ در حال بررسی…';
+      var done = function (msg) { if (st) st.textContent = msg; };
+      var URL = 'https://api.github.com/repos/msmarbabi/balochistan-nama/releases/latest';
+      try {
+        if (window.NativeApp && NativeApp.httpGet) {
+          var id = 'upd' + Date.now();
+          window.__httpCbs = window.__httpCbs || {};
+          window.__httpCbs[id] = { res: function (txt) { try { handle(JSON.parse(txt)); } catch (e) { done('✗ پاسخ نامعتبر'); } }, rej: function () { done('✗ اتصال برقرار نشد'); } };
+          NativeApp.httpGet(URL, id);
+          setTimeout(function () { if (window.__httpCbs[id]) { delete window.__httpCbs[id]; done('✗ تایم‌اوت'); } }, 30000);
+        } else {
+          fetch(URL).then(function (r) { return r.json(); }).then(handle).catch(function () { done('✗ اتصال برقرار نشد'); });
+        }
+      } catch (e) { done('✗ خطا'); }
+      function handle(j) {
+        var tag = (j && j.tag_name) || '';
+        if (!tag) { done('✗ نسخه‌ای یافت نشد'); return; }
+        var local = 16;
+        var m = String(tag).match(/(\d+)\.(\d+)/);
+        var remote = m ? parseInt(m[1], 10) * 100 + parseInt(m[2], 10) : 0;
+        if (remote > local * 100) {
+          done('🎉 نسخه جدید ' + tag + ' موجود است — از گیت‌هاب دانلود کن');
+        } else {
+          done('✓ برنامه به‌روز است (' + tag + ')');
+        }
+      }
+    });
+  }
+
   function openSettings() {
     settingsSnapshot = JSON.parse(JSON.stringify(settings));
     var m = document.getElementById('modalSettings');
     m.classList.add('show');
+    // v1.16: همیشه از صفحه اصلی شروع کن
+    var sh = document.getElementById('setHome'), sv = document.getElementById('setView');
+    if (sh && sv) { sh.hidden = false; sv.hidden = true; }
+    wireSettingsNav();
     setVal('setTheme', settings.theme);
     // v1.13: منوی انتخاب درجا (bottom sheet) به‌جای select بومی — منو دیگر کل صفحه را نمی‌گیرد
     if (window.BXSheet) {
