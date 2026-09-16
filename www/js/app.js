@@ -1870,6 +1870,63 @@
       silMin.addEventListener('change', function () { settings.athanSilentMin = parseInt(silMin.value, 10) || 0; saveSettings(); });
     }
     // ===== v1.16: دانلود اوقات از سرور =====
+    // ===== v1.16 مرحله ۱۲: کتابخانه اذکار =====
+    (function () {
+      var modal = document.getElementById('modalAdhkar');
+      var tabsEl = document.getElementById('akTabs');
+      var body = document.getElementById('akBody');
+      var cur = 'sobh';
+      function esc3(x) { return window.BXUtils && BXUtils.escapeHtml ? BXUtils.escapeHtml(String(x == null ? '' : x)) : String(x); }
+      function renderTabs() {
+        tabsEl.innerHTML = BXAdhkar.CATS.map(function (c) {
+          return '<button class="btn btn--ghost' + (c.id === cur ? ' active' : '') + '" data-ak="' + c.id + '" style="font-size:12px;padding:4px 10px;">' + c.t + '</button>';
+        }).join('') + '<button class="btn btn--ghost" data-ak="ikhlas" style="font-size:12px;padding:4px 10px;">✨ اخلاص در نماز</button>';
+        tabsEl.querySelectorAll('[data-ak]').forEach(function (b) {
+          b.addEventListener('click', function () { cur = b.getAttribute('data-ak'); renderTabs(); renderBody(); });
+        });
+      }
+      function renderBody() {
+        if (cur === 'ikhlas') {
+          body.innerHTML = BXAdhkar.IKHLAS.items.map(function (it, i) {
+            return '<div class="ls-step open"><div class="ls-step__head"><div class="ls-step__num">' + (i + 1) + '</div><div class="ls-step__t">' + esc3(it.t) + '</div></div><div class="ls-step__body" style="display:block;"><div class="ls-step__fa">' + esc3(it.fa) + '</div></div></div>';
+          }).join('');
+          return;
+        }
+        var cat = BXAdhkar.CATS.find(function (c) { return c.id === cur; });
+        if (!cat) return;
+        body.innerHTML = cat.items.map(function (it, i) {
+          return '<div class="ls-step" style="display:block;">' +
+            '<div style="padding:12px;">' +
+            '<div class="ls-step__ar" dir="rtl" style="font-size:16px;line-height:2.2;margin-bottom:6px;">' + esc3(it.ar) + '</div>' +
+            '<div class="ls-step__fa" style="margin-bottom:8px;">' + esc3(it.fa) + '</div>' +
+            '<div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;">' +
+            '<span class="pill" style="font-size:11px;">' + (window.BXUtils && BXUtils.toFaDigits ? BXUtils.toFaDigits(String(it.n || 1)) : (it.n || 1)) + '×</span>' +
+            '<button class="btn btn--ghost" data-akplay="' + i + '" style="padding:3px 10px;font-size:12px;">🔊 صوت</button>' +
+            '</div></div></div>';
+        }).join('');
+        body.querySelectorAll('[data-akplay]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var it = cat.items[parseInt(b.getAttribute('data-akplay'), 10)];
+            try {
+              if ('speechSynthesis' in window) {
+                var u = new SpeechSynthesisUtterance(it.ar);
+                u.lang = 'ar-SA'; u.rate = 0.8;
+                window.speechSynthesis.cancel();
+                window.speechSynthesis.speak(u);
+                b.textContent = '⏳…';
+                u.onend = function () { b.textContent = '🔊 صوت'; };
+              } else toast('پخش صوت در دسترس نیست');
+            } catch (e) { toast('خطا'); }
+          });
+        });
+      }
+      var btn = document.getElementById('btnAdhkar');
+      if (btn) btn.addEventListener('click', function () { renderTabs(); renderBody(); modal.classList.add('show'); });
+      var cl = document.getElementById('akClose');
+      if (cl) cl.addEventListener('click', function () { modal.classList.remove('show'); });
+      if (modal) modal.addEventListener('click', function (ev) { if (ev.target === modal) modal.classList.remove('show'); });
+    })();
+
     // ===== v1.16 مرحله ۱۱: مودال آموزش نماز و وضو =====
     (function () {
       var modal = document.getElementById('modalLessons');
