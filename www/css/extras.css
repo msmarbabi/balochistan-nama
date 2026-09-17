@@ -307,6 +307,15 @@
 }
 @keyframes sheetUp { from { transform: translateY(60%); opacity: .4; } to { transform: translateY(0); opacity: 1; } }
 .tb-chip--add { border-style: dashed; opacity: .75; }
+/* v1.16-fix: چیپ ذکر دلخواه — نقطه طلایی = ویرایش/حذف با نگه‌داشتن */
+.tb-chip--custom { position: relative; padding-right: 22px; }
+.tb-chip--custom.active { padding-right: 22px; }
+.tb-chip__dot {
+  position: absolute; top: 50%; right: 9px; transform: translateY(-50%);
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 5px var(--accent);
+}
+.tb-chip--custom.active .tb-chip__dot { background: #fff; box-shadow: 0 0 5px #fff; }
 
 .tour-overlay {
   position: fixed; inset: 0; z-index: 300;
@@ -326,4 +335,95 @@
   outline-offset: 2px;
   border-radius: 12px;
   position: relative;
+}
+
+/* ===== v1.16: ساعت — زمینه بنفش پررنگ + عقربه‌های طلایی + ثانیه سبز ===== */
+.analog {
+  background: radial-gradient(circle at 35% 30%, #8B5CF6 0%, #7C3AED 42%, #5B21B6 100%) !important;
+  box-shadow:
+    0 8px 24px var(--shadow),
+    inset 0 0 0 2px #C4B5FD,
+    inset 0 0 0 6px #5B21B6,
+    inset 0 0 0 7px #4C1D95 !important;
+}
+.analog__tick { background: rgba(255,255,255,.5) !important; opacity: 1 !important; }
+.analog__tick--major { background: #fff !important; }
+.analog__number { color: #fff !important; font-weight: 800; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+.analog__hand--hour { background: #F5C542 !important; }
+.analog__hand--min { background: #F5C542 !important; }
+.analog__hand--sec { background: #22C55E !important; }
+.analog__hand--sec::after { background: #22C55E !important; }
+.analog__hand--sec::before { border-color: #22C55E !important; }
+.analog__center { background: #F5C542 !important; box-shadow: 0 0 8px rgba(245,197,66,.75) !important; }
+
+/* ===== v1.16: قطب‌نمای سه‌بعدی استایل iOS (canvas) ===== */
+.compass-stage {
+  display:flex; justify-content:center; align-items:center;
+  height: 340px; perspective: 1100px;
+}
+.compass-3d {
+  position:relative; width:300px; height:300px;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.compass-canvas {
+  position:absolute; inset:0; width:100%; height:100%;
+  filter: drop-shadow(0 10px 20px rgba(0,0,0,.5));
+}
+.compass-index {
+  position:absolute; top:0; left:50%; transform:translateX(-50%);
+  width:0; height:0; border-left:10px solid transparent; border-right:10px solid transparent;
+  border-top:14px solid #E8C877; z-index:2;
+}
+.compass-center-readout {
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; pointer-events:none; z-index:1;
+}
+.compass-readout__deg {
+  font-size:42px; font-weight:800; color:#E8C877;
+  text-shadow:0 2px 8px rgba(0,0,0,.5);
+  font-variant-numeric: tabular-nums;
+}
+.compass-readout__lbl {
+  font-size:12px; color:#9AB3D4; margin-top:2px;
+}
+.compass-distance {
+  text-align:center; margin-top:8px; font-size:12px; color:#9AB3D4;
+}
+/* دکمه‌های کالیبره/آفست */
+.compass-controls { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; justify-content:center; }
+.compass-controls button {
+  background:rgba(230,190,90,.08); border:1px solid rgba(230,190,90,.25);
+  color:#E8C877; padding:8px 14px; border-radius:10px; font-size:13px; cursor:pointer;
+}
+.compass-controls button:active { background:rgba(230,190,90,.2); }
+
+/* ===== v1.16: شمارش معکوس مناسبت‌های قمری ===== */
+.countdown-list {
+  display:flex; flex-direction:column; gap:6px; margin-top:8px;
+}
+.countdown-list__item {
+  display:flex; justify-content:space-between; align-items:center;
+  background:rgba(230,190,90,.06); border:1px solid rgba(230,190,90,.15);
+  border-radius:12px; padding:10px 14px; font-size:13px; color:#9AB3D4;
+}
+.countdown-list__item b {
+  color:#E8C877; font-size:14px; font-weight:700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== v1.16: فلپ‌کلاک — زمینه بنفش پررنگ + اعداد طلایی ===== */
+.flip-digit {
+  background: radial-gradient(circle at 30% 20%, #8B5CF6 0%, #7C3AED 45%, #4C1D95 100%) !important;
+  color: #F5C542 !important;
+  border: 1px solid #C4B5FD !important;
+  box-shadow: 0 3px 10px rgba(91,33,182,.55), inset 0 1px 0 rgba(255,255,255,.15) !important;
+}
+.flip-digit::after {
+  background: rgba(0,0,0,.35) !important;
+  box-shadow: 0 -1px 0 rgba(255,255,255,.1) !important;
+}
+.flip-clock__sep {
+  color: #F5C542 !important;
+  text-shadow: 0 0 8px rgba(245,197,66,.5);
 }

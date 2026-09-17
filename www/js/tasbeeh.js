@@ -126,7 +126,7 @@
     return '<div class="tb-cmodal" id="tbCustomModal">' +
       '<div class="tb-cmodal__card">' +
         '<div style="font-weight:700; margin-bottom:10px;">ذکر دلخواه</div>' +
-        '<input class="input" id="tbZName" placeholder="نام ذکر (مثلاً: یا زهرا)" style="width:100%; margin-bottom:8px;">' +
+        '<input class="input" id="tbZName" placeholder="نام ذکر (مثلاً: یا الله)" style="width:100%; margin-bottom:8px;">' +
         '<input class="input" id="tbZText" placeholder="متن ذکر برای شمارش صوتی (کوتاه بنویس)" style="width:100%; margin-bottom:8px;">' +
         '<input class="input" id="tbZTarget" type="number" min="0" placeholder="هدف (مثلاً ۱۰۰ — خالی = بی‌نهایت)" style="width:100%; margin-bottom:10px;">' +
         '<div style="display:flex; gap:8px;">' +
@@ -174,14 +174,31 @@
     });
   }
 
-  function openCustomModal() {
+  function openCustomModal(editId) {
     var m = document.getElementById('tbCustomModal');
     if (!m) return;
-    document.getElementById('tbZName').value = '';
-    document.getElementById('tbZText').value = '';
-    document.getElementById('tbZTarget').value = '';
     var sv = document.getElementById('tbZSave');
-    if (sv) delete sv.dataset.editing;
+    var title = m.querySelector('.tb-cmodal__card > div:first-child');
+    if (editId) {
+      var c = loadCustom().find(function (x) { return x.id === editId; });
+      if (!c) { editId = 0; }
+      else {
+        document.getElementById('tbZName').value = c.name;
+        document.getElementById('tbZText').value = c.text || '';
+        document.getElementById('tbZTarget').value = c.target || '';
+      }
+      sv.dataset.editing = editId || '';
+      if (title) title.textContent = '✏️ ویرایش ذکر';
+      if (sv) sv.textContent = 'ذخیره تغییرات';
+      if (typeof App !== 'undefined' && App.toast) App.toast('نگه‌داشتنِ ذکر دیگر را بردار — اینجا ویرایش می‌کنی 🗑 حذف‌شده‌ها از لیست پایین');
+    } else {
+      document.getElementById('tbZName').value = '';
+      document.getElementById('tbZText').value = '';
+      document.getElementById('tbZTarget').value = '';
+      delete sv.dataset.editing;
+      if (title) title.textContent = 'ذکر دلخواه';
+      if (sv) sv.textContent = 'ذخیره';
+    }
     renderCustomList();
     m.classList.add('show');
   }
@@ -394,8 +411,8 @@
   function voiceVib(pattern) {
     var vib = document.getElementById('tbVib');
     if (vib && vib.dataset.on === '0') return;
-    if (navigator.vibrate) { try { navigator.vibrate(pattern || 25); } catch (e) {} }
-    else if (typeof NativeApp !== 'undefined' && NativeApp.vibrate) { try { NativeApp.vibrate(60); } catch (e) {} }
+    if (typeof NativeApp !== 'undefined' && NativeApp.vibrate) { try { NativeApp.vibrate(pattern || 25); } catch (e) {} }
+    else if (navigator.vibrate) { try { navigator.vibrate(pattern || 25); } catch (e) {} }
   }
 
   function syncTbDisplay(o) {
@@ -568,8 +585,10 @@
     var LIST = allDhikr();
     var chips = '';
     for (var i = 0; i < LIST.length; i++) {
-      chips += '<button class="tb-chip' + (i === current ? ' active' : '') + '" data-i="' + i + '">' +
-        escapeHtml(LIST[i].name) + '</button>';
+      var isCustom = !!LIST[i].custom;
+      chips += '<button class="tb-chip' + (i === current ? ' active' : '') + (isCustom ? ' tb-chip--custom' : '') + '" data-i="' + i + '"' +
+        (isCustom ? ' data-c="' + LIST[i].id + '"' : '') + '>' +
+        escapeHtml(LIST[i].name) + (isCustom ? '<span class="tb-chip__dot"></span>' : '') + '</button>';
     }
     chips += '<button class="tb-chip tb-chip--add" id="tbAddZekr" title="افزودن ذکر دلخواه">＋ ذکر</button>';
 
@@ -622,6 +641,20 @@
         current = parseInt(c.dataset.i, 10);
         render();
       });
+      // long-press فقط روی ذکرهای دلخواه → ویرایش/حذف
+      if (c.dataset.c) {
+        var lpT = null, lpDone = false;
+        c.addEventListener('touchstart', function () {
+          lpDone = false;
+          lpT = setTimeout(function () { lpDone = true; openCustomModal(c.dataset.c); }, 500);
+        }, { passive: true });
+        c.addEventListener('touchend', function () { clearTimeout(lpT); if (lpDone) { lpDone = false; } }, { passive: true });
+        c.addEventListener('touchmove', function () { clearTimeout(lpT); }, { passive: true });
+        c.addEventListener('contextmenu', function (e) {
+          if (navigator.userAgent.indexOf('Mobile') > 0) { e.preventDefault(); openCustomModal(c.dataset.c); }
+        });
+        c.setAttribute('title', 'نگه دار: ویرایش/حذف این ذکر');
+      }
     });
     var tap = document.getElementById('tbTap');
     if (tap) tap.addEventListener('click', onTap);
@@ -672,12 +705,16 @@
     if (streakEl) streakEl.textContent = s.streak;
     // haptic
     var vib = document.getElementById('tbVib');
-    if (vib && vib.dataset.on !== '0' && navigator.vibrate) navigator.vibrate(25);
+    if (vib && vib.dataset.on !== '0') {
+      if (typeof NativeApp !== 'undefined' && NativeApp.vibrate) { try { NativeApp.vibrate(25); } catch (e) {} }
+      else if (navigator.vibrate) navigator.vibrate(25);
+    }
     // pop animation
     if (cEl) { cEl.classList.remove('pop'); void cEl.offsetWidth; cEl.classList.add('pop'); }
     // target reached
     if (dh.target && count >= dh.target) {
-      if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
+      if (typeof NativeApp !== 'undefined' && NativeApp.vibrate) { try { NativeApp.vibrate(140); } catch (e) {} }
+      else if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
       if (typeof App !== 'undefined' && App.toast) App.toast('✅ ' + dh.name + ' تکمیل شد');
     }
   }

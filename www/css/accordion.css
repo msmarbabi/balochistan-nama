@@ -11,7 +11,25 @@
   max-height: 0; overflow: hidden; transition: max-height .3s ease, padding .3s ease;
   padding: 0 14px; font-size: 13px; line-height: 1.9; color: var(--muted);
 }
-.acc.open .acc__body { max-height: 600px; padding: 4px 14px 12px; }
+.acc.open .acc__body { max-height: none; padding: 12px 16px 18px; }
+/* کارت‌های مجزا در تمام بخش‌های فرهنگ، از جمله فتاوا */
+.culture-content .acc {
+  margin: 12px 0; border-radius: 16px;
+  background: var(--card); border: 1px solid var(--border);
+  box-shadow: 0 2px 7px rgba(0,0,0,.09);
+}
+.culture-content .acc__head { min-height: 56px; gap: 12px; padding: 16px; }
+.culture-content .acc__title {
+  min-width: 0; flex: 1; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.culture-content .acc__chev { flex: 0 0 auto; }
+.culture-content .acc.open .acc__head { border-bottom: 1px solid var(--border); }
+.culture-content .acc__body { overflow-wrap: anywhere; white-space: pre-line; }
+.rooze-item__q { color: var(--fg); }
+.rooze-item__q p, .rooze-item__a p { margin: 8px 0; }
+.rooze-item__a { border-top: 1px solid var(--border); margin-top: 16px; padding-top: 14px; }
+.culture-content .acc__head:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
 .acc.open .acc__chev { transform: rotate(180deg); }
 .acc.open { border-color: var(--accent); }
 .acc__head:active { background: rgba(127,127,127,.08); }

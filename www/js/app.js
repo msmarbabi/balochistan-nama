@@ -1043,7 +1043,7 @@
         
         '<button class="culture-tab' + (cultureTab === 'rooze' ? ' active' : '') + '" data-tab="rooze">☪️ روزه</button>' +
         '<button class="culture-tab' + (cultureTab === 'fatwa' ? ' active' : '') + '" data-tab="fatwa">⚖️ فتاوا</button>' +
-        '<button class="culture-tab' + (cultureTab === 'quiz' ? ' active' : '') + '" data-tab="quiz">🧠 آزمون</button>' +
+
       '</div>';
     
     var contentHtml = '';
@@ -1060,7 +1060,7 @@
     } else if (cultureTab === 'fatwa') {
       contentHtml = '<div id="fatwaTab"></div>'; // v1.16: کتاب فتاوا
     } else if (cultureTab === 'quiz') {
-      contentHtml = renderQuizContent();
+      contentHtml = '<div class="text-muted" style="padding:16px;">آزمون موقتاً غیرفعال است.</div>';
     }
     
     container.innerHTML = tabsHtml + '<div class="culture-content">' + dailyHtml + contentHtml + '</div>';
@@ -1075,9 +1075,7 @@
     });
     
     // Wire quiz interactions
-    if (cultureTab === 'quiz') {
-      wireQuizEvents();
-    }
+
     // Wire poem share buttons
     container.querySelectorAll('.poem-share').forEach(function(btn) {
       btn.addEventListener('click', function() {
@@ -1229,7 +1227,7 @@
             '<span class="acc__title">' + escapeHtml(fact.title) + '</span>' +
             '<span class="acc__chev">▾</span>' +
           '</button>' +
-          '<div class="acc__body">' + escapeHtml(fact.text) + '</div>' +
+          '<div class="acc__body">' + escapeHtml(String(fact.text || '').trim() || fact.body || '') + '</div>' +
         '</div>';
     }
     return html;
@@ -1291,13 +1289,23 @@
     var html = '';
     for (var i = 0; i < filtered.length; i++) {
       var item = filtered[i];
+      // v1.16-fix: هدر = خلاصه یک‌خطی (برش در مرز کلمه/جمله) + بدنه = سؤال کامل و پاسخ کامل
+      var qFull = String(item.q || '').trim();
+      var qShort = qFull;
+      if (qShort.length > 72) {
+        var cut = qShort.slice(0, 72);
+        var sp = cut.lastIndexOf(' ');
+        if (sp > 30) cut = cut.slice(0, sp);
+        qShort = cut + '…';
+      }
       html +=
         '<div class="acc" id="accR' + item.n + '">' +
           '<button class="acc__head" type="button" onclick="BXAccordion.toggleR(' + item.n + ')">' +
-            '<span class="acc__title">❓ ' + escapeHtml(item.q.length > 90 ? item.q.slice(0, 90) + '…' : item.q) + '</span>' +
+            '<span class="acc__title">❓ ' + escapeHtml(qShort) + '</span>' +
             '<span class="acc__chev">▾</span>' +
           '</button>' +
-          '<div class="acc__body"><div class="rooze-item__a">✅ ' + escapeHtml(item.a) + '</div></div>' +
+          '<div class="acc__body"><div class="rooze-item__q"><strong>سؤال کامل</strong><p>' + escapeHtml(item.q) + '</p></div>' +
+          '<div class="rooze-item__a"><strong>پاسخ</strong><p>' + escapeHtml(item.a || 'پاسخ این مورد در متن استخراج‌شده ناقص است؛ نیاز به تطبیق با منبع دارد.') + '</p></div></div>' +
         '</div>';
     }
     el.innerHTML = html;
@@ -2658,3 +2666,49 @@
     init();
   }
 })(typeof window !== 'undefined' ? window : this);
+
+
+/* v1.16: شمارش معکوس مناسبت‌های قمری (عاشورا/مبعث/فطر/قربان) */
+(function(){
+  function qamariOccasions(){
+    var body=el('calCountdown'); if(!body) return;
+    var C=(global.Cal||{});
+    if(!C.hijriToGreg || !C.gregToHijri){ body.innerHTML=''; return; }
+    var evs=[
+      {label:'🔥 عاشورا (۱۰ محرم)', m:1, d:10},
+      {label:'✨ مبعث (۲۷ رجب)', m:7, d:27},
+      {label:'🕌 عید فطر (۱ شوال)', m:9, d:1},
+      {label:'🐑 عید قربان (۱۰ ذی‌الحجه)', m:12, d:10}
+    ];
+    var now=new Date(); now.setHours(0,0,0,0);
+    // سال قمری جاری از امروز
+    var hj=C.gregToHijri(now.getFullYear(),now.getMonth()+1,now.getDate());
+    var hy=hj.hy;
+    var rows=[];
+    evs.forEach(function(ev){
+      // امتحان سال جاری و بعدی
+      for(var k=0;k<2;k++){
+        var cand=(ev.m===1&&ev.d===10)?hy+k:hy+k;
+        try{
+          var g=C.hijriToGreg(cand,ev.m,ev.d);
+          var dt=new Date(g.gy,g.gm-1,g.gd);
+          if(dt>=now){ rows.push({ev:ev,dt:dt,hy:cand}); break; }
+        }catch(e){}
+      }
+    });
+    rows.sort(function(a,b){return a.dt-b.dt;});
+    rows=rows.slice(0,4);
+    var html='';
+    rows.forEach(function(r){
+      var ms=r.dt-now;
+      var d=Math.floor(ms/86400000);
+      html+='<div class="countdown-list__item"><span>'+r.ev.label+'</span><b>'+d+' روز دیگر</b></div>';
+    });
+    if(!rows.length) html='<div class="countdown-list__item"><span>مناسبت‌های قمری</span><b>—</b></div>';
+    body.innerHTML=html;
+    // بروزرسانی روزانه
+    setInterval(function(){ qamariOccasions(); }, 3600000);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',qamariOccasions);
+  else qamariOccasions();
+})();

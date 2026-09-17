@@ -23,6 +23,12 @@ public class MainActivity extends BridgeActivity {
     private int tasbihErrStreak = 0;
     private final android.os.Handler tasbihHandler = new android.os.Handler(android.os.Looper.getMainLooper());
 
+    // ===== v1.16: سنسور قطب‌نما (rotation vector → azimuth/pitch/roll) =====
+    private volatile boolean sensorsRunning = false;
+    private android.hardware.SensorEventListener sensorListener = null;
+    private android.hardware.Sensor sensorRotVector = null;
+    private final android.os.Handler sensorHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+
     private void tasbihJs(final String script) {
         try {
             runOnUiThread(new Runnable() { public void run() {
@@ -70,17 +76,27 @@ public class MainActivity extends BridgeActivity {
                     }
                     if (tasbihVoiceActive) tasbihHandler.postDelayed(new Runnable() { public void run() { if (tasbihVoiceActive) tasbihCreateAndListen(); } }, 150);
                 }
-                @Override public void onPartialResults(android.os.Bundle b) {}
+                @Override public void onPartialResults(android.os.Bundle b) {
+                    java.util.ArrayList<String> al = b == null ? null : b.getStringArrayList(android.speech.SpeechRecognizer.RESULTS_RECOGNITION);
+                    if (al != null && !al.isEmpty()) {
+                        try {
+                            org.json.JSONArray ja = new org.json.JSONArray();
+                            for (String s2 : al) ja.put(s2);
+                            tasbihJs("window.__tasbihHeard&&window.__tasbihHeard(" + ja.toString() + ")");
+                        } catch (Exception ig) {}
+                    }
+                }
                 @Override public void onEvent(int a, android.os.Bundle b) {}
             });
             android.content.Intent ii = new android.content.Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
             ii.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
             ii.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, "fa-IR");
             ii.putExtra(android.speech.RecognizerIntent.EXTRA_MAX_RESULTS, 3);
-            ii.putExtra(android.speech.RecognizerIntent.EXTRA_PARTIAL_RESULTS, false);
+            ii.putExtra(android.speech.RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
             ii.putExtra(android.speech.RecognizerIntent.EXTRA_CALLING_PACKAGE, getPackageName());
-            if (android.os.Build.VERSION.SDK_INT >= 23) {
-                ii.putExtra(android.speech.RecognizerIntent.EXTRA_PREFER_OFFLINE, true);
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                // ترجیح دادن زبان فارسی به موتور (API 33+)
+                ii.putExtra(android.speech.RecognizerIntent.EXTRA_BIASING_STRINGS, new String[]{ "سبحان الله", "الحمد لله", "الله اکبر", "لا حول" });
             }
             tasbihSr.startListening(ii);
         } catch (Exception e) {
@@ -287,6 +303,19 @@ public class MainActivity extends BridgeActivity {
                 getBridge().getWebView().addJavascriptInterface(new Object() {
                     @JavascriptInterface
                     public void setStatusBar(String color) {}
+                    @JavascriptInterface
+                    public void vibrate(long ms) {
+                        try {
+                            android.os.Vibrator v = (android.os.Vibrator) getSystemService(VIBRATOR_SERVICE);
+                            if (v == null) return;
+                            long m = ms > 0 ? ms : 40;
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                v.vibrate(android.os.VibrationEffect.createOneShot(m, android.os.VibrationEffect.DEFAULT_AMPLITUDE));
+                            } else {
+                                v.vibrate(m);
+                            }
+                        } catch (Exception e) { }
+                    }
                     @JavascriptInterface
                     public void httpGet(String url, final String reqId) {
                         // v1.16: GET عمومی با callback به window.__httpResult(reqId, ok, data)
@@ -516,6 +545,51 @@ public class MainActivity extends BridgeActivity {
                     public void calibrate() {}
                     @JavascriptInterface
                     public void rescheduleAlarms() {}
+                    @JavascriptInterface
+                    public boolean startSensors() {
+                        try {
+                            final android.hardware.SensorManager sm =
+                                (android.hardware.SensorManager) getSystemService(android.content.Context.SENSOR_SERVICE);
+                            if (sm == null) return false;
+                            stopSensors();
+                            sensorRotVector = sm.getDefaultSensor(android.hardware.Sensor.TYPE_ROTATION_VECTOR);
+                            if (sensorRotVector == null) return false;
+                            sensorsRunning = true;
+                            sensorListener = new android.hardware.SensorEventListener() {
+                                @Override public void onSensorChanged(android.hardware.SensorEvent e) {
+                                    if (!sensorsRunning) return;
+                                    float[] R = new float[9];
+                                    android.hardware.SensorManager.getRotationMatrixFromVector(R, e.values);
+                                    float[] o = new float[3];
+                                    android.hardware.SensorManager.getOrientation(R, o);
+                                    float az = -o[0] * 180f / (float)Math.PI;
+                                    if (az < 0) az += 360f;
+                                    if (az >= 360f) az -= 360f;
+                                    final float fp = o[1] * 180f / (float)Math.PI;
+                                    final float fr = o[2] * 180f / (float)Math.PI;
+                                    final String js = "window.__onSensorUpdate&&window.__onSensorUpdate("
+                                        + (int)java.lang.Math.round(az) + "," + (int)java.lang.Math.round(fp) + "," + (int)java.lang.Math.round(fr) + ")";
+                                    sensorHandler.post(new Runnable() {
+                                        @Override public void run() {
+                                            try { getBridge().getWebView().evaluateJavascript(js, null); } catch (Exception ig) {}
+                                        }
+                                    });
+                                }
+                                @Override public void onAccuracyChanged(android.hardware.Sensor s, int a) {}
+                            };
+                            sm.registerListener(sensorListener, sensorRotVector, android.hardware.SensorManager.SENSOR_DELAY_UI);
+                            return true;
+                        } catch (Exception e) { return false; }
+                    }
+                    @JavascriptInterface
+                    public void stopSensors() {
+                        try {
+                            sensorsRunning = false;
+                            android.hardware.SensorManager sm =
+                                (android.hardware.SensorManager) getSystemService(android.content.Context.SENSOR_SERVICE);
+                            if (sm != null && sensorListener != null) sm.unregisterListener(sensorListener);
+                        } catch (Exception e) {}
+                    }
                 }, "NativeApp");
             }
         }

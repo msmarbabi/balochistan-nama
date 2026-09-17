@@ -1,338 +1,186 @@
-/* ============================================================
-   Balochistan Nama - Compass module (compass.js)
-   Reads device orientation (via DeviceOrientationEvent or native
-   sensor bridge NativeApp.getRotation()) and animates a 3D compass
-   with cyberpunk variant, plus a pilot HUD with bank/pitch.
-   ============================================================ */
+/* بلوچستان نما — قطب‌نما v1.16: canvas استایل iOS + نشانگر قبله + خم‌شدن سه‌بعدی واقعی با سنسور */
+(function(global){
+'use strict';
+var KEY='blx_compass_offset';
+var offset=parseInt(localStorage.getItem(KEY)||'0',10)||0;
+var heading=0;        // زاویه‌ی دستگاه از شمال ساعت‌شیفته (0-359)
+var qibla=0;          // جهت قبله از شمال (جغرافیایی)
+var pitch=0, roll=0; // خم‌شدن (درجه) برای حالت سه‌بعدی
+var sensorLive=false;
+var running=false;
+var rafId=0;
+var demoAngle=0;
 
-(function (global) {
-  'use strict';
+function el(id){ return document.getElementById(id); }
+function norm360(a){ a=a%360; if(a<0)a+=360; return a; }
+function diff(a,b){ var d=((b-a)%360+360)%360; return d>180? d-360 : d; }
 
-  var state = {
-    azimuth: 0,         // degrees from north
-    pitch: 0,           // degrees (positive = phone tilted up)
-    roll: 0,            // degrees (positive = tilt right)
-    qiblaBearing: 0,    // degrees from north to Kaaba
-    lastAzUpdate: 0,
-    active: false
-  };
+function draw(){
+  var c=el('compassCanvas'); if(!c) return;
+  var dpr=global.devicePixelRatio||1;
+  var w=c.clientWidth||280, h=c.clientHeight||280;
+  var W=Math.round(w*dpr), H=Math.round(h*dpr);
+  if(c.width!==W||c.height!==H){ c.width=W; c.height=H; }
+  var ctx=c.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h);
+  var cx=w/2, cy=h/2;
+  var R=Math.min(w,h)/2-10;
 
-  function start() {
-    state.active = true;
-    buildPitchLadder();
-    buildHeadingTape();
-    // v1.14: قبله همیشه از مختصات فعلی تنظیمات — با هر تغییر شهر خودکار به‌روز می‌شود
-    try {
-      var st = JSON.parse(localStorage.getItem('blx_nama_settings') || '{}');
-      if (st.lat && st.lng && typeof Prayer !== 'undefined' && Prayer.qiblaBearing) {
-        setQibla(Prayer.qiblaBearing(st.lat, st.lng));
-      }
-    } catch (e) {}
-    updateHud();
-    // Try native sensor bridge first (Android sensors)
-    if (typeof NativeApp !== 'undefined' && NativeApp.startSensors) {
-      NativeApp.startSensors();
-      return;
-    }
-    // Fallback: web DeviceOrientationEvent (iOS/Android Chrome with permission)
-    if (typeof DeviceOrientationEvent !== 'undefined') {
-      // iOS 13+ requires permission
-      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-        DeviceOrientationEvent.requestPermission().then(function (state) {
-          if (state === 'granted') {
-            window.addEventListener('deviceorientation', onDeviceOrientation, true);
-            window.addEventListener('compassneedscalibration', function () {
-              if (window.App) App.toast('کالیبره کردن قطب‌نما لازم است');
-            });
-          }
-        }).catch(function () {});
-      } else {
-        // Android Chrome - directly listen (note: alpha = compass heading when provided)
-        window.addEventListener('deviceorientationabsolute', onDeviceOrientationAbsolute, true);
-        window.addEventListener('deviceorientation', onDeviceOrientation, true);
-      }
-    }
-    // Fallback auto-rotate (so compass always visually animates)
-    if (!state.nativeSensors) autoRotateDemo();
-  }
+  // رینگ — چرخش‌شان با «جهت» = جهت دستگاه + ۱۸۰ (همان منطق iOS/کلاسیک)
+  var ringRot = -norm360(heading + 180);
 
-  function stop() {
-    state.active = false;
-    if (typeof NativeApp !== 'undefined' && NativeApp.stopSensors) NativeApp.stopSensors();
-    window.removeEventListener('deviceorientation', onDeviceOrientation, true);
-    window.removeEventListener('deviceorientationabsolute', onDeviceOrientationAbsolute, true);
-  }
+  // پس‌زمینهٔ گرادیانی رینگ
+  var g=ctx.createRadialGradient(cx,cy,R*0.45,cx,cy,R);
+  g.addColorStop(0,'rgba(255,255,255,.02)');
+  g.addColorStop(1,'rgba(255,255,255,.06)');
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2);
+  ctx.fillStyle=g; ctx.fill();
 
-  function onDeviceOrientation(ev) {
-    // alpha = compass heading (rotation around Z axis)
-    // 0 = device pointing north
-    if (ev.alpha != null) {
-      var az = 360 - ev.alpha;
-      // On iOS, webkitCompassHeading is already correct
-      if (typeof ev.webkitCompassHeading === 'number') {
-        az = ev.webkitCompassHeading;
-      }
-      setAzimuth(az);
-    }
-    if (ev.beta != null) state.pitch = ev.beta;
-    if (ev.gamma != null) state.roll = ev.gamma;
-    updateHud();
-  }
-  function onDeviceOrientationAbsolute(ev) {
-    if (ev.alpha != null) {
-      var az = 360 - ev.alpha;
-      setAzimuth(az);
-    }
-    if (ev.beta != null) state.pitch = ev.beta;
-    if (ev.gamma != null) state.roll = ev.gamma;
-    updateHud();
-  }
+  // حلقه‌ی باریک طلایی
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2);
+  ctx.strokeStyle='rgba(230,190,90,.45)'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx,cy,R-14,0,Math.PI*2);
+  ctx.strokeStyle='rgba(230,190,90,.18)'; ctx.lineWidth=1; ctx.stroke();
 
-  // Called from native sensor bridge (Android, throttled ~10Hz)
-  global.__onSensorUpdate = function (azimuth, pitch, roll) {
-    state.nativeSensors = true;
-    setAzimuth(azimuth);
-    state.pitch = pitch || 0;
-    state.roll = roll || 0;
-    updateHud();
-  };
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.rotate(ringRot*Math.PI/180);
 
-  function setAzimuth(az) {
-    if (typeof az !== 'number' || isNaN(az)) return;
-    state.azimuth = az;
-    // throttle DOM updates to ~60fps
-    var now = Date.now();
-    if (now - state.lastAzUpdate < 50) return;
-    state.lastAzUpdate = now;
-    updateCompassRing();
-  }
-
-  // v1.14: آفست دستی قطب‌نما — بادقلو و دکمه‌های میکرو (±۱°) برای جبران انحراف سنسور
-  function resetOffset() {
-    state.manualOffset = 0;
-    updateCompassRing();
-    return state.manualOffset;
-  }
-  function adjustOffset(deg) {
-    state.manualOffset = ((state.manualOffset || 0) + deg + 360) % 360;
-    updateCompassRing();
-    return state.manualOffset;
-  }
-  function getOffset() { return state.manualOffset || 0; }
-
-  function updateCompassRing() {
-    // The compass ring should rotate so that the actual North points "up" when the phone is aligned.
-    // If the phone is rotated by `az` degrees clockwise (from north), we want the N label to appear
-    // at angle `az` clockwise from top. So we rotate the ring by -az (counter-clockwise) which puts
-    // the physical North at the top.
-    var az = (state.azimuth + (state.manualOffset || 0)) % 360; // v1.14: اعمال آفست دستی
-    var ring = document.getElementById('compassRing');
-    var needle = document.getElementById('compassNeedle');
-    if (ring) {
-      ring.style.setProperty('--ring-rot', (-az) + 'deg');
-    }
-    // The qibla indicator should rotate (within the ring) to point to qibla direction relative to north
-    var qibla = document.getElementById('compassQibla');
-    if (qibla) {
-      // qibla-rot is relative to ring orientation; since ring rotates by -az, we add az
-      qibla.style.setProperty('--qibla-rot', (state.qiblaBearing + az) + 'deg');
-    }
-    var degEl = document.getElementById('compassDeg');
-    if (degEl) degEl.textContent = Math.round(state.azimuth) + '°';
-    var info = document.getElementById('compassQiblaInfo');
-    if (info && window.Prayer) {
-      var dist = Prayer.qiblaDistance(App.getSettings().lat || 26.84, App.getSettings().lng || 60.17);
-      info.textContent = 'سمت قبله: ' + Math.round(state.qiblaBearing) + '° • فاصله: ' + dist + ' کیلومتر';
+  // ۷۲ خط تیک (هر ۵ درجه)
+  for(var a=0;a<360;a+=5){
+    var major=(a%30===0);
+    var ang=a*Math.PI/180;
+    var r1=R-8, r2=major? R-22 : R-14;
+    ctx.beginPath();
+    ctx.moveTo(Math.sin(ang)*r1, -Math.cos(ang)*r1);
+    ctx.lineTo(Math.sin(ang)*r2, -Math.cos(ang)*r2);
+    ctx.lineWidth=major?2.5:1;
+    ctx.strokeStyle= major ? '#E8C877' : 'rgba(163,177,210,.4)';
+    ctx.stroke();
+    // آرایهٔ درجه برای تیک‌های اصلی
+    if(major && a%30!==0){
+      ctx.font='10px "Vazirmatn", sans-serif';
+      ctx.fillStyle='rgba(163,177,210,.7)';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(String(a), Math.sin(ang)*(R-32), -Math.cos(ang)*(R-32));
     }
   }
-
-  // Build pitch ladder rows once (every 10°, from -40 to +40)
-  var pitchLadderBuilt = false;
-  function buildPitchLadder() {
-    var el = document.getElementById('hudPitchLadder');
-    if (!el || pitchLadderBuilt) return;
-    pitchLadderBuilt = true;
-    el.innerHTML = '';
-    var pxPerDeg = 4; // 4px per degree of pitch
-    for (var deg = -40; deg <= 40; deg += 10) {
-      if (deg === 0) continue;
-      var row = document.createElement('div');
-      row.className = 'hud-pitch-ladder__row' + (deg < 0 ? ' hud-pitch-ladder__row--neg' : '');
-      var isBig = (deg % 20 === 0);
-      var barW = isBig ? '90px' : '40px';
-      row.innerHTML = '<span class="hud-pitch-ladder__num">' + Math.abs(deg) + '</span>' +
-        '<span class="hud-pitch-ladder__bar" style="width:' + barW + ';"></span>' +
-        '<span class="hud-pitch-ladder__num">' + Math.abs(deg) + '</span>';
-      row.style.transform = 'translateY(' + (deg * pxPerDeg) + 'px)';
-      row.dataset.deg = deg;
-      el.appendChild(row);
-    }
+  // حروف N/E/S/W
+  var dirs=[['N','#E8C877',0],['E','#9AB3D4',90],['S','#9AB3D4',180],['W','#9AB3D4',270]];
+  for(var i=0;i<dirs.length;i++){
+    var nm=dirs[i][0], col=dirs[i][1], da=dirs[i][2];
+    var dang=da*Math.PI/180;
+    ctx.font='bold 26px "Vazirmatn", sans-serif';
+    ctx.fillStyle=col; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(nm, Math.sin(dang)*(R-48), -Math.cos(dang)*(R-48));
   }
+  ctx.restore();
 
-  // Build heading tape ticks (every 5°, labeled every 15°)
-  var headingTapeBuilt = false;
-  function buildHeadingTape() {
-    var el = document.getElementById('hudHeadingTape');
-    if (!el || headingTapeBuilt) return;
-    headingTapeBuilt = true;
-    el.innerHTML = '';
-    for (var d = 0; d < 360; d += 5) {
-      var tick = document.createElement('span');
-      tick.className = 'hud-heading-tape__tick' + (d % 15 === 0 ? ' hud-heading-tape__tick--big' : '');
-      tick.dataset.deg = d;
-      tick.style.left = (d * (el.clientWidth / 360)) + 'px';
-      tick.textContent = (d % 15 === 0) ? String(d).padStart(3, '0') : '';
-      el.appendChild(tick);
-    }
+  // نشانگر قبله — ثابت نسبت به دستگاه (با خم‌شدن نمی‌چرخد)، فقط با qibla+heading
+  var qAng = norm360(qibla - heading - 180) + 180; // جهت نمایشی قبله روی رینگ
+  // در واقع: موقعیت قبله روی رینگ چرخان = qibla - ringRot
+  var qPos = norm360(qibla + 180 - (heading+180)); // = norm360(qibla - heading)
+  var qa=qPos*Math.PI/180;
+  var qx=Math.sin(qa)*R, qy=-Math.cos(qa)*R;
+  // دایرهٔ کوچک + ستاره/نشانگر بنفش با «قبله»
+  ctx.save();
+  ctx.translate(qx,qy);
+  ctx.beginPath(); ctx.arc(0,0,13,0,Math.PI*2);
+  ctx.fillStyle='rgba(124,58,237,.25)'; ctx.fill();
+  ctx.strokeStyle='#7C3AED'; ctx.lineWidth=2; ctx.stroke();
+  ctx.fillStyle='#A78BFA';
+  ctx.font='bold 11px "Vazirmatn", sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('قبله', 0, 0);
+  ctx.restore();
+
+  // مرکز — نشانه‌گر بالا (نشانگر ثابت بالای صفحه، مثل iOS)
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.beginPath();
+  ctx.moveTo(0,-(R-10));
+  ctx.lineTo(-7,-(R-26));
+  ctx.lineTo(7,-(R-26));
+  ctx.closePath();
+  ctx.fillStyle='#E8C877';
+  ctx.shadowColor='rgba(0,0,0,.5)'; ctx.shadowBlur=4;
+  ctx.fill();
+  ctx.restore();
+
+  // خوانش
+  var degEl=el('compassDeg');
+  if(degEl) degEl.textContent = String(Math.round(norm360(heading)) % 360).replace(/^(\d)$/,'0$1')+'°';
+  // زوایای قبله
+  var diffQ = norm360(qibla - heading);
+  var infoEl=el('compassQiblaInfo');
+  if(infoEl){
+    var dist = (global.Prayer && window.Prayer.distanceFromQibla) ?
+      Math.round(window.Prayer.distanceFromQibla()) : null;
+    infoEl.textContent='سمت قبله: '+Math.round(norm360(qibla))+'° • فاصله تا قبله: '+(diffQ<180?'سایر':'در حال دور شدن')+' • '+ (diffQ<=90? 'بازگردید ' : 'بچرخید ') + Math.round(diffQ)+'°';
+    if(dist!==null) infoEl.textContent += ' • '+dist+' کیلومتر';
   }
+}
 
-  function updateHud() {
-    var horizon = document.getElementById('hudHorizon');
-    var heading = document.getElementById('hudHeading');
-    var bank = document.getElementById('hudBank');
-    var pitchEl = document.getElementById('hudPitch');
-    var pitchMark = document.getElementById('hudPitchMark');
-    var bankInd = document.getElementById('hudBankIndicator');
-    if (horizon) {
-      // pitch moves the horizon (px per degree), roll rotates it
-      horizon.style.setProperty('--pitch', (state.pitch * 4) + 'px');
-      horizon.style.setProperty('--roll', (-state.roll) + 'deg');
-      // pitch ladder rows move opposite to horizon
-      var rows = horizon.querySelectorAll('.hud-pitch-ladder__row');
-      for (var i = 0; i < rows.length; i++) {
-        var deg = parseInt(rows[i].dataset.deg, 10);
-        rows[i].style.transform = 'translateY(' + ((deg - state.pitch) * 4) + 'px)';
-      }
-    }
-    if (heading) heading.textContent = Math.round(state.azimuth) + '°';
-    if (bank) bank.textContent = 'بانک: ' + Math.round(state.roll) + '°';
-    if (pitchEl) pitchEl.textContent = 'شیب: ' + Math.round(state.pitch) + '°';
-    if (pitchMark) pitchMark.textContent = Math.round(state.pitch) + '°';
-    // Bank indicator moves with roll (clamped to ±45°)
-    if (bankInd) {
-      var r = Math.max(-45, Math.min(45, state.roll));
-      bankInd.style.transform = 'translateX(-50%) translateX(' + (r * 1.3) + 'px)';
-    }
-    // Heading tape scrolls (center = current heading)
-    var tape = document.getElementById('hudHeadingTape');
-    if (tape) {
-      buildHeadingTape();
-      var half = tape.clientWidth / 2;
-      var ticks = tape.querySelectorAll('.hud-heading-tape__tick');
-      for (var j = 0; j < ticks.length; j++) {
-        var dd = parseInt(ticks[j].dataset.deg, 10);
-        var delta = ((dd - state.azimuth + 540) % 360) - 180; // -180..180
-        ticks[j].style.left = (half + delta * (tape.clientWidth / 360)) + 'px';
-        ticks[j].style.opacity = (Math.abs(delta) > 90) ? '0' : '1';
-      }
-    }
-    // v1.13: سرعت/ارتفاع «شبیه‌سازی‌شده» حذف شد — اعداد الکی نباشند.
-    // جایگزین: قبله روی HUD — فلش سبز جهت کعبه نسبت به سمت فعلی گوشی
-    var qiblaEl = document.getElementById('hudQibla');
-    var qiblaTapeEl = document.getElementById('hudQiblaTape');
-    if (qiblaEl) {
-      if (state.qiblaBearing != null) {
-        var dQ = ((state.qiblaBearing - state.azimuth + 540) % 360) - 180; // -180..180
-        var clamped = Math.max(-90, Math.min(90, dQ));
-        qiblaEl.style.transform = 'translateX(-50%) translateX(' + (clamped * 1.05) + 'px)';
-        qiblaEl.style.opacity = (Math.abs(dQ) > 100) ? '0' : '1';
-        qiblaEl.title = 'قبله ' + Math.round(state.qiblaBearing) + '°';
-      } else { qiblaEl.style.opacity = '0'; }
-    }
-    if (qiblaTapeEl) {
-      qiblaTapeEl.textContent = (state.qiblaBearing != null) ? ('قبله: ' + Math.round(state.qiblaBearing) + '°') : '';
-    }
+function tick(){
+  if(!running) return;
+  // وقتی سنسور واقعی فعال باشد، heading/pitch/roll از __onSensorUpdate می‌آیند
+  // و هیچ مقداردهی خودکار/دمویی نداریم (رفع باگ چرخش خودکار ۰→۳۵۰)
+  applyTilt();
+  draw();
+  rafId=requestAnimationFrame(tick);
+}
+function applyTilt(){
+  var c3d=el('compass3d');
+  if(c3d){
+    // خم‌شدن سه‌بعدی: pitch (جلو/عقب) → rotateX ، roll (چپ/راست) → rotateZ
+    c3d.style.transform='perspective(900px) rotateX('+ (20-pitch*0.6) +'deg) rotateZ('+(roll*0.25)+'deg)';
+    c3d.style.transition='transform .15s ease-out';
   }
+}
+function setHeading(raw){
+  heading=norm360(raw+offset);
+  sensorLive=true;
+}
+// callback native (MainActivity startSensors)
+global.__onSensorUpdate=function(az, p, rl){
+  setHeading(az);
+  pitch=p||0; roll=rl||0;
+};
+// fallback: deviceorientation (روی Web)
+function onOrient(e){
+  if(e.alpha===null) return;
+  var az=360-e.alpha;
+  setHeading(az);
+  pitch=e.beta||0; roll=e.gamma||0;
+}
+global.addEventListener('deviceorientation', onOrient, true);
+global.addEventListener('deviceorientationabsolute', onOrient, true);
 
-  function setQibla(bearing) {
-    state.qiblaBearing = bearing;
-    updateCompassRing();
-    if (state.active) updateHud(); // v1.13: نشانگر قبله HUD بلافاصله آپدیت شود
-  }
-
-  var demoTimer = null;
-  function autoRotateDemo() {
-    var angle = 0;
-    demoTimer = setInterval(function () {
-      if (!state.active) { clearInterval(demoTimer); return; }
-      if (state.nativeSensors) { clearInterval(demoTimer); return; }
-      angle = (angle + 1.5) % 360;
-      setAzimuth(angle);
-    }, 60);
-  }
-
-  // ===== نقشه قبله (v1.9) =====
-  var KAABA = { lat: 21.4225, lng: 39.8262 };
-  var qiblaMapUrl = null;
-
-  function fmtKm(km) {
-    if (km >= 1000) return (km / 1000).toFixed(1) + ' هزار کیلومتر';
-    return Math.round(km) + ' کیلومتر';
-  }
-
-  function showQiblaMap() {
-    var modal = document.getElementById('modalQiblaMap');
-    var frame = document.getElementById('qiblaMapFrame');
-    var info = document.getElementById('qiblaMapInfo');
-    if (!modal || !frame || !info) return;
-    modal.classList.add('show');
-    var st = (typeof App !== 'undefined' && App.state) ? App.state : null;
-    var lat = (st && st.lat != null) ? st.lat : (st && st.settings && st.settings.lat);
-    var lng = (st && st.lng != null) ? st.lng : (st && st.settings && st.settings.lng);
-    if (lat == null || lng == null || (lat === 0 && lng === 0)) {
-      frame.style.display = 'none';
-      info.textContent = 'ابتدا موقعیت (GPS) را روشن کنید تا نقشه مسیر قبله نمایش داده شود.';
-      return;
+global.Compass={
+  start:function(){
+    running=true;
+    // پل native — سنسور واقعی (رفع باگ چرخش خودکار)
+    // وقتی پل native موجود است، heading/pitch فقط از __onSensorUpdate می‌آید
+    // (دیگر چرخش خودکار ۰→۳۵۰ نداریم)
+    if(typeof NativeApp!=='undefined' && NativeApp.startSensors){
+      try{ NativeApp.startSensors(); }catch(e){}
     }
-    frame.style.display = 'block';
-    qiblaMapUrl = 'https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=' +
-      lat + '%2C' + lng + ';' + KAABA.lat + '%2C' + KAABA.lng;
-    frame.src = 'about:blank';
-    setTimeout(function () { frame.src = qiblaMapUrl; }, 60);
-    // محاسبات
-    var R = 6371;
-    var dLat = (KAABA.lat - lat) * Math.PI / 180;
-    var dLng = (KAABA.lng - lng) * Math.PI / 180;
-    var a = Math.sin(dLat / 2) ** 2 + Math.cos(lat * Math.PI / 180) * Math.cos(KAABA.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-    var dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    var brg = state.qiblaBearing;
-    info.innerHTML = 'فاصله شما تا کعبه: <b>' + fmtKm(dist) + '</b><br>' +
-      'سمت قبله: <b>' + (brg != null ? Math.round(brg) + '°' : '--') + '</b> از شمال<br>' +
-      '<span style="opacity:.7">نقشه از OpenStreetMap بارگذاری می‌شود (نیاز اینترنت).</span>';
-  }
-
-  function hideQiblaMap() {
-    var modal = document.getElementById('modalQiblaMap');
-    if (modal) modal.classList.remove('show');
-    var frame = document.getElementById('qiblaMapFrame');
-    if (frame) frame.src = 'about:blank';
-  }
-
-  function bindQiblaMap() {
-    var btn = document.getElementById('qiblaMapBtn');
-    if (btn && !btn._bound) { btn.addEventListener('click', showQiblaMap); btn._bound = true; }
-    var close = document.getElementById('qiblaMapClose');
-    if (close && !close._bound) { close.addEventListener('click', hideQiblaMap); close._bound = true; }
-    var ext = document.getElementById('qiblaMapOpenExternal');
-    if (ext && !ext._bound) {
-      ext.addEventListener('click', function () {
-        if (!qiblaMapUrl) return;
-        if (typeof NativeApp !== 'undefined' && NativeApp.openUrl) { try { NativeApp.openUrl(qiblaMapUrl); return; } catch (e) {} }
-        window.open(qiblaMapUrl, '_blank');
-      });
-      ext._bound = true;
-    }
-    var backdrop = document.getElementById('modalQiblaMap');
-    if (backdrop && !backdrop._bound) {
-      backdrop.addEventListener('click', function (ev) { if (ev.target === backdrop) hideQiblaMap(); });
-      backdrop._bound = true;
-    }
-  }
-
-  var Compass = {
-    start: start, stop: stop, setQibla: setQibla, state: state,
-    resetOffset: resetOffset, adjustOffset: adjustOffset, getOffset: getOffset,
-    showQiblaMap: showQiblaMap, hideQiblaMap: hideQiblaMap, bindQiblaMap: bindQiblaMap
-  };
-  if (typeof window !== 'undefined') window.Compass = Compass;
-})(typeof window !== 'undefined' ? window : this);
+    if(!rafId) rafId=requestAnimationFrame(tick);
+  },
+  stop:function(){
+    running=false;
+    if(rafId){ cancelAnimationFrame(rafId); rafId=0; }
+    if(typeof NativeApp!=='undefined' && NativeApp.stopSensors){ try{ NativeApp.stopSensors(); }catch(e){} }
+  },
+  setQibla:function(deg){ qibla=norm360(deg); },
+  get heading(){ return Math.round(norm360(heading))%360; },
+  get qibla(){ return qibla; },
+  sensorLive:function(){ return sensorLive; },
+  resetOffset:function(){ offset=0; localStorage.removeItem(KEY); },
+  adjustOffset:function(d){ offset=norm360(offset+d); localStorage.setItem(KEY,String(offset)); },
+  _getOffset:function(){ return offset; },
+  _applyTilt: applyTilt,
+  _tick: tick
+};
+})(window);

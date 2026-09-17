@@ -1566,3 +1566,38 @@ html[data-season="winter"] .season-scene span {
 
 /* رفع تداخل hidden با display کلاس‌ها */
 [hidden] { display: none !important; }
+
+/* ===== v1.16-fix: اسکرول مودال تنظیمات ===== */
+/* ریشه‌ی باگ: .modal ارتفاع نامحدود + overflow:hidden → محتوا بریده می‌شد و اسکرول نبود */
+#modalSettings .modal {
+  display: flex; flex-direction: column;
+  max-height: 88vh;
+  overflow: hidden;
+}
+/* خانهٔ تنظیمات: خودش اسکرول می‌شود */
+#modalSettings .set-home {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+/* پنل‌ها: خودِ set-view اسکرول می‌شود (هدر sticky بالا می‌ماند، بدنه و فوتر باهاش می‌روند) */
+#modalSettings .set-view {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: block;                       /* reset زنجیره‌ی flex تودرتو */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+#modalSettings .set-view__head {
+  position: sticky; top: 0; z-index: 3; /* هدر ثابت در ابتدای اسکرول */
+}
+/* بدنهٔ پنل نباید دوباره اسکرول کند یا ارتفاعش را کلاپ کند (inline 64vh را خنثی کن) */
+#modalSettings .set-view__body {
+  max-height: none !important;
+  overflow: visible !important;
+}
+#modalSettings .set-view[hidden],
+#modalSettings .set-home[hidden] { display: none !important; }
