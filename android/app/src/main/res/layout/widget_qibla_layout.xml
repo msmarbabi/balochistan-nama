@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="#1a1a2e"
+    android:padding="12dp" android:gravity="center">
+
+    <TextView android:id="@+id/qlLabel"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="قبله" android:textColor="#ffd166"
+        android:textSize="12sp" android:gravity="center" />
+
+    <TextView android:id="@+id/qlDegree"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="—" android:textColor="#ffffff"
+        android:textSize="30sp" android:textStyle="bold" android:gravity="center"
+        android:layout_marginTop="2dp" />
+
+    <TextView android:id="@+id/qlDesc"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="" android:textColor="#7ee0a3"
+        android:textSize="11sp" android:gravity="center" />
+</LinearLayout>

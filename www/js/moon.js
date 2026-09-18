@@ -49,6 +49,17 @@
     var info = 'ماه قمریِ امروز: ' + (window.Cal && Cal.toFaDigits ? Cal.toFaDigits(String(Math.round((today.getDate() + 29.53 * 0.0))) ) : '') + '\n';
     info += newM ? '🌑 ماه نو بعدی: ' + fmt(newM) + '\n' : '';
     info += fullM ? '🌕 ماه کامل بعدی: ' + fmt(fullM) : '';
+    // نمایش هلال ماه — اگر روشنایی < ۲۰٪، هلال است
+    if (moon.illum < 20 && moon.illum > 0) {
+      info += '\n🌙 ' + (moon.phase < 0.5 ? 'هلال ماه رو به پُرشدن (هلال امسی) — رؤیت در غروب' : 'هلال ماه رو به خالی شدن (هلال صبحگاهی) — رؤیت در آسمان صبح');
+    } else if (moon.illum === 0) {
+      info += '\n🌑 ماه نو — زمان رؤیت هلال جدید';
+    }
+    // تنظیم تطبیق رؤیت
+    try {
+      var adj = parseInt(localStorage.getItem('blx_moon_adj') || '0', 10);
+      if (adj !== 0) info += '\n⚙️ تطبیق رؤیت: ' + (adj > 0 ? '+' : '') + adj + ' روز (تنظیم در بخش قمری)';
+    } catch(e){}
     setText('moonInfo', info);
   }
 

@@ -225,6 +225,21 @@ public class MainActivity extends BridgeActivity {
                         WeatherWidgetProvider.pushUpdate(MainActivity.this, mgr, data);
                         NextPrayerWidgetProvider.pushUpdate(MainActivity.this, mgr, data);
                         TasbihWidgetProvider.pushUpdate(MainActivity.this, mgr, data);
+                        // v1.16: ویجت‌های جدید — مناسبت/قبله/ذکر
+                        android.content.SharedPreferences sp = getSharedPreferences("WidgetPrefs", MODE_PRIVATE);
+                        android.content.SharedPreferences.Editor ed = sp.edit();
+                        if (data.has("eventTitle")) ed.putString("widget_event_title", data.optString("eventTitle"));
+                        if (data.has("eventIcon")) ed.putString("widget_event_icon", data.optString("eventIcon"));
+                        if (data.has("eventName")) ed.putString("widget_event_name", data.optString("eventName"));
+                        if (data.has("eventDetail")) ed.putString("widget_event_detail", data.optString("eventDetail"));
+                        if (data.has("qiblaDegree")) ed.putString("widget_qibla_degree", data.optString("qiblaDegree"));
+                        if (data.has("qiblaDesc")) ed.putString("widget_qibla_desc", data.optString("qiblaDesc"));
+                        if (data.has("dhikrText")) ed.putString("widget_dhikr_text", data.optString("dhikrText"));
+                        if (data.has("dhikrTarget")) ed.putInt("widget_dhikr_target", data.optInt("dhikrTarget", 100));
+                        ed.apply();
+                        try { EventWidgetProvider.pushUpdate(MainActivity.this, mgr); } catch (Exception e) {}
+                        try { QiblaWidgetProvider.pushUpdate(MainActivity.this, mgr); } catch (Exception e) {}
+                        try { DhikrWidgetProvider.pushUpdate(MainActivity.this, mgr); } catch (Exception e) {}
                     } catch (Exception e) { }
                 }
 

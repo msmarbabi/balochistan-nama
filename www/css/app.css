@@ -1304,6 +1304,42 @@ html[data-season="winter"] .season-scene span {
 .quick-action:hover { background: var(--accent-soft); color: var(--accent-deep); }
 .quick-action__icon { font-size: 22px; margin-bottom: 4px; display: block; color: var(--accent); }
 
+/* Quran audio */
+.quran-audio {
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 10px;
+}
+.quran-audio__reciters, .quran-audio__juz {
+  display: flex; flex-direction: column;
+}
+.quran-audio__juzlist {
+  display: flex; gap: 4px; flex-wrap: wrap;
+}
+.quran-audio__juzlist button {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 2px solid var(--line);
+  background: var(--bg);
+  color: var(--fg);
+  font-weight: 700; font-size: 12px;
+  cursor: pointer;
+}
+.quran-audio__juzlist button.quran-audio__juzsel {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.quran-audio__controls button {
+  flex: 1; padding: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg-elev);
+  color: var(--fg);
+  font-size: 14px;
+  cursor: pointer;
+}
+
 /* ---------- Loading spinner ---------- */
 .spinner {
   width: 32px; height: 32px;

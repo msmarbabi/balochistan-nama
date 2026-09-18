@@ -7,11 +7,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <title>بلوچستان نما</title>
-  <link rel="stylesheet" href="css/app.css?v=172">
-  <link rel="stylesheet" href="css/extras.css?v=172">
-  <link rel="stylesheet" href="css/sheet.css?v=172">
-  <link rel="stylesheet" href="css/settings.css?v=172">
-  <link rel="stylesheet" href="css/accordion.css?v=172">
+  <link rel="stylesheet" href="css/app.css?v=173">
+  <link rel="stylesheet" href="css/extras.css?v=173">
+  <link rel="stylesheet" href="css/sheet.css?v=173">
+  <link rel="stylesheet" href="css/settings.css?v=173">
+  <link rel="stylesheet" href="css/accordion.css?v=173">
 </head>
 <body>
   <div class="season-scene" id="seasonScene"></div>
@@ -130,6 +130,22 @@
           <button class="quick-action" data-action="tools">
             <span class="quick-action__icon">🛠️</span>
             <span data-i18n="quick.tools">ابزار</span>
+          </button>
+          <button class="quick-action" data-action="nextPrayer">
+            <span class="quick-action__icon">🕌</span>
+            <span data-i18n="quick.nextPrayer">نماز بعدی</span>
+          </button>
+          <button class="quick-action" data-action="tasbih">
+            <span class="quick-action__icon">📿</span>
+            <span data-i18n="quick.tasbih">تسبیح</span>
+          </button>
+          <button class="quick-action" data-action="adhkar">
+            <span class="quick-action__icon">📿</span>
+            <span data-i18n="quick.adhkar">اذکار</span>
+          </button>
+          <button class="quick-action" data-action="events">
+            <span class="quick-action__icon">🎉</span>
+            <span data-i18n="quick.events">مناسبت‌ها</span>
           </button>
           <button class="quick-action" data-action="share">
             <span class="quick-action__icon">📤</span>
@@ -728,7 +744,9 @@
         <button class="btn btn--ghost" id="akClose" style="margin-inline-start:auto;">✕</button>
       </div>
       <div style="display:flex;gap:6px;padding:0 12px 8px;flex-wrap:wrap;" id="akTabs"></div>
-      <div class="modal__body" style="overflow:auto;flex:1;"><div id="akBody"></div></div>
+      <div class="modal__body" style="overflow:auto;flex:1;"><div id="akBody"></div>
+        <div id="quranAudioRoot" style="padding:12px;border-top:1px solid var(--line);margin-top:12px;"></div>
+      </div>
     </div>
   </div>
 
@@ -743,6 +761,8 @@
         <button class="btn btn--ghost ls-tab" data-ls="wudu" style="flex:1;">💧 وضو</button>
         <button class="btn btn--ghost ls-tab" data-ls="salat" style="flex:1;">🕌 نماز</button>
         <button class="btn btn--ghost ls-tab" data-ls="rakat" style="flex:1;">📊 رکعت‌ها</button>
+        <button class="btn btn--ghost ls-tab" data-ls="nafl" style="flex:1;">🌙 نافل</button>
+        <button class="btn btn--ghost ls-tab" data-ls="wuduInv" style="flex:1;">⚠️ نواقض</button>
       </div>
       <div class="modal__body" style="overflow:auto;flex:1;">
         <div id="lsBody"></div>
@@ -1053,6 +1073,18 @@
           </div>
           <div class="toggle on" id="setSeasonFx"></div>
         </div>
+        <div class="setting-row" data-s="کیفیت بازتولید بر اساس توان دستگاه">
+          <div>
+            <div class="setting-row__label">کیفیت بازتولید</div>
+            <div class="setting-row__desc">بر اساس توان دستگاه تنظیم شود</div>
+          </div>
+          <select id="setRenderQuality" style="min-width:80px;">
+            <option value="low">کم</option>
+            <option value="medium">متوسط</option>
+            <option value="high" selected>زیبا</option>
+            <option value="auto">خودکار</option>
+          </select>
+        </div>
         <div class="setting-row" data-s="ساعت تابستانه (DST) افزودن ۱ ساعت به ساعت رسمی در صورت نیاز ">
           <div>
             <div class="setting-row__label">ساعت تابستانه (DST)</div>
@@ -1307,45 +1339,47 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/utils.js?v=172"></script>
-  <script src="js/backup.js?v=172"></script>
-  <script src="js/actionsheet.js?v=172"></script>
-  <script src="js/cal.js?v=172"></script>
-  <script src="js/events.js?v=172"></script>
-  <script src="js/culture_extra.js?v=172"></script>
-  <script src="js/baloch.js?v=172"></script>
-  <script src="js/prayertimes.js?v=172"></script>
-  <script src="js/athan.js?v=172"></script>
-  <script src="js/notes.js?v=172"></script>
-  <script src="js/weather.js?v=172"></script>
-  <script src="js/compass.js?v=172"></script>
-  <script src="js/streak.js?v=172"></script>
-  <script src="js/ramadan.js?v=172"></script>
-  <script src="js/clock.js?v=172"></script>
-  <script src="js/app.js?v=172"></script>
-  <script src="js/tasbeeh.js?v=172"></script>
-  <script src="js/tools.js?v=172"></script>
-  <script src="js/athan_player.js?v=172"></script>
-  <script src="js/personalevents.js?v=172"></script>
-  <script src="js/learn.js?v=172"></script>
-  <script src="js/fatwa.js?v=172"></script>
-  <script src="js/ayat_day.js?v=172"></script>
-  <script src="js/ayat.js?v=172"></script>
-  <script src="js/pt_server.js?v=172"></script>
-  <script src="js/athans_catalog.js?v=172"></script>
-  <script src="js/adhkar_lib.js?v=172"></script>
-  <script src="js/lessons.js?v=172"></script>
-  <script src="js/monthtable.js?v=172"></script>
-  <script src="js/ics.js?v=172"></script>
-  <script src="js/stats.js?v=172"></script>
+  <script src="js/utils.js?v=175"></script>
+  <script src="js/backup.js?v=175"></script>
+  <script src="js/actionsheet.js?v=175"></script>
+  <script src="js/cal.js?v=175"></script>
+  <script src="js/events.js?v=175"></script>
+  <script src="js/culture_extra.js?v=175"></script>
+  <script src="js/baloch.js?v=175"></script>
+  <script src="js/prayertimes.js?v=175"></script>
+  <script src="js/athan.js?v=175"></script>
+  <script src="js/notes.js?v=175"></script>
+  <script src="js/season_fx.js?v=175"></script>
+  <script src="js/quran_audio.js?v=175"></script>
+  <script src="js/weather.js?v=173"></script>
+  <script src="js/compass.js?v=173"></script>
+  <script src="js/streak.js?v=173"></script>
+  <script src="js/ramadan.js?v=173"></script>
+  <script src="js/clock.js?v=173"></script>
+  <script src="js/app.js?v=173"></script>
+  <script src="js/tasbeeh.js?v=173"></script>
+  <script src="js/tools.js?v=173"></script>
+  <script src="js/athan_player.js?v=173"></script>
+  <script src="js/personalevents.js?v=173"></script>
+  <script src="js/learn.js?v=173"></script>
+  <script src="js/fatwa.js?v=173"></script>
+  <script src="js/ayat_day.js?v=173"></script>
+  <script src="js/ayat.js?v=173"></script>
+  <script src="js/pt_server.js?v=173"></script>
+  <script src="js/athans_catalog.js?v=173"></script>
+  <script src="js/adhkar_lib.js?v=173"></script>
+  <script src="js/lessons.js?v=173"></script>
+  <script src="js/monthtable.js?v=173"></script>
+  <script src="js/ics.js?v=173"></script>
+  <script src="js/stats.js?v=173"></script>
   <script>
     // init یادداشت یک‌بار در startup — تا دکمه + از صفحه خانه هم کار کند
     document.addEventListener('DOMContentLoaded', function () {
       try { if (window.Notes) Notes.init(); } catch (e) {}
     });
   </script>
-  <script src="js/notify.js?v=172"></script>
-  <script src="js/i18n.js?v=172"></script>
-  <script src="js/extensions.js?v=172"></script>
+  <script src="js/notify.js?v=173"></script>
+  <script src="js/i18n.js?v=173"></script>
+  <script src="js/extensions.js?v=173"></script>
 </body>
 </html>

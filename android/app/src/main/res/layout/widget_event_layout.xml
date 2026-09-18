@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="#141b2e"
+    android:padding="14dp" android:gravity="center">
+
+    <TextView android:id="@+id/evTitle"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="مناسبت امروز" android:textColor="#ffd166"
+        android:textSize="13sp" android:textStyle="bold" android:gravity="center" />
+
+    <TextView android:id="@+id/evIcon"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="🎉" android:textSize="28sp" android:gravity="center"
+        android:layout_marginTop="4dp" />
+
+    <TextView android:id="@+id/evName"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="—" android:textColor="#ffffff"
+        android:textSize="15sp" android:gravity="center" android:maxLines="2"
+        android:layout_marginTop="4dp" />
+
+    <TextView android:id="@+id/evDetail"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="" android:textColor="#8a8ab0"
+        android:textSize="11sp" android:gravity="center" />
+</LinearLayout>

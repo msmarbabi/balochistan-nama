@@ -855,6 +855,35 @@
         var _tomNames = _tomEvs.map(function (e) { return e.title; }).slice(0, 3).join('، ');
         data.eventToday = _todayNames;
         data.eventTomorrow = _tomNames;
+        // v1.16+: ویجت مناسبت روز — رویداد اصلی امروز
+        if (_todayEvs.length) {
+          var _mainEv = _todayEvs[0];
+          data.eventTitle = _mainEv.title || 'مناسبت امروز';
+          data.eventIcon = _mainEv.icon || '🎉';
+          data.eventName = _mainEv.title || '—';
+          data.eventDetail = _todayNames || '';
+        } else {
+          data.eventTitle = 'مناسبت امروز';
+          data.eventIcon = '🎉';
+          data.eventName = 'مناسبت خاصی نیست';
+          data.eventDetail = '';
+        }
+      } catch (e) { dbg(e); }
+      // v1.16+: ویجت قبله — زاویه قبله
+      try {
+        if (Prayer && Prayer.qiblaBearing && settings && settings.lat && settings.lng) {
+          var _qb = Math.round(Prayer.qiblaBearing(settings.lat, settings.lng));
+          data.qiblaDegree = _qb + '°';
+          var _dir = _qb < 45 ? 'شمال‌شرقی' : _qb < 90 ? 'شرقی' : _qb < 135 ? 'جنوب‌شرقی' : _qb < 180 ? 'جنوبی' : _qb < 225 ? 'جنوب‌غربی' : _qb < 270 ? 'غربی' : _qb < 315 ? 'شمال‌غربی' : 'شمالی';
+          data.qiblaDesc = 'جهت: ' + _dir;
+        }
+      } catch (e) { dbg(e); }
+      // v1.16+: ویجت ذکر دلخواه — متن ذکر فعلی تسبیح
+      try {
+        if (data.tasbih && data.tasbih.text) {
+          data.dhikrText = data.tasbih.text;
+          data.dhikrTarget = data.tasbih.target || 33;
+        }
       } catch (e) { dbg(e); }
       window.Filesystem.writeFile({
         path: 'widget_data.json',
@@ -1817,6 +1846,10 @@
     settings.dst = getToggle('setDst');
     settings.ramadanMode = getToggle('setRamadan');
     settings.autoNight = getToggle('setAutoNight');
+    // کیفیت بازتولید
+    var rq = document.getElementById('setRenderQuality');
+    settings.renderQuality = rq ? rq.value : 'high';
+    if (window.BXSeasonFx) BXSeasonFx.applyDeviceLevel(settings.renderQuality === 'auto' ? detectPerf() : settings.renderQuality);
     if (settings.autoNight) applyAutoNight();
     var asrSel = document.getElementById('setAsrMode');
     if (asrSel) settings.asrMode = asrSel.value;
@@ -2035,6 +2068,28 @@
       silMin.addEventListener('change', function () { settings.athanSilentMin = parseInt(silMin.value, 10) || 0; saveSettings(); });
     }
     // ===== v1.16: دانلود اوقات از سرور =====
+    // ===== v1.16: کیفیت بازتولید بر اساس دستگاه =====
+    function detectPerf() {
+      // تخمین سطح توان دستگاه با core count + حافظه + باتری
+      var cores = (navigator.hardwareConcurrency || 4);
+      var mem = (navigator.deviceMemory || 4);
+      var score = cores + (mem > 8 ? 2 : mem > 4 ? 1 : 0);
+      if (score >= 8) return 'high';
+      if (score >= 5) return 'medium';
+      return 'low';
+    }
+    var rqInit = document.getElementById('setRenderQuality');
+    if (rqInit) {
+      if (settings.renderQuality) rqInit.value = settings.renderQuality;
+      if (window.BXSeasonFx) {
+        BXSeasonFx.applyDeviceLevel(settings.renderQuality === 'auto' ? detectPerf() : (settings.renderQuality || 'high'));
+      }
+      rqInit.addEventListener('change', function () {
+        settings.renderQuality = rqInit.value;
+        saveSettings();
+        if (window.BXSeasonFx) BXSeasonFx.applyDeviceLevel(settings.renderQuality === 'auto' ? detectPerf() : settings.renderQuality);
+      });
+    }
     // ===== v1.16 مرحله ۱۲: کتابخانه اذکار =====
     (function () {
       var modal = document.getElementById('modalAdhkar');
@@ -2059,7 +2114,8 @@
         }
         var cat = BXAdhkar.CATS.find(function (c) { return c.id === cur; });
         if (!cat) return;
-        body.innerHTML = cat.items.map(function (it, i) {
+        var items = cat.items;
+        body.innerHTML = items.map(function (it, i) {
           return '<div class="ls-step" style="display:block;">' +
             '<div style="padding:12px;">' +
             '<div class="ls-step__ar" dir="rtl" style="font-size:16px;line-height:2.2;margin-bottom:6px;">' + esc3(it.ar) + '</div>' +
@@ -2068,7 +2124,55 @@
             '<span class="pill" style="font-size:11px;">' + (window.BXUtils && BXUtils.toFaDigits ? BXUtils.toFaDigits(String(it.n || 1)) : (it.n || 1)) + '×</span>' +
             '<button class="btn btn--ghost" data-akplay="' + i + '" style="padding:3px 10px;font-size:12px;">🔊 صوت</button>' +
             '</div></div></div>';
-        }).join('');
+        }).join('') +
+        '<div style="padding:12px;border-top:1px solid var(--line);margin-top:8px;">' +
+        '<button class="btn btn--primary" id="akChainBtn" style="width:100%;padding:10px;font-size:13px;">🎵 پخش زنجیره صوتی (خودکار + اسکرول)</button>' +
+        '<div class="text-small text-muted" style="margin-top:6px;font-size:10px;">پخش خودکار همهٔ ذکرهای این دسته با صدا و اسکرول خودکار</div>' +
+        '</div>';
+        // دکمه زنجیره
+      var chainBtn = document.getElementById('akChainBtn');
+      if (chainBtn) chainBtn.addEventListener('click', function () {
+        startVoiceChain(cat.items, body, chainBtn);
+      });
+
+      function startVoiceChain(items, container, btn) {
+        if (typeof startVoiceChain._running !== 'undefined' && startVoiceChain._running) return;
+        startVoiceChain._running = true;
+        btn.textContent = '⏹️ متوقف';
+        btn.dataset.chainPlaying = '1';
+        var idx = 0;
+        var cancel = false;
+        function step() {
+          if (cancel || idx >= items.length) {
+            if (!cancel) toast('✅ زنجیره کامل شد');
+            startVoiceChain._running = false;
+            btn.textContent = '🎵 پخش زنجیره صوتی (خودکار + اسکرول)';
+            delete btn.dataset.chainPlaying;
+            return;
+          }
+          var it = items[idx];
+          var el = body.children[idx];
+          if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if ('speechSynthesis' in window) {
+            var u = new SpeechSynthesisUtterance(it.ar);
+            u.lang = 'ar-SA'; u.rate = 0.85;
+            window.speechSynthesis.cancel();
+            u.onend = function () { idx++; setTimeout(step, 400); };
+            window.speechSynthesis.speak(u);
+          } else {
+            idx++; setTimeout(step, 600);
+          }
+        }
+        // توقف با کلیک دوباره
+        btn.onclick = function () {
+          cancel = true;
+          if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+          startVoiceChain._running = false;
+          delete btn.dataset.chainPlaying;
+          btn.textContent = '🎵 پخش زنجیره صوتی (خودکار + اسکرول)';
+        };
+        step();
+      }
         body.querySelectorAll('[data-akplay]').forEach(function (b) {
           b.addEventListener('click', function () {
             var it = cat.items[parseInt(b.getAttribute('data-akplay'), 10)];
@@ -2086,10 +2190,11 @@
         });
       }
       var btn = document.getElementById('btnAdhkar');
-      if (btn) btn.addEventListener('click', function () { renderTabs(); renderBody(); modal.classList.add('show'); });
+      if (btn) btn.addEventListener('click', function () { renderTabs(); renderBody(); renderQAudio(); modal.classList.add('show'); });
       var cl = document.getElementById('akClose');
-      if (cl) cl.addEventListener('click', function () { modal.classList.remove('show'); });
-      if (modal) modal.addEventListener('click', function (ev) { if (ev.target === modal) modal.classList.remove('show'); });
+      if (cl) cl.addEventListener('click', function () { modal.classList.remove('show'); if (window.BXQuranAudio) BXQuranAudio.pause(); });
+      if (modal) modal.addEventListener('click', function (ev) { if (ev.target === modal) { modal.classList.remove('show'); if (window.BXQuranAudio) BXQuranAudio.pause(); } });
+      function renderQAudio() { if (window.BXQuranAudio) BXQuranAudio.render(); }
     })();
 
     // ===== v1.16 مرحله ۱۱: مودال آموزش نماز و وضو =====
@@ -2108,9 +2213,24 @@
               '<div class="ls-step__body"><div class="ls-step__fa">' + esc2(r.fa) + '</div></div></div>';
           }).join('') +
           '<div class="text-small text-muted" style="padding:8px;"> تعداد رکعت‌های نماز اهل‌سنت حنفی. قنوت وتر و نوافل بیشتر در بخش ذکرها آمده است.</div>';
+        } else if (current === 'nafl') {
+          body.innerHTML = BXLessons.nafl.map(function (r, i) {
+            return '<div class="ls-step"><div class="ls-step__head"><div class="ls-step__num">' + (i + 1) + '</div>' +
+              '<div class="ls-step__t">' + esc2(r.t) + '</div></div>' +
+              '<div class="ls-step__body"><div class="ls-step__fa">' + esc2(r.fa) + '</div></div></div>';
+          }).join('');
+        } else if (current === 'wuduInv') {
+          body.innerHTML = BXLessons.wuduInvalidators.map(function (r, i) {
+            return '<div class="ls-step open"><div class="ls-step__head"><div class="ls-step__num" style="background:#ef4444;">⚠️</div>' +
+              '<div class="ls-step__t">' + esc2(r.t) + '</div></div>' +
+              '<div class="ls-step__body" style="display:block;"><div class="ls-step__fa">' + esc2(r.fa) + '</div></div></div>';
+          }).join('');
         } else {
           var src = current === 'wudu' ? BXLessons.wudu : BXLessons.salat;
-          body.innerHTML = src.map(function (st, i) {
+          var refImg = current === 'wudu' ? BXLessons.WUDU_IMG : BXLessons.SALAT_IMG;
+          var refCap = current === 'wudu' ? 'نمای کلی مراحل وضو' : 'نمای کلی احرام و احکام نماز';
+          body.innerHTML = (refImg ? '<div class="ls-step open" style="background:var(--accent);color:#fff;"><div class="ls-step__head" style="cursor:default;"><div class="ls-step__num" style="background:#fff;color:var(--accent);">🖼️</div><div class="ls-step__t">' + refCap + '</div></div><div class="ls-step__body" style="display:block;"><img src="' + refImg + '" alt="' + refCap + '" style="width:100%;border-radius:8px;max-height:420px;object-fit:cover;"/></div></div>' : '') +
+          src.map(function (st, i) {
             var svg = BXLessons.figure(st.svg, current === 'wudu' ? false : true);
             return '<div class="ls-step"><div class="ls-step__head" data-step="' + i + '">' +
               '<div class="ls-step__num">' + (i + 1) + '</div><div class="ls-step__t">' + esc2(st.t) + '</div>' +
@@ -2385,11 +2505,16 @@
     document.querySelectorAll('.quick-action').forEach(function (qa) {
       qa.addEventListener('click', function () {
         var a = qa.dataset.action;
-        if (a === 'qibla') go('prayer');
+        if (a === 'qibla') { go('prayer'); if (window.Compass && Compass.open) Compass.open(); }
         if (a === 'converter') openConverter(true);
         if (a === 'poetry') go('culture');
         if (a === 'moon') { if (window.Moon) Moon.open(); else showMoonPhase(); }
         if (a === 'share') { if (window.Tools) Tools.shareDateCard(); }
+        if (a === 'tools') { go('tools'); }
+        if (a === 'nextPrayer') { go('prayer'); }
+        if (a === 'tasbih') { go('tasbeeh'); }
+        if (a === 'adhkar') { var _m = document.getElementById('modalAdhkar'); if (_m) { _m.classList.add('show'); if (window.BXQuranAudio) BXQuranAudio.render(); } }
+        if (a === 'events') { go('calendar'); }
       });
     });
 
@@ -2668,7 +2793,7 @@
 })(typeof window !== 'undefined' ? window : this);
 
 
-/* v1.16: شمارش معکوس مناسبت‌های قمری (عاشورا/مبعث/فطر/قربان) */
+/* v1.16: شمارش معکوس مناسبت‌های قمری (عاشورا/مبعث/فطر/قربان) + رویدادهای شخصی — ساعت/دقیقه */
 (function(){
   function qamariOccasions(){
     var body=el('calCountdown'); if(!body) return;
@@ -2681,14 +2806,12 @@
       {label:'🐑 عید قربان (۱۰ ذی‌الحجه)', m:12, d:10}
     ];
     var now=new Date(); now.setHours(0,0,0,0);
-    // سال قمری جاری از امروز
     var hj=C.gregToHijri(now.getFullYear(),now.getMonth()+1,now.getDate());
     var hy=hj.hy;
     var rows=[];
     evs.forEach(function(ev){
-      // امتحان سال جاری و بعدی
       for(var k=0;k<2;k++){
-        var cand=(ev.m===1&&ev.d===10)?hy+k:hy+k;
+        var cand=hy+k;
         try{
           var g=C.hijriToGreg(cand,ev.m,ev.d);
           var dt=new Date(g.gy,g.gm-1,g.gd);
@@ -2696,18 +2819,52 @@
         }catch(e){}
       }
     });
+    // رویدادهای شخصی (تولد/سالگرد) — شمارش معکوس
+    var personal=[];
+    try{
+      var pe=JSON.parse(localStorage.getItem('blx_personal_events'))||[];
+      var today=new Date();
+      pe.forEach(function(p){
+        // رویداد بعدی (هجری یا شمسی)
+        var target=null;
+        if(p.jy!==undefined){
+          // شمسی — پیدا کردن سال جاری یا بعدی
+          var nowJ=C.gregToJalali(today.getFullYear(),today.getMonth()+1,today.getDate());
+          var jy=p.jy, jm=p.jm, jd=p.jd;
+          if(nowJ.jm>jy+(nowJ.jd===jd?0:-1) || (nowJ.jm===jy && nowJ.jd>jd)) jy+=1;
+          try{ target=new Date(C.jalaliToGreg(jy,jm,jd).gy,0,1); }catch(e){}
+        }
+        if(target && target>=new Date(today.getFullYear(),0,1)){
+          personal.push({label:((p.icon||'🎂')+' '+p.name), target:target});
+        }
+      });
+    }catch(e){}
     rows.sort(function(a,b){return a.dt-b.dt;});
-    rows=rows.slice(0,4);
-    var html='';
+    var all=[];
     rows.forEach(function(r){
-      var ms=r.dt-now;
-      var d=Math.floor(ms/86400000);
-      html+='<div class="countdown-list__item"><span>'+r.ev.label+'</span><b>'+d+' روز دیگر</b></div>';
+      all.push({label:r.ev.label, target:r.dt});
     });
-    if(!rows.length) html='<div class="countdown-list__item"><span>مناسبت‌های قمری</span><b>—</b></div>';
+    personal.forEach(function(p){
+      all.push({label:p.label, target:p.target});
+    });
+    all.sort(function(a,b){return a.target-b.target;});
+    all=all.slice(0,6);
+    var html='';
+    all.forEach(function(item){
+      var ms=item.target-new Date();
+      var d=Math.floor(ms/86400000);
+      var h=Math.floor((ms%86400000)/3600000);
+      var m=Math.floor((ms%3600000)/60000);
+      var txt;
+      if(d>0) txt=d+' روز '+h+' ساعت دیگر';
+      else if(h>0) txt=h+' ساعت '+m+' دقیقه دیگر';
+      else txt=m+' دقیقه دیگر';
+      html+='<div class="countdown-list__item"><span>'+item.label+'</span><b>'+txt+'</b></div>';
+    });
+    if(!all.length) html='<div class="countdown-list__item"><span>مناسبت‌های قمری</span><b>—</b></div>';
     body.innerHTML=html;
-    // بروزرسانی روزانه
-    setInterval(function(){ qamariOccasions(); }, 3600000);
+    // بروزرسانی ساعته
+    if(!qamariOccasions._timer) qamariOccasions._timer=setInterval(function(){ qamariOccasions(); }, 3600000);
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',qamariOccasions);
   else qamariOccasions();
