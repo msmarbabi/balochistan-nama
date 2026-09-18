@@ -450,7 +450,7 @@ body {
 
 /* ---------- Analog clock ---------- */
 .analog {
-  width: 130px; height: 130px;
+  width: 168px; height: 168px;
   margin: 0 auto;
   border-radius: 50%;
   background:
@@ -464,13 +464,13 @@ body {
     inset 0 0 0 7px var(--line);
 }
 .analog__tick {
-  position: absolute; left: 50%; top: 4px;
-  width: 2px; height: 8px;
+  position: absolute; left: 50%; top: 6px;
+  width: 2px; height: 10px;
   background: var(--fg-muted);
-  transform-origin: 50% 61px;
+  transform-origin: 50% 78px;
   border-radius: 1px;
 }
-.analog__tick--major { background: var(--accent); height: 12px; width: 3px; }
+.analog__tick--major { background: var(--accent); height: 16px; width: 4px; }
 .analog__hand {
   position: absolute; left: 50%; bottom: 50%;
   transform-origin: 50% 100%;
@@ -481,17 +481,17 @@ body {
 }
 /* v1.13: عقربه‌های بازطراحی — ساعت/دقیقه با نوک پهن (شکل پیکانی) و ثانیه کلاسیک با دنباله */
 .analog__hand--hour {
-  width: 5px; height: 32px;
+  width: 6px; height: 42px;
   clip-path: polygon(50% 0%, 100% 18%, 72% 100%, 28% 100%, 0% 18%);
   background: var(--fg);
 }
 .analog__hand--min {
-  width: 4px; height: 46px;
+  width: 5px; height: 58px;
   clip-path: polygon(50% 0%, 100% 12%, 72% 100%, 28% 100%, 0% 12%);
   background: var(--fg);
 }
 .analog__hand--sec {
-  width: 2px; height: 54px;
+  width: 2px; height: 70px;
   background: var(--accent);
   /* دنباله‌ی قرمز کلاسیک زیر مرکز (به سمت خلاف عقربه) */
   box-shadow: 0 0 0 0 transparent;
@@ -499,9 +499,9 @@ body {
 .analog__hand--sec::after {
   content: '';
   position: absolute;
-  left: 50%; bottom: 100%;
+  left: 50%; top: 100%;
   transform: translateX(-50%);
-  width: 2px; height: 16px;
+  width: 2px; height: 18px;
   background: var(--accent);
   border-radius: 2px;
 }
@@ -509,16 +509,16 @@ body {
 .analog__hand--sec::before {
   content: '';
   position: absolute;
-  left: 50%; top: 26%;
+  left: 50%; top: 62%;
   transform: translateX(-50%);
-  width: 7px; height: 7px;
+  width: 8px; height: 8px;
   background: transparent;
   border: 2px solid var(--accent);
   border-radius: 50%;
 }
 .analog__center {
   position: absolute; left: 50%; top: 50%;
-  width: 10px; height: 10px;
+  width: 12px; height: 12px;
   background: var(--accent);
   border-radius: 50%;
   transform: translate(-50%, -50%);
@@ -675,7 +675,7 @@ body {
   gap: 2px; flex-wrap: wrap;
   padding: 1px 0;
 }
-.cal-grid__day .day-dots .dot { width: 7px; height: 7px; }
+.cal-grid__day .day-dots .dot { width: 8px; height: 8px; }
 .cal-grid__day.selected {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent) inset;
