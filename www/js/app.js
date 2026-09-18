@@ -2796,8 +2796,8 @@
 /* v1.16: شمارش معکوس مناسبت‌های قمری (عاشورا/مبعث/فطر/قربان) + رویدادهای شخصی — ساعت/دقیقه */
 (function(){
   function qamariOccasions(){
-    var body=el('calCountdown'); if(!body) return;
-    var C=(global.Cal||{});
+    var body=document.getElementById('calCountdown'); if(!body) return;
+    var C=(window.Cal||{});
     if(!C.hijriToGreg || !C.gregToHijri){ body.innerHTML=''; return; }
     var evs=[
       {label:'🔥 عاشورا (۱۰ محرم)', m:1, d:10},
@@ -2827,14 +2827,23 @@
       pe.forEach(function(p){
         // رویداد بعدی (هجری یا شمسی)
         var target=null;
-        if(p.jy!==undefined){
-          // شمسی — پیدا کردن سال جاری یا بعدی
-          var nowJ=C.gregToJalali(today.getFullYear(),today.getMonth()+1,today.getDate());
-          var jy=p.jy, jm=p.jm, jd=p.jd;
-          if(nowJ.jm>jy+(nowJ.jd===jd?0:-1) || (nowJ.jm===jy && nowJ.jd>jd)) jy+=1;
-          try{ target=new Date(C.jalaliToGreg(jy,jm,jd).gy,0,1); }catch(e){}
+        if(p.hy!==undefined){
+          // هجری — سال جاری قمری یا بعدی
+          var hy2=p.hy, hm2=p.hm||1, hd2=p.hd||1;
+          if(hy2<hy || (hy2===hy)){
+            var g2;
+            try{ g2=C.hijriToGreg(hy2,hm2,hd2); }catch(e){ g2=null; }
+            if(g2){ var dt2=new Date(g2.gy,g2.gm-1,g2.gd); if(dt2>=now){ target=dt2; } else { try{ var g3=C.hijriToGreg(hy2+1,hm2,hd2); target=new Date(g3.gy,g3.gm-1,g3.gd); }catch(e){} } }
+          }
+        } else if(p.jy!==undefined && C.toGregorian){
+          // شمسی — سال جاری یا بعدی
+          var jy=p.jy, jm=p.jm||1, jd=p.jd||1;
+          var nowJ=C.toJalaali(today.getFullYear(),today.getMonth()+1,today.getDate());
+          var g;
+          try{ g=C.toGregorian(jy,jm,jd); }catch(e){ g=null; }
+          if(g){ var dt=new Date(g.gy,g.gm-1,g.gd); if(dt>=now){ target=dt; } else { try{ var g2b=C.toGregorian(jy+1,jm,jd); target=new Date(g2b.gy,g2b.gm-1,g2b.gd); }catch(e){} } }
         }
-        if(target && target>=new Date(today.getFullYear(),0,1)){
+        if(target){
           personal.push({label:((p.icon||'🎂')+' '+p.name), target:target});
         }
       });

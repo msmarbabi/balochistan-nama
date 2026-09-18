@@ -29,9 +29,10 @@
     initSeasonFx();
   }
 
-  global.BXSeasonFx = {
+  window.BXSeasonFx = {
     init: initSeasonFx,
     setEnabled: function (en) { settings.enabled = en; initSeasonFx(); },
-    setDeviceLevel: setDeviceLevel
+    setDeviceLevel: setDeviceLevel,
+    applyDeviceLevel: setDeviceLevel // alias
   };
 })(typeof window !== 'undefined' ? window : this);
