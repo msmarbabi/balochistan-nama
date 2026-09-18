@@ -351,9 +351,9 @@
 .analog__number { color: #fff !important; font-weight: 800; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
 .analog__hand--hour { background: #F5C542 !important; }
 .analog__hand--min { background: #F5C542 !important; }
-.analog__hand--sec { background: #22C55E !important; }
-.analog__hand--sec::after { background: #22C55E !important; }
-.analog__hand--sec::before { border-color: #22C55E !important; }
+.analog__hand--sec { background: #E85D5D !important; }
+.analog__hand--sec::after { background: #E85D5D !important; }
+.analog__hand--sec::before { border-color: #E85D5D !important; }
 .analog__center { background: #F5C542 !important; box-shadow: 0 0 8px rgba(245,197,66,.75) !important; }
 
 /* ===== v1.16: قطب‌نمای سه‌بعدی استایل iOS (canvas) ===== */
@@ -412,18 +412,3 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ===== v1.16: فلپ‌کلاک — زمینه بنفش پررنگ + اعداد طلایی ===== */
-.flip-digit {
-  background: radial-gradient(circle at 30% 20%, #8B5CF6 0%, #7C3AED 45%, #4C1D95 100%) !important;
-  color: #F5C542 !important;
-  border: 1px solid #C4B5FD !important;
-  box-shadow: 0 3px 10px rgba(91,33,182,.55), inset 0 1px 0 rgba(255,255,255,.15) !important;
-}
-.flip-digit::after {
-  background: rgba(0,0,0,.35) !important;
-  box-shadow: 0 -1px 0 rgba(255,255,255,.1) !important;
-}
-.flip-clock__sep {
-  color: #F5C542 !important;
-  text-shadow: 0 0 8px rgba(245,197,66,.5);
-}
