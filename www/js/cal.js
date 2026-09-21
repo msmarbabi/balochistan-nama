@@ -256,6 +256,10 @@
     return _hijriAlgo(jdn);
   }
   function gregToHijri(gy, gm, gd) { return jdnToHijriMix(gregToJDN(gy, gm, gd)); }
+
+  // نام روز هفته (index شنبه=0 ... جمعه=6) — از WEEKDAYS_FA_SAT_FIRST
+  function wkdayName(i) { return (typeof WEEKDAYS_FA_SAT_FIRST !== 'undefined' ? WEEKDAYS_FA_SAT_FIRST[i] : '') || ''; }
+  function jsDayToWkday(dow) { return (dow + 1) % 7; } // JS getDay (Sun=0) -> شنبه=0
   function gregToHijriAlgo(gy, gm, gd) { return _hijriAlgo(gregToJDN(gy, gm, gd)); }
   function hijriToGreg(hy, hm, hd) {
     var mode = currentHijriMode(), j = null;
@@ -524,7 +528,9 @@
     HIJRI_MONTHS: HIJRI_MONTHS,
     WEEKDAYS_FA_SAT_FIRST: WEEKDAYS_FA_SAT_FIRST,
     SEASONS_FA: SEASONS_FA,
-    jsDayToSatFirst: jsDayToSatFirst
+    jsDayToSatFirst: jsDayToSatFirst,
+    wkdayName: wkdayName,
+    jsDayToWkday: jsDayToWkday
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = Cal;
   if (typeof window !== 'undefined') window.Cal = Cal;

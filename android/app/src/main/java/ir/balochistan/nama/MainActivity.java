@@ -169,6 +169,42 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // v1.18: Deep link از QS Tile / ویجت اجنده — باز کردن مودال رویدادهای شخصی
+        handleBxAction(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        handleBxAction(intent);
+    }
+
+    // v1.18: اجرای اکشن خاص (مثلا open_pe_modal) پس از بارگذاری صفحه
+    private void handleBxAction(Intent intent) {
+        try {
+            if (intent == null) return;
+            String action = intent.getStringExtra("bx_action");
+            if (action == null) return;
+            intent.removeExtra("bx_action");
+            if ("open_pe_modal".equals(action)) {
+                runOnUiThread(new Runnable() {
+                    @Override public void run() {
+                        // صبر تا بارگذاری کامل وب‌ویو (آسیت محلی، سریع)
+                        new android.os.Handler(getMainLooper()).postDelayed(new Runnable() {
+                            @Override public void run() {
+                                try {
+                                    if (getBridge() != null && getBridge().getWebView() != null) {
+                                        getBridge().getWebView().evaluateJavascript(
+                                            "try{ PersonalEvents.openModal(); }catch(e){}", null);
+                                    }
+                                } catch (Exception ignored) {}
+                            }
+                        }, 1800);
+                    }
+                });
+            }
+        } catch (Exception ignored) {}
+    }
         // NotesBridge: ارسال یادداشت به برنامه یادداشت رسمی اندروید
         if (getBridge() != null && getBridge().getWebView() != null) {
             getBridge().getWebView().addJavascriptInterface(new Object() {
@@ -604,6 +640,95 @@ public class MainActivity extends BridgeActivity {
                                 (android.hardware.SensorManager) getSystemService(android.content.Context.SENSOR_SERVICE);
                             if (sm != null && sensorListener != null) sm.unregisterListener(sensorListener);
                         } catch (Exception e) {}
+                    }
+
+                    // ===== v1.18: تولدها از مخاطبین (برای تقویم) =====
+                    @JavascriptInterface
+                    public String getContactBirthdays() {
+                        // برمی‌گرداند JSON: [{"name":"...","birthday":"YYYY-MM-DD"}, ...]
+                        // نیازمند اجازه READ_CONTACTS
+                        StringBuilder sb = new StringBuilder("[");
+                        try {
+                            if (checkSelfPermission(android.Manifest.permission.READ_CONTACTS)
+                                    != PackageManager.PERMISSION_GRANTED) {
+                                return "NO_PERMISSION";
+                            }
+                            boolean first = true;
+                            android.content.ContentResolver cr = getContentResolver();
+                            // 1) مخاطبین با نام
+                            java.util.Map<Long, String> names = new java.util.HashMap<Long, String>();
+                            android.database.Cursor nc = cr.query(
+                                android.provider.ContactsContract.Contacts.CONTENT_URI,
+                                new String[]{ android.provider.ContactsContract.Contacts._ID,
+                                    android.provider.ContactsContract.Contacts.DISPLAY_NAME },
+                                android.provider.ContactsContract.Contacts.HAS_PHONE_NUMBER + " > 0 OR "
+                                    + android.provider.ContactsContract.Contacts.DISPLAY_NAME + " IS NOT NULL",
+                                null, null);
+                            if (nc != null) {
+                                while (nc.moveToNext()) {
+                                    String nm = nc.getString(1);
+                                    if (nm == null || nm.trim().isEmpty()) continue;
+                                    names.put(nc.getLong(0), nm.trim());
+                                }
+                                nc.close();
+                            }
+                            // 2) رویدادهای تولد (birthday events)
+                            android.database.Cursor ec = cr.query(
+                                android.provider.ContactsContract.Events.CONTENT_URI,
+                                new String[]{ android.provider.ContactsContract.Events.CONTACT_ID,
+                                    android.provider.ContactsContract.Events.START_DAY,
+                                    android.provider.ContactsContract.Events.EVENT_TYPE },
+                                android.provider.ContactsContract.Events.EVENT_TYPE + " = "
+                                    + android.provider.ContactsContract.Events.EventTypes.BIRTHDAY,
+                                null, null);
+                            if (ec != null) {
+                                while (ec.moveToNext()) {
+                                    long contactId = ec.getLong(0);
+                                    String day = ec.getString(1); // YYYY-MM-DD or MM-DD
+                                    if (day == null || day.isEmpty()) continue;
+                                    String nm = names.get(contactId);
+                                    if (nm == null) nm = "مخاطب";
+                                    if (!first) sb.append(",");
+                                    first = false;
+                                    sb.append("{\"name\":\"").append(nm.replace("\"", "'"))
+                                        .append("\",\"birthday\":\"").append(day).append("\"}");
+                                }
+                                ec.close();
+                            }
+                        } catch (Exception e) { /* ignore */ }
+                        sb.append("]");
+                        return sb.toString();
+                    }
+
+                    @JavascriptInterface
+                    public boolean requestContactsPermission() {
+                        try {
+                            if (checkSelfPermission(android.Manifest.permission.READ_CONTACTS)
+                                    == PackageManager.PERMISSION_GRANTED) return true;
+                            requestPermissions(new String[]{ android.Manifest.permission.READ_CONTACTS }, 9001);
+                        } catch (Exception e) {}
+                        return false;
+                    }
+
+                    // ===== v1.18: ذخیره/اشتراک فایل ICS از وب =====
+                    @JavascriptInterface
+                    public void saveAndShareFile(String name, String base64, String mime) {
+                        try {
+                            byte[] data = android.util.Base64.decode(base64, android.util.Base64.DEFAULT);
+                            java.io.File out = new java.io.File(getFilesDir(), name);
+                            java.io.FileOutputStream fos = new java.io.FileOutputStream(out);
+                            fos.write(data); fos.close();
+                            // اشتراک‌گذاری
+                            Uri uri = androidx.core.content.FileProvider.getUriForFile(
+                                this, getPackageName() + ".fileprovider", out);
+                            Intent send = new Intent(Intent.ACTION_SEND);
+                            send.setType((mime != null && !mime.isEmpty()) ? mime : "text/calendar");
+                            send.putExtra(Intent.EXTRA_STREAM, uri);
+                            send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                            send = Intent.createChooser(send, "اشتراک‌گذاری تقویم");
+                            send.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(send);
+                        } catch (Exception e) { /* ignore */ }
                     }
                 }, "NativeApp");
             }

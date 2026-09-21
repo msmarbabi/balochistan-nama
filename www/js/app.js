@@ -23,6 +23,7 @@
     seasonFx: true,
     fontScale: 1,
     stickyPrayer: true,
+    calView: 'month',
     prayerAdj: 0,
     prayerAdjAll: 0,
     prayerAdjSingle: { prayer: 'fajr', adj: 0 },
@@ -390,8 +391,30 @@
 
   // ---------- Calendar view ----------
   function renderCalendar() {
-    var mode = state.calMode || 'jalali';
+    var view = settings.calView || 'month';
+    state.calView = view;
     if (!state.calCursor) state.calCursor = { jy: state.triple.jalali.jy, jm: state.triple.jalali.jm };
+    // نماهای هفتگی/روزانه/اجنده به تاریخ کامل نیاز دارند
+    if ((view === 'week' || view === 'day' || view === 'agenda') && !state.calCursor.jd) {
+      state.calCursor.jd = state.triple.jalali.jd;
+      state.calCursor.jm = state.triple.jalali.jm;
+      state.calCursor.jy = state.triple.jalali.jy;
+    }
+    renderCalViewButtons();
+    if (view === 'month') renderCalMonthView();
+    else if (view === 'week') renderCalWeekView();
+    else if (view === 'day') renderCalDayView();
+    else renderCalAgendaView();
+    if (view === 'month') selectCalendarDay(state.triple);
+    renderCountdown();
+  }
+
+  function renderCalMonthView() {
+    // حذف DOMهای نماهای هفته/روز/اجندهٔ قبلی و نمایش دوبارهٔ گرید ماهانه
+    var _r0 = document.getElementById('calViewRoot');
+    if (_r0) Array.prototype.forEach.call(_r0.querySelectorAll('.cal-view-wrap'), function (n) { n.remove(); });
+    var _g0 = document.getElementById('calGrid'); if (_g0) _g0.style.display = '';
+    var mode = state.calMode || 'jalali';
     var c = state.calCursor;
     // Season bar only meaningful in jalali mode
     var seasonIdx = Math.floor((c.jm - 1) / 3);
@@ -504,10 +527,22 @@
         if (hasNote) dotArr.push('<i class="dot dot-note"></i>');
         if (hasPersonal) dotArr.push('<i class="dot dot-personal"></i>');
         var dots = dotArr.length ? '<div class="day-dots">' + dotArr.join('') + '</div>' : '';
+        // v1.18: چیپ‌های رویداد شخصی (الگوشده از Calendula) — حداکثر ۲ + «N+»
+        var chipsHtml = '';
+        if (typeof PersonalEvents !== 'undefined' && PersonalEvents.getEventsForCell) {
+          var pes = PersonalEvents.getEventsForCell(cell.jy, cell.jm, cell.jd);
+          if (pes.length) {
+            var chipRows = pes.slice(0, 2).map(function (p) {
+              return '<span class="cal-chip" style="background:' + p.color + '">' + escapeHtml(p.title.replace(/^[^\p{L}]/gu, '')) + '</span>';
+            });
+            if (pes.length > 2) chipRows.push('<span class="cal-chip cal-chip--more">+' + Cal.toFaDigits(pes.length - 2) + '</span>');
+            chipsHtml = '<div class="cal-chips">' + chipRows.join('') + '</div>';
+          }
+        }
         div.innerHTML =
           '<div class="day-num">' + Cal.toFaDigits(cell.jd) + '</div>' +
           '<div class="hijri-num">' + (moonEmoji ? moonEmoji + ' ' : '') + Cal.toFaDigits(cell.hijri.hd) + '</div>' +
-          dots;
+          chipsHtml + dots;
         if (state.calSelected && state.calSelected.jy === cell.jy && state.calSelected.jm === cell.jm && state.calSelected.jd === cell.jd) {
           div.classList.add('selected');
         }
@@ -519,7 +554,271 @@
     }
     // Also render today's events in the calendar day detail (initial: show today)
     selectCalendarDay(state.triple);
-    renderCountdown();
+  }
+
+  // ---------- v1.18: نمای هفتگی / روزانه / اجنده (الگوشده از Calendula) ----------
+  function calCursorGreg() {
+    var mode = state.calMode || 'jalali';
+    var c = state.calCursor || { jy: state.triple.jalali.jy, jm: state.triple.jalali.jm, jd: state.triple.jalali.jd };
+    if (mode === 'gregorian') return { gy: c.jy + 621, gm: c.jm || 1, gd: c.jd || 1 };
+    if (mode === 'hijri') {
+      var g = Cal.hijriToGreg(c.jy - 621 + 1380, c.jm || 1, c.jd || 1);
+      return g;
+    }
+    return Cal.toGregorian(c.jy, c.jm || 1, c.jd || 1);
+  }
+
+  function shiftCalDays(delta) {
+    var g = calCursorGreg();
+    var d = new Date(g.gy, g.gm - 1, g.gd);
+    d.setDate(d.getDate() + delta);
+    var ng = { gy: d.getFullYear(), gm: d.getMonth() + 1, gd: d.getDate() };
+    var mode = state.calMode || 'jalali';
+    if (mode === 'gregorian') { state.calCursor = { jy: ng.gy - 621, jm: ng.gm, jd: ng.gd }; }
+    else if (mode === 'hijri') {
+      var nh = Cal.gregToHijri(ng.gy, ng.gm, ng.gd);
+      state.calCursor = { jy: nh.hy + 621 - 1380, jm: nh.hm, jd: nh.hd };
+    } else {
+      var nj = Cal.toJalaali(ng.gy, ng.gm, ng.gd);
+      state.calCursor = { jy: nj.jy, jm: nj.jm, jd: nj.jd };
+    }
+  }
+
+  // ۷ روز هفته (شنبه-جمعه) شامل تاریخ انکر
+  function calWeekDays(anchorG) {
+    var d0 = new Date(anchorG.gy, anchorG.gm - 1, anchorG.gd);
+    d0.setDate(d0.getDate() - ((d0.getDay() + 1) % 7)); // به شنبه
+    var days = [];
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(d0); d.setDate(d0.getDate() + i);
+      var g = { gy: d.getFullYear(), gm: d.getMonth() + 1, gd: d.getDate() };
+      var j = Cal.toJalaali(g.gy, g.gm, g.gd);
+      var h = Cal.gregToHijri(g.gy, g.gm, g.gd);
+      days.push({ g: g, j: { jy: j.jy, jm: j.jm, jd: j.jd }, h: { hy: h.hy, hm: h.hm, hd: h.hd }, weekday: (d.getDay() + 1) % 7 });
+    }
+    return days;
+  }
+
+  function dayAllDayEvents(day) {
+    var out = [];
+    // رویدادهای رسمی (جشن/مراسم/تولد/تاسیس/روز)
+    var cell = { jy: day.j.jy, jm: day.j.jm, jd: day.j.jd, greg: day.g, hijri: day.h, weekdaySatFirst: day.weekday };
+    if (typeof Events !== 'undefined') {
+      Events.getDayEvents(cell, day.g, day.h, { isFriday: day.weekday === 6 }).forEach(function (ev) {
+        if (ev.t !== 'prayer') out.push({ official: true, title: ev.n, type: ev.t });
+      });
+    }
+    // رویدادهای شخصی بدون ساعت (all-day)
+    if (typeof PersonalEvents !== 'undefined') {
+      PersonalEvents.eventsOn(cell).forEach(function (o) {
+        if (!o.ev.time) out.push({ pe: o, title: o.ev.title, color: o.ev.color, allDay: true });
+      });
+    }
+    return out;
+  }
+
+  function dayTimedEvents(day) {
+    var out = [];
+    if (typeof PersonalEvents !== 'undefined') {
+      var evs = day.j ? PersonalEvents.eventsOn(day.j) : [];
+      evs.forEach(function (o) {
+        if (o.ev.time) out.push(o);
+      });
+    }
+    return out.sort(function (a, b) { return a.ev.time < b.ev.time ? -1 : 1; });
+  }
+
+  function timeToMin(t) { var p = t.split(':'); return (+p[0]) * 60 + (+p[1] || 0); }
+
+  function renderCalWeekView() {
+    var root = document.getElementById('calViewRoot'); if (!root) return;
+    var days = calWeekDays(calCursorGreg());
+    var cm = document.getElementById('calMonth'), cy = document.getElementById('calYear');
+    if (cm) {
+      var j1 = days[0].j, j2 = days[6].j;
+      cm.innerHTML = '🗓️ هفته ' + Cal.fmtJalaliLong(j1) + ' تا ' + Cal.fmtJalaliLong(j2);
+    }
+    var H0 = 6, H1 = 23, rowH = 44, span = (H1 - H0 + 1) * rowH;
+    var nowD = new Date();
+    var todayKey = nowD.getFullYear() + '/' + (nowD.getMonth() + 1) + '/' + nowD.getDate();
+
+    // strip all-day
+    var alldayCells = days.map(function (day) {
+      var evs = dayAllDayEvents(day);
+      var chips = evs.slice(0, 3).map(function (e) {
+        if (e.pe) return '<span class="cal-week__chip" style="background:' + e.color + '">' + escapeHtml(e.title) + '</span>';
+        return '<span class="cal-week__chip cal-week__chip--off">' + escapeHtml(e.title) + '</span>';
+      }).join('');
+      var more = evs.length > 3 ? '<span class="cal-week__more">+' + Cal.toFaDigits(evs.length - 3) + '</span>' : '';
+      return '<div class="cal-week__allday-cell">' + (chips || more ? '<div class="cal-week__chips">' + chips + more + '</div>' : '<span class="text-muted" style="font-size:10px;">—</span>') + '</div>';
+    }).join('');
+
+    // columns
+    var cols = days.map(function (day) {
+      var isToday = (day.g.gy + '/' + day.g.gm + '/' + day.gd) === todayKey;
+      var timed = dayTimedEvents(day);
+      var blocks = timed.map(function (o) {
+        var s = timeToMin(o.ev.time);
+        var e = o.ev.timeEnd ? timeToMin(o.ev.timeEnd) : s + 60;
+        if (e <= s) e = s + 60;
+        var top = ((s - H0 * 60) / 60) * rowH + 1;
+        var hgt = ((e - s) / 60) * rowH - 3;
+        if (hgt < 14) hgt = 14;
+        if (top < 0) top = 0;
+        var tm = o.ev.time + '–' + o.ev.timeEnd;
+        return '<div class="cal-week__ev" data-ev="' + o.ev.id + '" style="top:' + top + 'px;height:' + hgt + 'px;background:' + o.ev.color + ';" title="' + escapeHtml(o.ev.title) + '">' +
+          '<div class="cal-week__ev-t">' + escapeHtml(o.ev.title) + '</div>' +
+          '<div class="cal-week__ev-m">' + tm + '</div></div>';
+      }).join('');
+      var head = '<button class="cal-week__head' + (isToday ? ' cal-week__head--today' : '') + '" data-jy="' + day.j.jy + '" data-jm="' + day.j.jm + '" data-jd="' + day.j.jd + '">' +
+        Cal.wkdayName(day.weekday) + ' ' + Cal.toFaDigits(day.j.jd) +
+        (isToday ? ' <span class="cal-week__todaybadge">امروز</span>' : '') + '</button>';
+      var lines = '';
+      for (var hh = H0; hh <= H1; hh++) lines += '<div class="cal-week__line" style="top:' + ((hh - H0) * rowH) + 'px;"></div>';
+      return '<div class="cal-week__col' + (isToday ? ' cal-week__col--today' : '') + '">' + head +
+        '<div class="cal-week__body" style="height:' + span + 'px;">' + lines + blocks + '</div></div>';
+    }).join('');
+
+    var gutter = '<div class="cal-week__gutter">' + (function () {
+      var s = '';
+      for (var hh = H0; hh <= H1; hh++) s += '<div class="cal-week__gutter-l" style="top:' + ((hh - H0) * rowH) + 'px;">' + String(hh).padStart(2, '0') + ':00</div>';
+      return s;
+    })() + '</div>';
+
+    // مودال ماه را پنهان کن
+    var g = document.getElementById('calGrid'); if (g) g.style.display = 'none';
+    Array.prototype.forEach.call(root.querySelectorAll('.cal-view-wrap'), function (n) { n.remove(); });
+    var wrap = document.createElement('div');
+    wrap.className = 'cal-view-wrap';
+    wrap.innerHTML = '<div class="cal-week-wrap" style="width:100%; overflow-x:auto;">' +
+      '<div style="min-width:560px;">' +
+      '<div class="cal-week__allday"><div class="cal-week__allday-lbl">همه‌روزه</div><div class="cal-week__allday-days">' + alldayCells + '</div></div>' +
+      '<div class="cal-week__cols">' + gutter + cols + '</div>' +
+      '</div></div>';
+    root.appendChild(wrap);
+    // رویدادهای قابل کلیک
+    wrap.querySelectorAll('[data-ev]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        if (typeof PersonalEvents !== 'undefined') PersonalEvents.edit(document.querySelector('[data-ev="' + el.dataset.ev + '"]') && document.querySelector('[data-ev="' + el.dataset.ev + '"]').dataset.ev || el.dataset.ev);
+      });
+    });
+    wrap.querySelectorAll('.cal-week__head').forEach(function (h) {
+      h.addEventListener('click', function () {
+        state.calCursor = { jy: +h.dataset.jy, jm: +h.dataset.jm, jd: +h.dataset.jd };
+        selectCalendarDay(state.calCursor);
+        goDayView(state.calCursor);
+      });
+    });
+  }
+
+  function goDayView(triple) {
+    state.calView = 'day';
+    settings.calView = 'day'; saveSettings();
+    if (triple) state.calCursor = { jy: triple.jy, jm: triple.jm, jd: triple.jd };
+    renderCalendar();
+  }
+
+  function renderCalDayView() {
+    var root = document.getElementById('calViewRoot'); if (!root) return;
+    var day = { g: calCursorGreg(), j: null, h: null, weekday: 0 };
+    var c = state.calCursor;
+    var mode = state.calMode || 'jalali';
+    day.j = mode === 'jalali' ? { jy: c.jy, jm: c.jm || 1, jd: c.jd || 1 } : Cal.toJalaali(day.g.gy, day.g.gm, day.g.gd);
+    day.h = Cal.gregToHijri(day.g.gy, day.g.gm, day.g.gd);
+    day.weekday = (new Date(day.g.gy, day.g.gm - 1, day.g.gd).getDay() + 1) % 7;
+    setText('calMonth', '📆 ' + Cal.fmtJalaliLong(day.j));
+    setText('calYear', Cal.wkdayName(day.weekday) + ' • ' + Cal.toFaDigits(day.h.hy) + ' قمری');
+    var all = dayAllDayEvents(day);
+    var timed = dayTimedEvents(day);
+    var allHtml = all.length ? '<div class="cal-day__section"><div class="cal-day__label">📅 رویدادهای همه‌روزه</div>' +
+      all.map(function (e) {
+        var st = e.pe ? e.color : 'var(--accent)';
+        return '<div class="cal-day__item" style="border-color:' + st + '">' +
+          '<span class="cal-day__dot" style="background:' + st + '"></span>' +
+          '<span class="cal-day__it-t">' + escapeHtml(e.title) + '</span>' +
+          (e.type === 'fast' ? '<span class="cal-day__tag">روزه</span>' : '') +
+          (e.type === 'holiday' ? '<span class="cal-day__tag">جشن</span>' : '') + '</div>';
+      }).join('') + '</div>' : '';
+    var timedHtml = timed.length ? '<div class="cal-day__section"><div class="cal-day__label">⏰ رویدادهای ساعت‌دار</div>' +
+      timed.map(function (o) {
+        var e = o.ev;
+        var startM = timeToMin(e.time);
+        var endM = e.timeEnd ? timeToMin(e.timeEnd) : startM + 60;
+        var range = e.time + '–' + (e.timeEnd || String(Math.floor(endM / 60)).padStart(2, '0') + ':' + String(endM % 60).padStart(2, '0'));
+        return '<div class="cal-day__item cal-day__item--timed" data-ev="' + e.id + '" style="border-color:' + e.color + '">' +
+          '<span class="cal-day__dot" style="background:' + e.color + '"></span>' +
+          '<span class="cal-day__it-time">' + range + '</span>' +
+          '<span class="cal-day__it-t">' + escapeHtml(e.title) + '</span>' +
+          (e.task ? '<span class="cal-day__tag">تسک</span>' : '') +
+          (e.location ? '<span class="cal-day__loc">📍 ' + escapeHtml(e.location) + '</span>' : '') +
+          (e.guests ? '<span class="cal-day__loc">👥 ' + Cal.toFaDigits(e.guests.split(/[,،;；]/).length) + ' نفر</span>' : '') +
+          '</div>';
+      }).join('') + '</div>' : '<div class="cal-day__empty">❌ رویدادی در این روز ثبت نشده است</div>';
+    var g = document.getElementById('calGrid'); if (g) g.style.display = 'none';
+    Array.prototype.forEach.call(root.querySelectorAll('.cal-view-wrap'), function (n) { n.remove(); });
+    var wrap = document.createElement('div');
+    wrap.className = 'cal-view-wrap';
+    wrap.innerHTML = '<div class="cal-day-wrap">' + allHtml + timedHtml + '</div>';
+    root.appendChild(wrap);
+    wrap.querySelectorAll('[data-ev]').forEach(function (el) {
+      el.addEventListener('click', function () { if (typeof PersonalEvents !== 'undefined') PersonalEvents.edit(el.dataset.ev); });
+    });
+  }
+
+  function renderCalAgendaView() {
+    var root = document.getElementById('calViewRoot'); if (!root) return;
+    setText('calMonth', '📋 اجنده رویدادها');
+    setText('calYear', '۳۰ روز آینده');
+    var t = state.triple;
+    var todayJ = { jy: t.jalali.jy, jm: t.jalali.jm, jd: t.jalali.jd };
+    // upcoming برمی‌گرد می‌کند: [{jy,jm,jd,dayIdx,events:[...]}, ...]
+    var up = (typeof PersonalEvents !== 'undefined') ? PersonalEvents.upcoming(todayJ.jy, todayJ.jm, todayJ.jd, 30) : [];
+    var html = '';
+    up.forEach(function (dayGroup) {
+      var g = Cal.toGregorian(dayGroup.jy, dayGroup.jm, dayGroup.jd);
+      var wd = (new Date(g.gy, g.gm - 1, g.gd).getDay() + 1) % 7;
+      var isToday = dayGroup.jy === todayJ.jy && dayGroup.jm === todayJ.jm && dayGroup.jd === todayJ.jd;
+      html += '<div class="cal-agen__day' + (isToday ? ' cal-agen__day--today' : '') + '" data-jy="' + dayGroup.jy + '" data-jm="' + dayGroup.jm + '" data-jd="' + dayGroup.jd + '">' +
+        '<div class="cal-agen__date">' + Cal.wkdayName(wd) + '، ' + Cal.fmtJalaliLong(dayGroup) + (isToday ? ' <span class="cal-agen__today">امروز</span>' : '') + '</div>' +
+        '<div class="cal-agen__items">' +
+        dayGroup.events.map(function (e) {
+          return '<div class="cal-agen__item" data-ev="' + e.id + '" style="border-color:' + e.color + '">' +
+            '<span class="cal-day__dot" style="background:' + e.color + '"></span>' +
+            '<span class="cal-agen__it-time">' + (e.time ? e.time : 'همه‌روزه') + '</span>' +
+            '<span class="cal-agen__it-t">' + e.icon + ' ' + escapeHtml(e.title) + '</span>' +
+            (e.repeat && e.repeat !== 'none' ? '<span class="cal-agen__it-rep">🔁</span>' : '') +
+            '</div>';
+        }).join('') +
+        '</div></div>';
+    });
+    if (!html) html = '<div class="cal-day__empty">❌ رویدادی ثبت نشده است. از بخش «🎂 رویدادهای شخصی» اضافه کنید.</div>';
+    var g = document.getElementById('calGrid'); if (g) g.style.display = 'none';
+    Array.prototype.forEach.call(root.querySelectorAll('.cal-view-wrap'), function (n) { n.remove(); });
+    var wrap = document.createElement('div');
+    wrap.className = 'cal-view-wrap';
+    wrap.innerHTML = '<div class="cal-agen-wrap">' + html + '</div>';
+    root.appendChild(wrap);
+    wrap.querySelectorAll('[data-ev]').forEach(function (el) {
+      el.addEventListener('click', function () { if (typeof PersonalEvents !== 'undefined') PersonalEvents.edit(el.dataset.ev); });
+    });
+    wrap.querySelectorAll('.cal-agen__day').forEach(function (el) {
+      el.addEventListener('click', function (ev2) {
+        if (ev2.target.closest('[data-ev]')) return;
+        state.calCursor = { jy: +el.dataset.jy, jm: +el.dataset.jm, jd: +el.dataset.jd };
+        goDayView(state.calCursor);
+      });
+    });
+  }
+
+  function renderCalViewButtons() {
+    document.querySelectorAll('.calview-btn').forEach(function (b) {
+      var active = b.dataset.cv === state.calView;
+      b.style.border = active ? '1px solid var(--accent)' : '1px solid var(--line)';
+      b.style.color = active ? 'var(--accent)' : '';
+      b.style.background = active ? 'var(--accent-bg)' : '';
+    });
+    var sel = document.getElementById('setCalView');
+    if (sel && sel.value !== state.calView) sel.value = state.calView || 'month';
   }
 
   function selectCalendarDay(cell) {
@@ -664,22 +963,30 @@
 
   function calPrev() {
     var c = state.calCursor;
-    if (c.jm === 1) { c.jm = 12; c.jy--; } else c.jm--;
+    var v = state.calView || 'month';
+    if (v === 'week') shiftCalDays(-7);
+    else if (v === 'day') shiftCalDays(-1);
+    else if (v === 'agenda') shiftCalDays(-30);
+    else { if (c.jm === 1) { c.jm = 12; c.jy--; } else c.jm--; }
     renderCalendar();
   }
   function calNext() {
     var c = state.calCursor;
-    if (c.jm === 12) { c.jm = 1; c.jy++; } else c.jm++;
+    var v = state.calView || 'month';
+    if (v === 'week') shiftCalDays(7);
+    else if (v === 'day') shiftCalDays(1);
+    else if (v === 'agenda') shiftCalDays(30);
+    else { if (c.jm === 12) { c.jm = 1; c.jy++; } else c.jm++; }
     renderCalendar();
   }
   function calToday() {
     var t = state.triple;
     if (state.calMode === 'gregorian') {
-      state.calCursor = { jy: t.greg.gy - 621, jm: t.greg.gm };
+      state.calCursor = { jy: t.greg.gy - 621, jm: t.greg.gm, jd: t.greg.gd };
     } else if (state.calMode === 'hijri') {
-      state.calCursor = { jy: t.hijri.hy + 621 - 1380, jm: t.hijri.hm };
+      state.calCursor = { jy: t.hijri.hy + 621 - 1380, jm: t.hijri.hm, jd: t.hijri.hd };
     } else {
-      state.calCursor = { jy: t.jalali.jy, jm: t.jalali.jm };
+      state.calCursor = { jy: t.jalali.jy, jm: t.jalali.jm, jd: t.jalali.jd };
     }
     renderCalendar();
   }
@@ -1850,6 +2157,10 @@
     var rq = document.getElementById('setRenderQuality');
     settings.renderQuality = rq ? rq.value : 'high';
     if (window.BXSeasonFx) BXSeasonFx.applyDeviceLevel(settings.renderQuality === 'auto' ? detectPerf() : settings.renderQuality);
+    // نمای پیش‌فرض تقویم
+    var cv = document.getElementById('setCalView');
+    settings.calView = cv ? cv.value : (settings.calView || 'month');
+    state.calView = settings.calView;
     if (settings.autoNight) applyAutoNight();
     var asrSel = document.getElementById('setAsrMode');
     if (asrSel) settings.asrMode = asrSel.value;
@@ -2088,6 +2399,18 @@
         settings.renderQuality = rqInit.value;
         saveSettings();
         if (window.BXSeasonFx) BXSeasonFx.applyDeviceLevel(settings.renderQuality === 'auto' ? detectPerf() : settings.renderQuality);
+      });
+    }
+    // v1.18: سلکت نمای پیش‌فرض تقویم
+    var cvInit = document.getElementById('setCalView');
+    if (cvInit) {
+      if (settings.calView) cvInit.value = settings.calView;
+      cvInit.addEventListener('change', function () {
+        settings.calView = cvInit.value;
+        state.calView = cvInit.value;
+        saveSettings();
+        var vcal = document.getElementById('view-cal');
+        if (vcal && vcal.classList.contains('active')) renderCalendar();
       });
     }
     // ===== v1.16 مرحله ۱۲: کتابخانه اذکار =====
@@ -2484,6 +2807,22 @@
     document.getElementById('calPrev').addEventListener('click', calPrev);
     document.getElementById('calNext').addEventListener('click', calNext);
     document.getElementById('calToday').addEventListener('click', calToday);
+    // v1.18: view switching (month / week / day / agenda)
+    document.querySelectorAll('.calview-btn').forEach(function (cv) {
+      cv.addEventListener('click', function () {
+        state.calView = cv.dataset.cv;
+        settings.calView = cv.dataset.cv;
+        saveSettings();
+        // نماهای هفتگی/روزانه/اجنده به تاریخ کامل نیاز دارند
+        if ((state.calView === 'week' || state.calView === 'day' || state.calView === 'agenda') && !state.calCursor.jd) {
+          var t = state.triple;
+          if (state.calMode === 'gregorian') state.calCursor = { jy: t.greg.gy - 621, jm: t.greg.gm, jd: t.greg.gd };
+          else if (state.calMode === 'hijri') state.calCursor = { jy: t.hijri.hy + 621 - 1380, jm: t.hijri.hm, jd: t.hijri.hd };
+          else state.calCursor = { jy: t.jalali.jy, jm: t.jalali.jm, jd: t.jalali.jd };
+        }
+        renderCalendar();
+      });
+    });
     // Calendar mode toggle (jalali / gregorian / hijri)
     document.querySelectorAll('.mode-btn').forEach(function (mb) {
       mb.addEventListener('click', function () {

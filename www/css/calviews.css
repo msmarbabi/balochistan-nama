@@ -1,0 +1,136 @@
+/* ============================================================
+   v1.18 — Calendar views (month chips / week / day / agenda)
+   الهام‌گرفته از نمای تقویم Calendula
+   ============================================================ */
+
+/* --- چیپ رویداد در سلول ماهانه --- */
+.cal-chips { display: flex; flex-direction: column; gap: 1px; margin-top: 2px; overflow: hidden; }
+.cal-chip {
+  display: block; font-size: 8px; line-height: 1.5; text-align: left;
+  color: #fff; border-radius: 3px; padding: 0 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: ltr;
+}
+.cal-chip--more { background: var(--text-muted, #8a8aa0); }
+
+/* --- نمای هفتگی --- */
+.cal-week-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.cal-week__allday {
+  display: flex; gap: 6px; align-items: center;
+  background: var(--bg-elev, rgba(255,255,255,.04));
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 6px 8px; margin-bottom: 8px;
+}
+.cal-week__allday-lbl { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+.cal-week__allday-days { display: flex; gap: 6px; flex: 1; overflow: hidden; }
+.cal-week__allday-cell { flex: 1; min-width: 0; }
+.cal-week__chips { display: flex; flex-wrap: wrap; gap: 2px; }
+.cal-week__chip {
+  font-size: 9px; color: #fff; border-radius: 4px; padding: 1px 5px;
+  max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: ltr;
+}
+.cal-week__chip--off { background: var(--accent); }
+.cal-week__more { font-size: 9px; color: var(--text-muted); }
+
+.cal-week__cols {
+  display: flex;
+  border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+  background: var(--bg-elev, rgba(255,255,255,.02));
+}
+.cal-week__gutter {
+  position: relative; width: 44px; flex: 0 0 44px;
+  border-left: 1px solid var(--line);
+  background: var(--bg-elev, rgba(255,255,255,.03));
+}
+.cal-week__gutter-l {
+  position: absolute; left: 4px; transform: translateY(-50%);
+  font-size: 9px; color: var(--text-muted);
+}
+.cal-week__col {
+  flex: 1; min-width: 72px; position: relative;
+  border-left: 1px solid var(--line);
+}
+.cal-week__col--today { background: rgba(124,137,235,.05); }
+.cal-week__head {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 5px 2px; font-size: 11px; font-weight: 700;
+  border-bottom: 1px solid var(--line); background: var(--bg-elev, rgba(255,255,255,.05));
+  color: var(--text);
+}
+.cal-week__head--today { color: var(--accent); }
+.cal-week__todaybadge {
+  font-size: 8px; font-weight: 400; color: var(--accent);
+  background: rgba(124,137,235,.15); border-radius: 6px; padding: 0 4px;
+}
+.cal-week__body { position: relative; overflow: hidden; }
+.cal-week__line {
+  position: absolute; left: 0; right: 0; height: 1px;
+  background: var(--line, rgba(255,255,255,.08));
+}
+.cal-week__ev {
+  position: absolute; left: 2px; right: 2px;
+  border-radius: 5px; color: #fff; overflow: hidden;
+  padding: 1px 4px; box-shadow: 0 1px 3px rgba(0,0,0,.25);
+  cursor: pointer; z-index: 2;
+}
+.cal-week__ev-t { font-size: 9px; font-weight: 700; line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-week__ev-m { font-size: 8px; opacity: .85; white-space: nowrap; }
+
+/* --- نمای روزانه --- */
+.cal-day-wrap { display: flex; flex-direction: column; gap: 8px; }
+.cal-day__section {
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--bg-elev, rgba(255,255,255,.03)); overflow: hidden;
+}
+.cal-day__label {
+  font-size: 11px; font-weight: 700; color: var(--text-muted);
+  padding: 6px 10px; border-bottom: 1px solid var(--line);
+  background: rgba(255,255,255,.03);
+}
+.cal-day__item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 10px; font-size: 12px;
+  border-top: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+}
+.cal-day__item:first-child { border-top: none; }
+.cal-day__dot {
+  width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px;
+}
+.cal-day__it-t { font-weight: 600; flex: 1; }
+.cal-day__it-time { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; min-width: 64px; }
+.cal-day__tag {
+  font-size: 9px; color: var(--accent); background: rgba(124,137,235,.15);
+  border-radius: 6px; padding: 0 5px;
+}
+.cal-day__loc { font-size: 10px; color: var(--text-muted); }
+.cal-day__empty {
+  text-align: center; color: var(--text-muted); padding: 30px 0; font-size: 13px;
+}
+
+/* --- نمای اجنده --- */
+.cal-agen-wrap { display: flex; flex-direction: column; gap: 6px; max-height: 560px; overflow-y: auto; }
+.cal-agen__day {
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--bg-elev, rgba(255,255,255,.03)); overflow: hidden;
+}
+.cal-agen__day--today { border-color: var(--accent); }
+.cal-agen__date {
+  font-size: 12px; font-weight: 700; padding: 7px 10px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255,255,255,.04);
+}
+.cal-agen__today { font-size: 9px; color: var(--accent); font-weight: 400; }
+.cal-agen__items { padding: 4px 0; }
+.cal-agen__item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 10px; font-size: 12px; cursor: pointer;
+  border-left: 3px solid var(--accent);
+}
+.cal-agen__item:active { background: rgba(255,255,255,.05); }
+.cal-agen__it-time { font-size: 10px; color: var(--text-muted); min-width: 52px; font-variant-numeric: tabular-nums; }
+.cal-agen__it-t { font-weight: 600; flex: 1; }
+.cal-agen__it-rep { font-size: 11px; }
+
+/* --- دکمه‌های نمای تقویم --- */
+.calview-btn { transition: all .15s; }
