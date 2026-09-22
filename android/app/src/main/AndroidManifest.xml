@@ -113,6 +113,18 @@
         <service
             android:name=".PrayerNotificationService"
             android:exported="false" />
+
+        <!-- v1.18: Quick Settings Tile «رویداد سریع» -->
+        <service
+            android:name=".qs.NewEventTileService"
+            android:exported="true"
+            android:icon="@android:drawable/ic_menu_my_calendar"
+            android:label="رویداد سریع"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.ACTIVE_TILE" />
+            </intent-filter>
+        </service>
     </application>
 
     <!-- Permissions -->
@@ -132,16 +144,4 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.TILE_SERVICE" />
-
-    <!-- v1.18: Quick Settings Tile «رویداد/نماز» -->
-    <service
-        android:name=".qs.NewEventTileService"
-        android:exported="true"
-        android:icon="@android:drawable/ic_menu_my_calendar"
-        android:label="رویداد سریع"
-        android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
-        <intent-filter>
-            <action android:name="android.service.quicksettings.ACTIVE_TILE" />
-        </intent-filter>
-    </service>
 </manifest>

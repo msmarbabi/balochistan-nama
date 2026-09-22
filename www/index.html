@@ -7,12 +7,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <title>بلوچستان نما</title>
-  <link rel="stylesheet" href="css/app.css?v=186">
-  <link rel="stylesheet" href="css/extras.css?v=186">
-  <link rel="stylesheet" href="css/sheet.css?v=186">
-  <link rel="stylesheet" href="css/settings.css?v=186">
-  <link rel="stylesheet" href="css/accordion.css?v=186">
-  <link rel="stylesheet" href="css/calviews.css?v=186">
+  <link rel="stylesheet" href="css/app.css?v=190">
+  <link rel="stylesheet" href="css/extras.css?v=190">
+  <link rel="stylesheet" href="css/sheet.css?v=190">
+  <link rel="stylesheet" href="css/settings.css?v=190">
+  <link rel="stylesheet" href="css/accordion.css?v=190">
+  <link rel="stylesheet" href="css/calviews.css?v=190">
 </head>
 <body>
   <div class="season-scene" id="seasonScene"></div>
@@ -242,7 +242,7 @@
           <button class="btn btn--ghost calview-btn" data-cv="month" style="font-size:11px; padding:3px 10px;">▦ ماهانه</button>
           <button class="btn btn--ghost calview-btn" data-cv="week" style="font-size:11px; padding:3px 10px;">▥ هفتگی</button>
           <button class="btn btn--ghost calview-btn" data-cv="day" style="font-size:11px; padding:3px 10px;">☰ روزانه</button>
-          <button class="btn btn--ghost calview-btn" data-cv="agenda" style="font-size:11px; padding:3px 10px;">≣ اجنده</button>
+          <button class="btn btn--ghost calview-btn" data-cv="agenda" style="font-size:11px; padding:3px 10px;">📋 دستورکار</button>
         </div>
         <div class="cal-season-bar" id="calSeasonBar"></div>
         <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
@@ -252,10 +252,18 @@
           <input class="input" id="calSearch" placeholder="🔍 جستجوی مناسبت..." style="flex:2; min-width:140px;">
           <button class="btn btn--ghost" id="calSearchBtn" style="font-size:12px; min-width:80px;">🔍 جستجو</button>
         </div>
-        <div class="cal-legend text-small" id="calLegend" style="display:flex; flex-wrap:wrap; gap:8px 14px; margin:2px 4px 8px;">
-          <span title="نقطه‌های رسمی">🔸 مناسبت رسمی</span>
-          <span title="چیپ رنگی = رویداد شخصی">🔲 رویداد شخصی (رنگ)</span>
-          <span title="روزه / جشن">🌙 روزه • 🎉 جشن</span>
+        <!-- ردیف دوم: سوییچ نما + تعویض دوره (زیر جستجو) -->
+        <div class="cal-toolbar2">
+          <div class="cal-toolbar2__views">
+            <button class="btn calview-btn" data-cv="month">▦ ماهانه</button>
+            <button class="btn calview-btn" data-cv="week">▥ هفتگی</button>
+            <button class="btn calview-btn" data-cv="day">☰ روزانه</button>
+            <button class="btn calview-btn" data-cv="agenda">📋 دستورکار</button>
+          </div>
+          <div class="cal-toolbar2__nav">
+            <button class="btn cal-nav2" id="calPrev2" title="دورهٔ قبل">‹ قبلی</button>
+            <button class="btn cal-nav2" id="calNext2" title="دورهٔ بعد">بعد ›</button>
+          </div>
         </div>
         <div id="calViewRoot">
           <div class="cal-grid" id="calGrid">
@@ -273,13 +281,15 @@
         <button class="btn btn--ghost" id="calShareDay" style="width:100%; margin-top:6px; font-size:13px;">📤 اشتراک‌گذاری این روز</button>
         <button class="btn btn--ghost" id="calExportICS" style="width:100%; margin-top:6px; font-size:13px;">📆 خروجی ICS این روز</button>
         <button class="btn btn--ghost" id="calExportYearICS" style="width:100%; margin-top:6px; font-size:13px;">🗓️ خروجی ICS کل سال</button>
-        <div class="cal-legend">
+        <div class="cal-legend" id="calLegendBottom">
           <span class="cal-legend__item"><i class="dot dot-holiday"></i> تعطیل رسمی</span>
           <span class="cal-legend__item"><i class="dot dot-baloch"></i> بلوچی</span>
           <span class="cal-legend__item"><i class="dot dot-sunni"></i> اهل سنت</span>
           <span class="cal-legend__item"><i class="dot dot-shia"></i> شیعه</span>
           <span class="cal-legend__item"><i class="dot dot-intl"></i> جهانی</span>
-          <span class="cal-legend__item"><i class="dot dot-note"></i> یادداشت 📝</span>
+          <span class="cal-legend__item"><i class="dot dot-note"></i> یادداشت</span>
+          <span class="cal-legend__item"><i class="dot dot-fast"></i> روزه</span>
+          <span class="cal-legend__item"><span class="cal-chip" style="background:#457b9d">🔲</span> رویداد شخصی</span>
         </div>
 
         <div class="section-title" style="margin-top:14px;">⏳ شمارش معکوس مناسبت‌های قمری</div>
@@ -1098,16 +1108,28 @@
             <option value="auto">خودکار</option>
           </select>
         </div>
-        <div class="setting-row" data-s="نمای پیش‌فرض صفحه تقویم: ماهانه، هفتگی، روزانه یا اجنده">
+        <div class="setting-row" data-s="نمای پیش‌فرض صفحه تقویم: ماهانه، هفتگی، روزانه یا دستورکار">
           <div>
             <div class="setting-row__label">نمای پیش‌فرض تقویم</div>
-            <div class="setting-row__desc">ماهان ▦ | هفته ▥ | روز ☰ | اجنده ≣</div>
+            <div class="setting-row__desc">ماهان ▦ | هفته ▥ | روز ☰ | دستورکار 📋</div>
           </div>
           <select id="setCalView" style="min-width:80px;">
             <option value="month">ماهان</option>
             <option value="week">هفته</option>
             <option value="day">روز</option>
-            <option value="agenda">اجنده</option>
+            <option value="agenda">دستورکار</option>
+          </select>
+        </div>
+        <div class="setting-row" data-s="سبک نما ماهانه: صفحه‌ای، اسکرول ماه‌ها، هفته‌های پیوسته یا تقسیم‌بندی‌شده">
+          <div>
+            <div class="setting-row__label">سبک نمای ماهانه</div>
+            <div class="setting-row__desc">صفحه‌ای • اسکرول ماه‌ها • هفته پیوسته • تقسیم‌بندی</div>
+          </div>
+          <select id="setMonthStyle" style="min-width:100px;">
+            <option value="pages">صفحه‌ای</option>
+            <option value="scrolling">اسکرول ماه‌ها</option>
+            <option value="seamless">هفته پیوسته</option>
+            <option value="split">تقسیم‌بندی</option>
           </select>
         </div>
         <div class="setting-row" data-s="ساعت تابستانه (DST) افزودن ۱ ساعت به ساعت رسمی در صورت نیاز ">
@@ -1409,36 +1431,36 @@
   <script src="js/notes.js?v=176"></script>
   <script src="js/season_fx.js?v=176"></script>
   <script src="js/quran_audio.js?v=176"></script>
-  <script src="js/weather.js?v=186"></script>
-  <script src="js/compass.js?v=186"></script>
-  <script src="js/streak.js?v=186"></script>
-  <script src="js/ramadan.js?v=186"></script>
-  <script src="js/clock.js?v=186"></script>
-  <script src="js/moon.js?v=186"></script>
-  <script src="js/app.js?v=186"></script>
-  <script src="js/tasbeeh.js?v=186"></script>
-  <script src="js/tools.js?v=186"></script>
-  <script src="js/athan_player.js?v=186"></script>
-  <script src="js/personalevents.js?v=186"></script>
-  <script src="js/learn.js?v=186"></script>
-  <script src="js/fatwa.js?v=186"></script>
-  <script src="js/ayat_day.js?v=186"></script>
-  <script src="js/ayat.js?v=186"></script>
-  <script src="js/pt_server.js?v=186"></script>
-  <script src="js/athans_catalog.js?v=186"></script>
-  <script src="js/adhkar_lib.js?v=186"></script>
-  <script src="js/lessons.js?v=186"></script>
-  <script src="js/monthtable.js?v=186"></script>
-  <script src="js/ics.js?v=186"></script>
-  <script src="js/stats.js?v=186"></script>
+  <script src="js/weather.js?v=190"></script>
+  <script src="js/compass.js?v=190"></script>
+  <script src="js/streak.js?v=190"></script>
+  <script src="js/ramadan.js?v=190"></script>
+  <script src="js/clock.js?v=190"></script>
+  <script src="js/moon.js?v=190"></script>
+  <script src="js/app.js?v=190"></script>
+  <script src="js/tasbeeh.js?v=190"></script>
+  <script src="js/tools.js?v=190"></script>
+  <script src="js/athan_player.js?v=190"></script>
+  <script src="js/personalevents.js?v=190"></script>
+  <script src="js/learn.js?v=190"></script>
+  <script src="js/fatwa.js?v=190"></script>
+  <script src="js/ayat_day.js?v=190"></script>
+  <script src="js/ayat.js?v=190"></script>
+  <script src="js/pt_server.js?v=190"></script>
+  <script src="js/athans_catalog.js?v=190"></script>
+  <script src="js/adhkar_lib.js?v=190"></script>
+  <script src="js/lessons.js?v=190"></script>
+  <script src="js/monthtable.js?v=190"></script>
+  <script src="js/ics.js?v=190"></script>
+  <script src="js/stats.js?v=190"></script>
   <script>
     // init یادداشت یک‌بار در startup — تا دکمه + از صفحه خانه هم کار کند
     document.addEventListener('DOMContentLoaded', function () {
       try { if (window.Notes) Notes.init(); } catch (e) {}
     });
   </script>
-  <script src="js/notify.js?v=186"></script>
-  <script src="js/i18n.js?v=186"></script>
-  <script src="js/extensions.js?v=186"></script>
+  <script src="js/notify.js?v=190"></script>
+  <script src="js/i18n.js?v=190"></script>
+  <script src="js/extensions.js?v=190"></script>
 </body>
 </html>

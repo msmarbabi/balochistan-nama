@@ -171,40 +171,6 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         // v1.18: Deep link از QS Tile / ویجت اجنده — باز کردن مودال رویدادهای شخصی
         handleBxAction(getIntent());
-    }
-
-    @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        handleBxAction(intent);
-    }
-
-    // v1.18: اجرای اکشن خاص (مثلا open_pe_modal) پس از بارگذاری صفحه
-    private void handleBxAction(Intent intent) {
-        try {
-            if (intent == null) return;
-            String action = intent.getStringExtra("bx_action");
-            if (action == null) return;
-            intent.removeExtra("bx_action");
-            if ("open_pe_modal".equals(action)) {
-                runOnUiThread(new Runnable() {
-                    @Override public void run() {
-                        // صبر تا بارگذاری کامل وب‌ویو (آسیت محلی، سریع)
-                        new android.os.Handler(getMainLooper()).postDelayed(new Runnable() {
-                            @Override public void run() {
-                                try {
-                                    if (getBridge() != null && getBridge().getWebView() != null) {
-                                        getBridge().getWebView().evaluateJavascript(
-                                            "try{ PersonalEvents.openModal(); }catch(e){}", null);
-                                    }
-                                } catch (Exception ignored) {}
-                            }
-                        }, 1800);
-                    }
-                });
-            }
-        } catch (Exception ignored) {}
-    }
         // NotesBridge: ارسال یادداشت به برنامه یادداشت رسمی اندروید
         if (getBridge() != null && getBridge().getWebView() != null) {
             getBridge().getWebView().addJavascriptInterface(new Object() {
@@ -673,13 +639,12 @@ public class MainActivity extends BridgeActivity {
                                 nc.close();
                             }
                             // 2) رویدادهای تولد (birthday events)
+                            // ContactsContract.Events در SDK موجود نیست — با URI خام
+                            android.net.Uri eventsUri = android.net.Uri.parse("content://com.android.contacts/events");
                             android.database.Cursor ec = cr.query(
-                                android.provider.ContactsContract.Events.CONTENT_URI,
-                                new String[]{ android.provider.ContactsContract.Events.CONTACT_ID,
-                                    android.provider.ContactsContract.Events.START_DAY,
-                                    android.provider.ContactsContract.Events.EVENT_TYPE },
-                                android.provider.ContactsContract.Events.EVENT_TYPE + " = "
-                                    + android.provider.ContactsContract.Events.EventTypes.BIRTHDAY,
+                                eventsUri,
+                                new String[]{ "contact_id", "start_day", "event_type" },
+                                "event_type = 1 AND marked_for_deletion = 0",
                                 null, null);
                             if (ec != null) {
                                 while (ec.moveToNext()) {
@@ -715,12 +680,12 @@ public class MainActivity extends BridgeActivity {
                     public void saveAndShareFile(String name, String base64, String mime) {
                         try {
                             byte[] data = android.util.Base64.decode(base64, android.util.Base64.DEFAULT);
-                            java.io.File out = new java.io.File(getFilesDir(), name);
+                            java.io.File out = new java.io.File(MainActivity.this.getFilesDir(), name);
                             java.io.FileOutputStream fos = new java.io.FileOutputStream(out);
                             fos.write(data); fos.close();
                             // اشتراک‌گذاری
                             Uri uri = androidx.core.content.FileProvider.getUriForFile(
-                                this, getPackageName() + ".fileprovider", out);
+                                MainActivity.this, MainActivity.this.getPackageName() + ".fileprovider", out);
                             Intent send = new Intent(Intent.ACTION_SEND);
                             send.setType((mime != null && !mime.isEmpty()) ? mime : "text/calendar");
                             send.putExtra(Intent.EXTRA_STREAM, uri);
@@ -733,5 +698,38 @@ public class MainActivity extends BridgeActivity {
                 }, "NativeApp");
             }
         }
+    }
+
+    // ===== v1.18: deep-link از QS Tile / ویجت اجنده =====
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        handleBxAction(intent);
+    }
+
+    // اجرای اکشن خاص (مثلا open_pe_modal) پس از بارگذاری صفحه
+    private void handleBxAction(Intent intent) {
+        try {
+            if (intent == null) return;
+            String action = intent.getStringExtra("bx_action");
+            if (action == null) return;
+            intent.removeExtra("bx_action");
+            if ("open_pe_modal".equals(action)) {
+                runOnUiThread(new Runnable() {
+                    @Override public void run() {
+                        new android.os.Handler(getMainLooper()).postDelayed(new Runnable() {
+                            @Override public void run() {
+                                try {
+                                    if (getBridge() != null && getBridge().getWebView() != null) {
+                                        getBridge().getWebView().evaluateJavascript(
+                                            "try{ PersonalEvents.openModal(); }catch(e){}", null);
+                                    }
+                                } catch (Exception ignored) {}
+                            }
+                        }, 1800);
+                    }
+                });
+            }
+        } catch (Exception ignored) {}
     }
 }

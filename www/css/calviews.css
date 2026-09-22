@@ -1,136 +1,248 @@
 /* ============================================================
-   v1.18 — Calendar views (month chips / week / day / agenda)
-   الهام‌گرفته از نمای تقویم Calendula
+   v1.19 — تقویم: مای‌گلس آیفونی + نماهای ماه/هفته/روز/دستورکار
    ============================================================ */
 
-/* --- چیپ رویداد در سلول ماهانه --- */
+/* ---------- مای‌گلس (liquid glass) ---------- */
+.glass {
+  background: rgba(255,255,255,.42);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255,255,255,.55);
+  border-radius: var(--r-lg, 22px);
+  box-shadow: 0 8px 32px rgba(31,45,70,.10), inset 0 1px 0 rgba(255,255,255,.6);
+  overflow: hidden;
+}
+html[data-theme="dark"] .glass {
+  background: rgba(18,22,32,.40);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 8px 32px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.glass--white { background: rgba(255,255,255,.55); }
+.glass--blue { background: rgba(120,170,255,.30); }
+html[data-theme="dark"] .glass--blue { background: rgba(60,90,160,.30); }
+
+/* ---------- تم فصلی صفحه تقویم (حالت روشن) ---------- */
+html[data-theme="light"][data-season="spring"] #view-cal { background: linear-gradient(180deg,#e6f4d9 0%,#fbfbe7 34%,#fffdf5 100%); }
+html[data-theme="light"][data-season="summer"] #view-cal { background: linear-gradient(180deg,#fdf3cf 0%,#fffbea 40%,#fffdf8 100%); }
+html[data-theme="light"][data-season="autumn"] #view-cal { background: linear-gradient(180deg,#fde2c4 0%,#fff4e4 40%,#fffaf3 100%); }
+html[data-theme="light"][data-season="winter"] #view-cal { background: linear-gradient(180deg,#dbeeff 0%,#eef6ff 40%,#fbfdff 100%); }
+
+/* ---------- چیپ رویداد در سلول ماهانه ---------- */
 .cal-chips { display: flex; flex-direction: column; gap: 1px; margin-top: 2px; overflow: hidden; }
 .cal-chip {
   display: block; font-size: 8px; line-height: 1.5; text-align: left;
   color: #fff; border-radius: 3px; padding: 0 4px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: ltr;
 }
-.cal-chip--more { background: var(--text-muted, #8a8aa0); }
+.cal-chip--more { background: var(--fg-muted,#8a8aa0); color:#fff; }
+.day-dots { display:flex; flex-wrap:wrap; gap:2px; margin-top:1px; }
+.dot-personal { background:#457b9d; }
 
-/* --- نمای هفتگی --- */
-.cal-week-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.cal-week__allday {
-  display: flex; gap: 6px; align-items: center;
-  background: var(--bg-elev, rgba(255,255,255,.04));
-  border: 1px solid var(--line); border-radius: 10px;
-  padding: 6px 8px; margin-bottom: 8px;
+/* ---------- دکمه‌های سوییچ نما (مای‌گلس خنثی) ---------- */
+.calview-btn {
+  border-radius: 14px;
+  background: rgba(255,255,255,.45);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,.55);
+  transition: all .18s var(--ease);
 }
-.cal-week__allday-lbl { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
-.cal-week__allday-days { display: flex; gap: 6px; flex: 1; overflow: hidden; }
-.cal-week__allday-cell { flex: 1; min-width: 0; }
-.cal-week__chips { display: flex; flex-wrap: wrap; gap: 2px; }
+html[data-theme="dark"] .calview-btn { background: rgba(30,36,48,.5); border-color: rgba(255,255,255,.12); }
+.calview-btn--active {
+  background: rgba(255,255,255,.85);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+  box-shadow: 0 2px 10px rgba(0,0,0,.10);
+}
+html[data-theme="dark"] .calview-btn--active { background: rgba(40,48,64,.9); }
+.cal-toolbar2 {
+  display: flex; flex-direction: column; gap: 6px;
+  margin: 2px 4px 8px;
+}
+.cal-toolbar2__views, .cal-toolbar2__nav {
+  display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;
+}
+.cal-toolbar2 .calview-btn, .cal-toolbar2 .cal-nav2 {
+  font-size: 11px; padding: 5px 10px; border-radius: 14px;
+  background: rgba(255,255,255,.45);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,.55);
+}
+html[data-theme="dark"] .cal-toolbar2 .calview-btn,
+html[data-theme="dark"] .cal-toolbar2 .cal-nav2 {
+  background: rgba(30,36,48,.5); border-color: rgba(255,255,255,.12);
+}
+
+/* ---------- سبک‌های گرید ماهانه ---------- */
+.cal-grid--sub { border-radius: var(--r-md); overflow: hidden; }
+.cal-scroll__month { margin-bottom: 14px; }
+.cal-scroll__hdr {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 15px; font-weight: 800; color: var(--fg);
+  padding: 6px 4px 8px;
+}
+.cal-scroll__se { font-size: 11px; font-weight: 500; color: var(--fg-muted); }
+.cal-scroll__month--cur .cal-scroll__hdr { color: var(--accent); }
+.cal-grid--seamless .cal-seamless__month {
+  display: flex; align-items: baseline; gap: 6px;
+  padding: 4px 2px 2px; margin-top: 4px;
+}
+.cal-seamless__mn { font-size: 13px; font-weight: 800; color: var(--accent); }
+.cal-seamless__md { font-size: 12px; font-weight: 700; color: var(--fg); }
+.cal-grid--compact .cal-grid__day { min-height: 52px; }
+.cal-grid--compact .hijri-num { display: none; }
+.cal-grid--compact .day-num { font-size: 13px; }
+.cal-grid--compact .cal-chips { display: none; }
+.cal-split__list { padding: 10px; margin-top: 8px; }
+.cal-split__date { font-size: 14px; font-weight: 800; color: var(--accent); margin-bottom: 8px; }
+.cal-split__items { display: flex; flex-direction: column; gap: 4px; }
+.cal-split__item {
+  display: flex; align-items: center; gap: 8px; font-size: 12px;
+  padding: 7px 9px; border-radius: 10px;
+  background: rgba(255,255,255,.35); border-right: 3px solid var(--accent);
+}
+html[data-theme="dark"] .cal-split__item { background: rgba(255,255,255,.05); }
+.cal-split__t { font-weight: 600; flex: 1; }
+.cal-split__time { font-size: 11px; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.cal-day__dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; }
+
+/* ---------- نمای هفتگی (واکنش‌گرا) ---------- */
+.cal-week-wrap { display: flex; flex-direction: column; gap: 10px; }
+.cal-week__occ { padding: 8px 10px 10px; }
+.cal-week__occ-title { font-size: 12px; font-weight: 700; color: var(--fg-soft); margin-bottom: 7px; }
+.cal-week__occ-grid { display: flex; gap: 4px; }
+.cal-week__occ-cell { flex: 1; min-width: 0; border-radius: 10px; padding: 4px 3px; background: rgba(255,255,255,.25); }
+html[data-theme="dark"] .cal-week__occ-cell { background: rgba(255,255,255,.05); }
+.cal-week__occ-cell--today { background: rgba(124,137,235,.16); outline: 1px solid var(--accent); }
+.cal-week__occ-day { font-size: 9px; font-weight: 700; color: var(--fg-soft); text-align: center; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-week__occ-cell--today .cal-week__occ-day { color: var(--accent); }
+.cal-week__chips { display: flex; flex-direction: column; gap: 2px; }
 .cal-week__chip {
-  font-size: 9px; color: #fff; border-radius: 4px; padding: 1px 5px;
-  max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: ltr;
+  font-size: 8px; line-height: 1.5; color: #fff; border-radius: 4px; padding: 0 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: ltr;
 }
 .cal-week__chip--off { background: var(--accent); }
-.cal-week__more { font-size: 9px; color: var(--text-muted); }
+.cal-week__more, .cal-week__none { font-size: 8px; color: var(--fg-muted); }
 
 .cal-week__cols {
   display: flex;
-  border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
-  background: var(--bg-elev, rgba(255,255,255,.02));
+  border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden;
+  background: rgba(255,255,255,.30);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
 }
-.cal-week__gutter {
-  position: relative; width: 44px; flex: 0 0 44px;
-  border-left: 1px solid var(--line);
-  background: var(--bg-elev, rgba(255,255,255,.03));
+html[data-theme="dark"] .cal-week__cols { background: rgba(20,25,35,.4); }
+.cal-week__gutter { flex: 0 0 34px; position: relative; }
+.cal-week__gutter-sp { height: 0; }
+.cal-week__hour { height: 44px; position: relative; }
+.cal-week__hour-l {
+  position: absolute; top: -7px; left: 4px;
+  font-size: 8px; color: var(--fg-muted); font-variant-numeric: tabular-nums;
+  direction: ltr;
 }
-.cal-week__gutter-l {
-  position: absolute; left: 4px; transform: translateY(-50%);
-  font-size: 9px; color: var(--text-muted);
-}
-.cal-week__col {
-  flex: 1; min-width: 72px; position: relative;
-  border-left: 1px solid var(--line);
-}
-.cal-week__col--today { background: rgba(124,137,235,.05); }
+.cal-week__col { flex: 1 1 0; min-width: 0; position: relative; border-left: 1px solid var(--line); }
+.cal-week__gutter-sp { height: 47px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.35); }
+html[data-theme="dark"] .cal-week__gutter-sp { background: rgba(255,255,255,.05); }
+.cal-week__col--today { background: rgba(124,137,235,.07); }
 .cal-week__head {
-  display: flex; flex-direction: column; align-items: center; gap: 1px;
-  padding: 5px 2px; font-size: 11px; font-weight: 700;
-  border-bottom: 1px solid var(--line); background: var(--bg-elev, rgba(255,255,255,.05));
-  color: var(--text);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0px;
+  height: 47px; padding: 2px; font-size: 10px; font-weight: 700;
+  border-bottom: 1px solid var(--line); background: rgba(255,255,255,.35);
+  color: var(--fg); cursor: pointer; overflow: hidden;
 }
+html[data-theme="dark"] .cal-week__head { background: rgba(255,255,255,.05); }
+.cal-week__head-d { font-size: 12px; color: var(--fg-soft); font-weight: 800; }
 .cal-week__head--today { color: var(--accent); }
+.cal-week__head--today .cal-week__head-d { color: var(--accent); }
 .cal-week__todaybadge {
-  font-size: 8px; font-weight: 400; color: var(--accent);
-  background: rgba(124,137,235,.15); border-radius: 6px; padding: 0 4px;
+  font-size: 8px; font-weight: 500; color: var(--accent);
+  background: rgba(124,137,235,.18); border-radius: 8px; padding: 0 5px;
 }
 .cal-week__body { position: relative; overflow: hidden; }
-.cal-week__line {
-  position: absolute; left: 0; right: 0; height: 1px;
-  background: var(--line, rgba(255,255,255,.08));
-}
+.cal-week__line { position: absolute; left: 0; right: 0; height: 1px; background: var(--line); opacity: .6; }
 .cal-week__ev {
   position: absolute; left: 2px; right: 2px;
-  border-radius: 5px; color: #fff; overflow: hidden;
-  padding: 1px 4px; box-shadow: 0 1px 3px rgba(0,0,0,.25);
+  border-radius: 6px; color: #fff; overflow: hidden;
+  padding: 2px 4px; box-shadow: 0 1px 4px rgba(0,0,0,.25);
   cursor: pointer; z-index: 2;
 }
-.cal-week__ev-t { font-size: 9px; font-weight: 700; line-height: 1.2;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cal-week__ev-m { font-size: 8px; opacity: .85; white-space: nowrap; }
+.cal-week__ev-t { font-size: 9px; font-weight: 700; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-week__ev-m { font-size: 8px; opacity: .9; white-space: nowrap; direction: ltr; text-align: left; }
 
-/* --- نمای روزانه --- */
-.cal-day-wrap { display: flex; flex-direction: column; gap: 8px; }
-.cal-day__section {
-  border: 1px solid var(--line); border-radius: 10px;
-  background: var(--bg-elev, rgba(255,255,255,.03)); overflow: hidden;
+/* ---------- نمای روزانه (روزهای ماه عمودی) ---------- */
+.cal-dayv-wrap { display: flex; flex-direction: column; gap: 8px; }
+.cal-dayv__day { padding: 10px 12px; }
+.cal-dayv__head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 7px; }
+.cal-dayv__date { font-size: 13px; font-weight: 800; color: var(--fg); }
+.cal-dayv__day--today .cal-dayv__date { color: var(--accent); }
+.cal-dayv__allday { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.cal-dayv__allday-chip {
+  font-size: 10px; color: #fff; border-radius: 6px; padding: 2px 8px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
 }
-.cal-day__label {
-  font-size: 11px; font-weight: 700; color: var(--text-muted);
-  padding: 6px 10px; border-bottom: 1px solid var(--line);
-  background: rgba(255,255,255,.03);
+.cal-dayv__rows { display: flex; flex-direction: column; gap: 4px; }
+.cal-dayv__row {
+  border-radius: 10px; color: #fff; padding: 5px 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.15); cursor: pointer;
 }
-.cal-day__item {
-  display: flex; align-items: center; gap: 6px;
-  padding: 8px 10px; font-size: 12px;
-  border-top: 1px solid var(--line);
-  border-left: 3px solid var(--accent);
-}
-.cal-day__item:first-child { border-top: none; }
-.cal-day__dot {
-  width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px;
-}
-.cal-day__it-t { font-weight: 600; flex: 1; }
-.cal-day__it-time { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; min-width: 64px; }
+.cal-dayv__row-t { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-dayv__row-m { font-size: 10px; opacity: .92; direction: rtl; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.cal-dayv__row-m .cal-day__tag, .cal-dayv__row-m .cal-day__loc { direction: rtl; }
+.cal-dayv__none { font-size: 11px; color: var(--fg-muted); padding: 2px; }
 .cal-day__tag {
-  font-size: 9px; color: var(--accent); background: rgba(124,137,235,.15);
+  font-size: 9px; color: #fff; background: rgba(255,255,255,.28);
   border-radius: 6px; padding: 0 5px;
 }
-.cal-day__loc { font-size: 10px; color: var(--text-muted); }
-.cal-day__empty {
-  text-align: center; color: var(--text-muted); padding: 30px 0; font-size: 13px;
-}
+.cal-day__loc { font-size: 10px; opacity: .9; }
+.cal-day__empty { text-align: center; color: var(--fg-muted); padding: 26px 0; font-size: 13px; }
 
-/* --- نمای اجنده --- */
-.cal-agen-wrap { display: flex; flex-direction: column; gap: 6px; max-height: 560px; overflow-y: auto; }
-.cal-agen__day {
-  border: 1px solid var(--line); border-radius: 10px;
-  background: var(--bg-elev, rgba(255,255,255,.03)); overflow: hidden;
-}
-.cal-agen__day--today { border-color: var(--accent); }
+/* ---------- دستورکار (اجنده) ---------- */
+.cal-agen-wrap { display: flex; flex-direction: column; gap: 12px; }
+.cal-agen__day { display: block; }
 .cal-agen__date {
-  font-size: 12px; font-weight: 700; padding: 7px 10px;
-  border-bottom: 1px solid var(--line);
-  background: rgba(255,255,255,.04);
+  display: flex; align-items: baseline; gap: 6px;
+  font-size: 13px; font-weight: 800; color: var(--fg-soft);
+  padding: 4px 6px 7px;
 }
-.cal-agen__today { font-size: 9px; color: var(--accent); font-weight: 400; }
-.cal-agen__items { padding: 4px 0; }
-.cal-agen__item {
-  display: flex; align-items: center; gap: 6px;
-  padding: 6px 10px; font-size: 12px; cursor: pointer;
-  border-left: 3px solid var(--accent);
+.cal-agen__day--today .cal-agen__date { color: var(--accent); }
+.cal-agen__label {
+  font-size: 14px; font-weight: 900; color: var(--accent);
 }
-.cal-agen__item:active { background: rgba(255,255,255,.05); }
-.cal-agen__it-time { font-size: 10px; color: var(--text-muted); min-width: 52px; font-variant-numeric: tabular-nums; }
-.cal-agen__it-t { font-weight: 600; flex: 1; }
-.cal-agen__it-rep { font-size: 11px; }
+.cal-agen__day--today .cal-agen__label { background: var(--accent); color: #fff; border-radius: 8px; padding: 0 8px; }
+.cal-agen__cards { display: flex; flex-direction: column; gap: 8px; }
+.cal-agen__card {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  cursor: pointer; position: relative;
+}
+.cal-agen__card:active { transform: scale(.99); }
+.cal-agen__bar { width: 4px; align-self: stretch; border-radius: 4px; flex: 0 0 4px; }
+.cal-agen__card-body { flex: 1; min-width: 0; }
+.cal-agen__t { font-size: 14px; font-weight: 700; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-agen__time { font-size: 11px; color: var(--fg-muted); margin-top: 1px; }
+.cal-agen__it-rep { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 13px; opacity: .7; }
+.cal-agen__none { font-size: 11px; color: var(--fg-muted); padding: 2px 6px; }
 
-/* --- دکمه‌های نمای تقویم --- */
-.calview-btn { transition: all .15s; }
+/* ---------- لیگند پایین ---------- */
+.cal-legend {
+  display: flex; flex-wrap: wrap; gap: 6px 12px;
+  padding: 10px 12px; margin-top: 10px;
+  background: rgba(255,255,255,.35);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border: 1px solid var(--line); border-radius: var(--r-lg);
+}
+html[data-theme="dark"] .cal-legend { background: rgba(20,25,35,.4); }
+.cal-legend__item { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--fg-soft); }
+.cal-legend__item .cal-chip { width: 18px; height: 12px; }
+
+/* ---------- تم‌بندی متفاوت هر صفحه (دستور ۱۰) ---------- */
+.view { transition: background .4s var(--ease); }
+html[data-theme="light"] #view-home { background: linear-gradient(180deg,#fff8ec 0%,#fffdf8 45%,var(--bg) 100%); }
+html[data-theme="light"] #view-prayer { background: linear-gradient(180deg,#e9f6ee 0%,#f7fcf9 45%,var(--bg) 100%); }
+html[data-theme="light"] #view-weather { background: linear-gradient(180deg,#e4f2fb 0%,#f5fbff 45%,var(--bg) 100%); }
+html[data-theme="light"] #view-culture { background: linear-gradient(180deg,#fdeee0 0%,#fdf6ee 45%,var(--bg) 100%); }
+html[data-theme="light"] #view-tasbeeh { background: linear-gradient(180deg,#efe9fb 0%,#f8f5fe 45%,var(--bg) 100%); }
+html[data-theme="light"] #view-notes { background: linear-gradient(180deg,#edf1f6 0%,#f7f9fc 45%,var(--bg) 100%); }
+/* اکسنت هر صفحه (حالت روشن) */
+html[data-theme="light"] #view-prayer { --accent: #2f9e6e; --accent-soft: #b6e3cb; --accent-deep: #1c5b3a; }
+html[data-theme="light"] #view-weather { --accent: #4a9fd8; --accent-soft: #b6d9f0; --accent-deep: #1c4a6b; }
+html[data-theme="light"] #view-culture { --accent: #d07a3a; --accent-soft: #f0c5a0; --accent-deep: #6b3a1c; }
+html[data-theme="light"] #view-tasbeeh { --accent: #8a6fd0; --accent-soft: #c5b6f0; --accent-deep: #3a2c6b; }

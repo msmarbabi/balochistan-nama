@@ -16,7 +16,7 @@ public class NewEventTileService extends TileService {
     @Override
     public void onStartListening() {
         try {
-            Tile tile = getQSTile();
+            Tile tile = getQsTile();
             if (tile != null) {
                 tile.setState(Tile.STATE_INACTIVE);
                 tile.setLabel("رویداد سریع");
