@@ -1,0 +1,117 @@
+/* ===== v2.0 — ابزار (Tools) tab — Compass 360 style ===== */
+
+/* --- ابزار‌تاب‌ها (top tabs) --- */
+.tools-tabs {
+  display: flex; gap: 6px; overflow-x: auto; padding: 10px 0;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.tools-tabs::-webkit-scrollbar { display: none; }
+.tools-tab {
+  flex-shrink: 0; padding: 8px 14px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--card);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: all .15s; white-space: nowrap;
+}
+.tools-tab.active {
+  background: var(--accent); color: var(--fg-on-accent); border-color: var(--accent);
+}
+
+/* tool-panel: show/hide */
+.tool-panel { display: none; }
+.tool-panel.active { display: block; }
+
+/* --- قطب‌نمای 3D (canvas) --- */
+.compass-3d {
+  position: relative; width: 340px; height: 340px;
+  margin: 10px auto; border-radius: 50%;
+  overflow: hidden;
+}
+#cmp3dCanvas {
+  width: 340px; height: 340px; display: block;
+}
+.cmp3d__center {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  text-align: center; pointer-events: none;
+}
+.cmp3d__heading {
+  font-size: 36px; font-weight: 800; color: #fff;
+  text-shadow: 0 2px 8px rgba(0,0,0,.5);
+}
+.cmp3d__true, .cmp3d__mag {
+  font-size: 12px; color: rgba(255,255,255,.8);
+  text-shadow: 0 1px 4px rgba(0,0,0,.5);
+}
+#cmp3dTilt { opacity: .8; }
+
+/* --- سرعت‌سنج --- */
+.speed-display { text-align: center; padding: 16px; }
+.speed-value {
+  font-size: 72px; font-weight: 800; line-height: 1;
+  font-family: monospace;
+}
+.speed-unit { font-size: 16px; opacity: .6; }
+.speed-mps { font-size: 14px; opacity: .7; margin-top: 4px; }
+
+/* --- ارتفاع‌سنج --- */
+.alt-display { text-align: center; padding: 16px; }
+.alt-value { font-size: 56px; font-weight: 800; line-height: 1; }
+.alt-unit { font-size: 13px; opacity: .6; margin-top: 4px; }
+
+/* --- تراز حبابی --- */
+.level-display {
+  position: relative; width: 200px; height: 200px;
+  margin: 10px auto; border-radius: 50%;
+  border: 3px solid var(--line);
+  background: radial-gradient(circle, #1a2a3a 0%, #0a1520 100%);
+}
+.level-bubble {
+  position: absolute; width: 40px; height: 40px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #4fd8ff, #1a8fcc);
+  box-shadow: 0 0 12px #4fd8ff88;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  transition: top .1s, left .1s;
+}
+.level-cross-h, .level-cross-v {
+  position: absolute; background: rgba(255,255,255,.15);
+}
+.level-cross-h { top: 50%; left: 0; right: 0; height: 1px; }
+.level-cross-v { left: 50%; top: 0; bottom: 0; width: 1px; }
+.level-readout {
+  display: flex; justify-content: center; gap: 20px;
+  font-family: monospace; font-size: 14px; margin-top: 8px;
+}
+
+/* --- تایمر --- */
+.timer-display {
+  font-size: 64px; font-weight: 800; font-family: monospace;
+  text-align: center;
+}
+
+/* --- ساعت جهانی --- */
+.world-clock-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 12px; border-radius: 8px;
+  background: var(--bg-2); font-size: 14px;
+}
+.world-clock-item .time { font-family: monospace; font-weight: 700; font-size: 16px; }
+
+/* --- distance/area points --- */
+.dist-point, .area-point {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 10px; border-radius: 6px; background: var(--bg-2);
+  font-size: 13px; gap: 8px;
+}
+.dist-point button, .area-point button {
+  background: none; border: none; color: var(--accent); cursor: pointer; font-size: 16px;
+}
+
+/* v2 B12: GPS Deep */
+.gps-deep-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; border-radius: 10px;
+  background: var(--bg-elev2, rgba(255,255,255,.05));
+  border: 1px solid var(--line, rgba(255,255,255,.08));
+}
+.gps-deep-label { font-size: 13px; color: var(--text-dim, rgba(255,255,255,.6)); }
+.gps-deep-val { font-size: 15px; font-weight: 700; color: var(--text, #fff); }

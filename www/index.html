@@ -7,12 +7,15 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <title>بلوچستان نما</title>
-  <link rel="stylesheet" href="css/app.css?v=190">
-  <link rel="stylesheet" href="css/extras.css?v=190">
-  <link rel="stylesheet" href="css/sheet.css?v=190">
-  <link rel="stylesheet" href="css/settings.css?v=190">
-  <link rel="stylesheet" href="css/accordion.css?v=190">
-  <link rel="stylesheet" href="css/calviews.css?v=190">
+  <link rel="stylesheet" href="css/app.css?v=191">
+  <link rel="stylesheet" href="css/extras.css?v=192">
+  <link rel="stylesheet" href="css/sheet.css?v=191">
+  <link rel="stylesheet" href="css/settings.css?v=191">
+  <link rel="stylesheet" href="css/accordion.css?v=191">
+  <link rel="stylesheet" href="css/calviews.css?v=191">
+  <link rel="stylesheet" href="css/tools.css?v=191">
+  <link rel="stylesheet" href="css/care.css?v=200">
+  <link rel="stylesheet" href="css/pro360.css?v=209">
 </head>
 <body>
   <div class="season-scene" id="seasonScene"></div>
@@ -128,10 +131,6 @@
             <span class="quick-action__icon">🌙</span>
             <span data-i18n="quick.moon">فاز ماه</span>
           </button>
-          <button class="quick-action" data-action="tools">
-            <span class="quick-action__icon">🛠️</span>
-            <span data-i18n="quick.tools">ابزار</span>
-          </button>
           <button class="quick-action" data-action="nextPrayer">
             <span class="quick-action__icon">🕌</span>
             <span data-i18n="quick.nextPrayer">نماز بعدی</span>
@@ -231,6 +230,7 @@
             <div style="font-size:11px; color:var(--fg-muted);" id="calYear"></div>
           </div>
           <button class="icon-btn" id="calToday" title="امروز">🔂</button>
+          <button class="icon-btn" id="calHijriPick" title="پرش به تاریخ هجری">🌙</button>
           <button class="icon-btn" id="calNext">›</button>
         </div>
         <div style="display:flex; gap:4px; margin-bottom:6px; justify-content:center;">
@@ -340,6 +340,9 @@
           </div>
         </div>
 
+        <!-- v2 (M9): تسبیح — منتقل از تبِ جداگانه، بلافاصله بعد از اوقات شرعی -->
+        <section class="view" id="view-tasbeeh" data-route="tasbeeh" style="display:block;"></section>
+
         <div class="card">
           <div class="card__title"><span>🔔 صدای اذان و هشدار</span></div>
           <div class="setting-row">
@@ -414,6 +417,40 @@
           <div class="setting-row" style="margin-top:8px;">
             <div><div class="setting-row__label">نمایش آهنگ‌های زنگ سیستم</div><div class="setting-row__desc">اگر این گزینه فعال باشد می توانید آهنگ های زنگ سیستم را به عنوان اذان یا هشدار انتخاب کنید.</div></div>
             <div class="toggle" id="athanSystemToggle"></div>
+          </div>
+          <!-- v2 M7b: لیستِ واردشده‌ها با ویرایش/حذف — داخلِ همان کارتِ انتخاب صدا -->
+          <div class="setting-row" style="margin-top:10px;">
+            <div><div class="setting-row__label">📥 اذان/هشدارهای واردشده</div><div class="setting-row__desc">آیتم‌هایی که خودِ شما اضافه کردید — ویرایش یا حذف</div></div>
+          </div>
+          <div id="athanImportedList" style="display:flex; flex-direction:column; gap:4px; padding:6px 0;"></div>
+
+          <!-- 🎵 صدای جدا به ازای هر نماز — v1.20 (الگو: Salat-Times) -->
+          <div class="setting-row" style="margin-top:8px; align-items:flex-start; flex-direction:column; gap:2px;">
+            <div>
+              <div class="setting-row__label">🎵 صدای جدا برای هر نماز</div>
+              <div class="setting-row__desc">خالی = همان صدای انتخاب‌شدهٔ بالا</div>
+            </div>
+          </div>
+          <div class="setting-row"><div class="setting-row__label">🌅 نماز فجر</div>
+            <select class="select" id="setAthanP_fajr" style="max-width:56%;"></select></div>
+          <div class="setting-row"><div class="setting-row__label">☀️ نماز ظهر</div>
+            <select class="select" id="setAthanP_dhuhr" style="max-width:56%;"></select></div>
+          <div class="setting-row"><div class="setting-row__label">🌇 نماز عصر</div>
+            <select class="select" id="setAthanP_asr" style="max-width:56%;"></select></div>
+          <div class="setting-row"><div class="setting-row__label">🌙 نماز مغرب</div>
+            <select class="select" id="setAthanP_maghrib" style="max-width:56%;"></select></div>
+          <div class="setting-row"><div class="setting-row__label">🌌 نماز عشاء</div>
+            <select class="select" id="setAthanP_isha" style="max-width:56%;"></select></div>
+
+          <!-- 🖼 پس‌زمینهٔ صفحهٔ اذان — کاتالوگ لحظه‌ای -->
+          <div class="setting-row" style="margin-top:8px; flex-direction:column; align-items:flex-start;">
+            <div>
+              <div class="setting-row__label">🖼 پس‌زمینهٔ صفحهٔ اذان</div>
+              <div class="setting-row__desc">هنگام پخش اذان دیده می‌شه — تصاویر لحظه‌ای لود می‌شن (حجم اپ ثابت می‌ماند)</div>
+            </div>
+            <div id="athanBgPick" style="display:flex;gap:6px;flex-wrap:wrap;width:100%;padding-top:8px;"></div>
+            <div class="text-small text-muted" id="athanBgCredit" style="padding-top:6px; line-height:1.8;"></div>
+            <button class="btn btn--ghost" id="athanBgPreview" style="margin-top:6px;">👁 پیش‌نمایش صفحهٔ اذان</button>
           </div>
         </div>
         <div class="card">
@@ -534,88 +571,10 @@
           </div>
         </div>
 
-        <!-- Qibla Compass (with calibrate button) -->
-        <div class="card">
-          <div class="card__title">
-            <span>🧭 قطب‌نمای سه‌بعدی و قبله‌یاب</span>
-            <span class="pill" id="compassMode">سایپرپانک</span>
-          </div>
-          <div class="compass-stage">
-            <div class="compass-3d" id="compass3d">
-              <canvas class="compass-canvas" id="compassCanvas"></canvas>
-              <div class="compass-index"></div>
-              <div class="compass-center-readout">
-                <div class="compass-readout__deg" id="compassDeg">--°</div>
-                <div class="compass-readout__lbl">جهت دستگاه (از شمال)</div>
-              </div>
-            </div>
-          </div>
-          <div class="compass-distance" id="compassQiblaInfo">سمت قبله: --° • فاصله: --- کیلومتر</div>
-          <div class="compass-controls">
-            <button type="button" id="compassCalibBtn">🧭 کالیبره کن</button>
-            <button type="button" id="compassShakeBtn">✦ کالیبره بادقلو</button>
-            <button type="button" id="compAdjL">− آفست</button>
-            <button type="button" id="compAdjR">+ آفست</button>
-          </div>
-          <button class="btn btn--ghost" id="qiblaMapBtn" style="width:100%; margin-top:8px; font-size:13px;">🗺️ نقشه قبله (موقعیت تا کعبه)</button>
-        </div>
-
-        <!-- Qibla guide -->
-        <div class="card">
-          <div class="card__title"><span>ℹ️ راهنمای قبله‌یابی</span></div>
-          <div class="text-small" style="line-height:1.7;">
-            <p style="margin-bottom:6px;">📱 گوشی رو طوری نگه دار که صفحه رو به سمت بالا باشه و تخت.</p>
-            <p style="margin-bottom:6px;">🧭 فلش طلایی در جهت قبله (مکه) قرار می‌گیره.</p>
-            <p style="margin-bottom:6px;">° به معنای درجه از شمال واقعیه.</p>
-            <p>⚠️ برای دقت بیشتر، گوشی رو از وسایل فلزی دور نگه دارید.</p>
-          </div>
-        </div>
-
-        <!-- HUD (flight display) -->
-        <div class="card">
-          <div class="card__title"><span>✈️ خلبان‌نما (HUD پیشرفته)</span></div>
-          <div class="compass-hud" id="compassHud">
-            <!-- Heading tape -->
-            <div class="hud-heading-tape" id="hudHeadingTape"></div>
-            <div class="compass-hud__heading" id="hudHeading">--°</div>
-            <!-- Bank arc -->
-            <div class="hud-bank-arc" id="hudBankArc">
-              <span class="hud-bank-arc__mark" style="left:12%;">45</span>
-              <span class="hud-bank-arc__mark" style="left:30%;">30</span>
-              <span class="hud-bank-arc__mark" style="left:44%;">15</span>
-              <span class="hud-bank-arc__mark hud-bank-arc__mark--0" style="left:50%;">0</span>
-              <span class="hud-bank-arc__mark" style="left:56%;">15</span>
-              <span class="hud-bank-arc__mark" style="left:70%;">30</span>
-              <span class="hud-bank-arc__mark" style="left:88%;">45</span>
-              <div class="hud-bank-indicator" id="hudBankIndicator"></div>
-            </div>
-            <!-- Horizon + pitch ladder -->
-            <div class="compass-hud__horizon" id="hudHorizon">
-              <div class="hud-sky"></div>
-              <div class="hud-ground"></div>
-              <div class="hud-pitch-ladder" id="hudPitchLadder"></div>
-              <div class="hud-centerline"></div>
-              <div class="hud-pitch" id="hudPitchMark">0°</div>
-            </div>
-            <!-- Aircraft symbol -->
-            <div class="hud-aircraft" id="hudAircraft">
-              <div class="hud-aircraft__wings"></div>
-              <div class="hud-aircraft__dot"></div>
-            </div>
-            <!-- v1.13: نوارهای سرعت/ارتفاع الکی حذف شدند — به‌جای آن‌ها نشانگر قبله واقعی -->
-            <!-- Qibla indicator -->
-            <div class="hud-qibla-tape" id="hudQiblaTape">قبله: --</div>
-            <div class="hud-qibla" id="hudQibla" title="جهت کعبه">🕋</div>
-            <!-- Stats -->
-            <div class="hud-stats">
-              <span id="hudBank">بانک: 0°</span>
-              <span id="hudPitch">شیب: 0°</span>
-            </div>
-          </div>
-          <div class="text-small text-center text-muted mt-2">افق مصنوعی + سمت‌نما + جهت کعبه — حساس سنسور واقعی گوشی</div>
-        </div>
-
       </section>
+
+
+
 
       <!-- ====================================================
            VIEW: BALOCH CULTURE (poetry + events + proverbs)
@@ -627,12 +586,10 @@
           <div class="hero__hijri">اشعار، ضرب‌المثل‌ها و مناسبت‌های فرهنگی</div>
         </div>
         <div id="culture-content"></div>
-      </section>
+        <!-- 🧘 مراقبت — منتقل از تب ابزار به صفحه فرهنگ -->
+        
 
-      <!-- ====================================================
-           VIEW: TASBEEH
-           ==================================================== -->
-      <section class="view" id="view-tasbeeh" data-route="tasbeeh"></section>
+      </section>
 
       <!-- ====================================================
            VIEW: NOTES (standalone tab)
@@ -695,6 +652,36 @@
         </div>
 
         <div id="noteList"></div>
+
+        <!-- v2 M2/M3: بخش جستجو و وظایف داخل یادداشت‌ها -->
+        <div class="card" style="margin-top:10px;">
+          <div class="card__title"><span>🔍 جستجو و آرشیو</span></div>
+          <input class="input" id="searchInput" placeholder="جستجو در مناسبت‌ها، یادداشت‌ها و وظایف..." style="width:100%; margin-bottom:6px;">
+          <div id="searchResults" style="max-height:300px; overflow-y:auto;"></div>
+        </div>
+        <div class="card" style="margin-top:10px;">
+          <div class="card__title"><span>✅ وظایف و تودول</span>
+            <button class="btn btn--ghost" id="taskAddBtn" style="font-size:12px; padding:3px 10px;">➕ وظیفه</button>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+            <input class="input" id="taskTitleInput" placeholder="عنوان وظیفه" style="flex:1; min-width:120px;">
+            <input class="input" id="taskDeadlineInput" type="date" placeholder="مهلت" style="width:auto;" title="مهلت (ISO)">
+            <select class="select" id="taskRepeatSel" style="max-width:90px;">
+              <option value="none">یک‌باره</option>
+              <option value="daily">روزی</option>
+              <option value="weekly">هفتگی</option>
+              <option value="monthly">ماهانه</option>
+            </select>
+            <button class="btn btn--primary" id="taskSubmitBtn">افزودن</button>
+          </div>
+          <div id="taskList" style="display:flex; flex-direction:column; gap:4px;"></div>
+        </div>
+      </section>
+      <!-- ====================================================
+           VIEW: TOOLS (قطب‌نمای سه‌بعدی Compass 360 Pro + کرنومتر/تایمر)
+           ==================================================== -->
+      <section class="view" id="view-tools" data-route="tools">
+        <div id="bxToolsRoot"></div>
       </section>
     </main>
 
@@ -714,19 +701,20 @@
       </button>
       <button class="nav-item" data-route="weather">
         <span class="nav-icon"><span class="ic ic-cloud">☀️</span></span>
-        <span class="nav-label" data-i18n="nav.weather">هوا</span>
+        <span class="nav-label" data-i18n="nav.weather">آب و هوا</span>
       </button>
       <button class="nav-item" data-route="culture">
         <span class="nav-icon"><span class="ic ic-book">📜</span></span>
         <span class="nav-label" data-i18n="nav.culture">فرهنگ</span>
       </button>
-      <button class="nav-item" data-route="tasbeeh">
-        <span class="nav-icon"><span class="ic ic-pen">📿</span></span>
-        <span class="nav-label" data-i18n="nav.tasbeeh">تسبیح</span>
-      </button>
+
       <button class="nav-item" data-route="notes">
         <span class="nav-icon"><span class="ic ic-note">📝</span></span>
         <span class="nav-label" data-i18n="nav.notes">یادداشت</span>
+      </button>
+      <button class="nav-item" data-route="tools">
+        <span class="nav-icon"><span class="ic ic-compass3d">🧭</span></span>
+        <span class="nav-label" data-i18n="nav.tools">ابزار</span>
       </button>
     </nav>
 
@@ -891,6 +879,26 @@
       <button class="set-card" data-sp="data" style="--ic:#7a8798;">
         <span class="set-card__ic">💾</span>
         <span class="set-card__txt"><b>داده و پشتیبان‌گیری</b><i>بکاپ، بازیابی</i></span>
+        <span class="set-card__chev">‹</span>
+      </button>
+      <button class="set-card" data-sp="general" style="--ic:#5a9bd5;">
+        <span class="set-card__ic">⚙️</span>
+        <span class="set-card__txt"><b>تنظیمات عمومی</b><i>برنامه، زبان، منطقه زمانی، اعداد</i></span>
+        <span class="set-card__chev">‹</span>
+      </button>
+      <button class="set-card" data-sp="langs" style="--ic:#d56b6b;">
+        <span class="set-card__ic">🌐</span>
+        <span class="set-card__txt"><b>زبان‌ها و پشتیبانی</b><i>زبان رابط، زبان‌های اذان، پشتیبانی</i></span>
+        <span class="set-card__chev">‹</span>
+      </button>
+      <button class="set-card" data-sp="backup" style="--ic:#6bd5a8;">
+        <span class="set-card__ic">📦</span>
+        <span class="set-card__txt"><b>پشتیبان‌گیری و افزونه‌ها</b><i>بکاپ کامل، افزونه‌های نصب‌شده</i></span>
+        <span class="set-card__chev">‹</span>
+      </button>
+      <button class="set-card" data-sp="folder" style="--ic:#a8d56b;">
+        <span class="set-card__ic">📂</span>
+        <span class="set-card__txt"><b>فولدر و نسخه‌ها</b><i>نمایش فولدر، نسخه‌های قدیمی</i></span>
         <span class="set-card__chev">‹</span>
       </button>
       <button class="set-card set-card--gold" data-sp="creator" style="--ic:#d4af37;">
@@ -1077,7 +1085,39 @@
           <div><div class="setting-row__label">ساعت یادآوری خواب</div></div>
           <input class="input" id="khabTime" type="time" value="22:30" style="width:auto;">
         </div>
-        
+
+        <!-- 🎯 یادآور دوره‌ای ذکر + هدف روزانه + ساعت سکوت — v1.20 (الگو: ShafeeZekr) -->
+        <div class="setting-row" data-s="یادآور دوره‌ای ذکر هر چند دقیقه" style="align-items:flex-start;flex-direction:column;">
+          <div style="display:flex;justify-content:space-between;align-items:center;width:100%;">
+            <div>
+              <div class="setting-row__label">🎯 یادآور دوره‌ای ذکر</div>
+              <div class="setting-row__desc">با صدای کوتاه + لرزش یادآوری کند ذکر بگو</div>
+            </div>
+            <div class="toggle" id="setDhikrRemind"></div>
+          </div>
+          <div id="dhikrRemindOpts" style="display:none;width:100%;margin-top:4px;">
+            <div class="setting-row" style="border:none;padding:6px 0;">
+              <div class="setting-row__label">⏳ هر چند دقیقه یک‌بار</div>
+              <input class="input" id="setDhikrRemindMin" type="number" min="1" max="720" value="30" style="width:76px;text-align:center;">
+            </div>
+            <div class="setting-row" style="border:none;padding:6px 0;">
+              <div class="setting-row__label">🎯 هدف روزانهٔ کل ذکرها</div>
+              <input class="input" id="setDhikrGoal" type="number" min="1" max="99999" value="100" style="width:96px;text-align:center;">
+            </div>
+            <div class="setting-row" style="border:none;padding:6px 0;align-items:center;">
+              <div>
+                <div class="setting-row__label">🌙 ساعت سکوت</div>
+                <div class="setting-row__desc">در این بازه هشدار نده</div>
+              </div>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <input class="input" id="setQuietFrom" type="time" value="23:00" style="width:98px;text-align:center;">
+                <span class="text-small text-muted">تا</span>
+                <input class="input" id="setQuietTo" type="time" value="06:00" style="width:98px;text-align:center;">
+              </div>
+            </div>
+          </div>
+        </div>
+
         </section>
         <section class="sp" id="sp-display" data-title="🖼 نمایش">
           <div class="sp__hdr"><span>🖼️</span><div><div class="sp__t">🖼 نمایش</div><div class="sp__d">اعداد، فونت، فصلی، DST</div></div></div>
@@ -1192,6 +1232,135 @@
           </div>
         </div>
         </section>
+        <section class="sp" data-noform="1" id="sp-general" data-title="⚙️ تنظیمات عمومی">
+          <div class="sp__hdr"><span>⚙️</span><div><div class="sp__t">⚙️ تنظیمات عمومی</div><div class="sp__d">برنامه، نمایش، رفتار</div></div></div>
+          <div class="setting-row" data-s="حجم صدای اذان و اعلان تنظیم صدا">
+            <div>
+              <div class="setting-row__label">حجم صدای اذان</div>
+              <div class="setting-row__desc">تنظیم صدای پخش اذان</div>
+            </div>
+            <input type="range" id="setAthanVolume" min="0" max="100" value="70" style="width:80px;">
+          </div>
+          <div class="setting-row" data-s="خاموش خودکار صفحه صفحه خاموش شود">
+            <div>
+              <div class="setting-row__label">خاموش خودکار صفحه</div>
+              <div class="setting-row__desc">۱۵ دقیقه، ۳۰ دقیقه، ۱ ساعت، ۲ ساعت، هرگز</div>
+            </div>
+            <select class="select" id="setScreenOff">
+              <option value="15">۱۵ دقیقه</option>
+              <option value="30" selected>۳۰ دقیقه</option>
+              <option value="60">۱ ساعت</option>
+              <option value="120">۲ ساعت</option>
+              <option value="0">هرگز</option>
+            </select>
+          </div>
+          <div class="setting-row" data-s="صفحه اصلی پیش‌فرض انتخاب صفحه باز شدن">
+            <div>
+              <div class="setting-row__label">صفحه اصلی</div>
+              <div class="setting-row__desc">صفحه‌ای که با بازکردن برنامه نمایش داده می‌شود</div>
+            </div>
+            <select class="select" id="setHomeRoute">
+              <option value="home" selected>خانه</option>
+              <option value="calendar">تقویم</option>
+              <option value="prayer">نماز</option>
+              <option value="care">مراقبت</option>
+            </select>
+          </div>
+          <div class="setting-row" data-s="نمایش اعداد فارسی انگلیسی">
+            <div>
+              <div class="setting-row__label">اعداد فارسی</div>
+              <div class="setting-row__desc">نمایش اعداد به‌صورت فارسی (۱۲۳) یا انگلیسی (123)</div>
+            </div>
+            <div class="toggle" id="setFaDigits2" data-synk="setFaDigits"></div>
+          </div>
+          <div class="setting-row" data-s="حالت تاریک خودکار از غروب تا طلوع">
+            <div>
+              <div class="setting-row__label">حالت تاریک خودکار</div>
+              <div class="setting-row__desc">از غروب تا طلوع — صفحه خاموش می‌شود</div>
+            </div>
+            <div class="toggle" id="setAutoNight2" data-synk="setAutoNight"></div>
+          </div>
+        </section>
+        <section class="sp" data-noform="1" id="sp-langs" data-title="🌐 زبان‌ها و پشتیبانی">
+          <div class="sp__hdr"><span>🌐</span><div><div class="sp__t">🌐 زبان‌ها و پشتیبانی</div><div class="sp__d">زبان رابط، زبان اذان، پشتیبانی</div></div></div>
+          <div class="setting-row" data-s="زبان رابط برنامه فارسی بلوچی انگلیسی">
+            <div>
+              <div class="setting-row__label">زبان رابط</div>
+              <div class="setting-row__desc">انتخاب زبان نمایش برنامه</div>
+            </div>
+            <select class="select" id="setLang2">
+              <option value="fa" selected>فارسی</option>
+              <option value="bal">بلوچی</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+          <div class="setting-row" data-s="زبان اذان پیش‌فرض انتخاب زبان اذان">
+            <div>
+              <div class="setting-row__label">زبان اذان پیش‌فرض</div>
+              <div class="setting-row__desc">زبان پیش‌فرض اذان برای یادآوری‌ها</div>
+            </div>
+            <select class="select" id="setAthanLang">
+              <option value="ar" selected>عربی</option>
+              <option value="fa">فارسی</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+          <div class="setting-row" data-s="پشتیبانی ارتباط با میثم اربابی">
+            <div>
+              <div class="setting-row__label">پشتیبانی</div>
+              <div class="setting-row__desc">برای گزارش مشکل یا پیشنهاد، با سازنده در ارتباط باشید</div>
+            </div>
+            <a class="cr-link" href="https://t.me/MArbabiii" target="_blank">تلگرام ›</a>
+          </div>
+        </section>
+        <section class="sp" data-noform="1" id="sp-backup" data-title="📦 پشتیبان‌گیری و افزونه‌ها">
+          <div class="sp__hdr"><span>📦</span><div><div class="sp__t">📦 پشتیبان‌گیری و افزونه‌ها</div><div class="sp__d">بکاپ کامل، افزونه‌های نصب‌شده</div></div></div>
+          <div class="setting-row" data-s="بکاپ کامل همه داده‌ها به فایلی جدید">
+            <div>
+              <div class="setting-row__label">بکاپ کامل (همه داده‌ها)</div>
+              <div class="setting-row__desc">تنظیمات، یادداشت‌ها، مناسبت‌ها، اذان‌ها، تقویم‌ها — یک فایل</div>
+            </div>
+            <button class="btn btn--ghost" id="btnBackupFull">💾 ساخت بکاپ</button>
+          </div>
+          <div class="setting-row" data-s="افزونه‌های نصب‌شده لیست افزونه‌ها">
+            <div>
+              <div class="setting-row__label">افزونه‌های نصب‌شده</div>
+              <div class="setting-row__desc" id="pluginListText">در حال بارگذاری…</div>
+            </div>
+            <button class="btn btn--ghost" id="btnRefreshPlugins">🔄</button>
+          </div>
+          <div class="setting-row" data-s="بازیابی از بکاپ فایل JSON انتخاب فایل">
+            <div>
+              <div class="setting-row__label">بازیابی از بکاپ</div>
+              <div class="setting-row__desc">فایل JSON پشتیبان‌گیری را انتخاب کنید</div>
+            </div>
+            <button class="btn btn--ghost" id="btnBackupRestore">📂 بازیابی</button>
+          </div>
+        </section>
+        <section class="sp" data-noform="1" id="sp-folder" data-title="📂 فولدر و نسخه‌ها">
+          <div class="sp__hdr"><span>📂</span><div><div class="sp__t">📂 فولدر و نسخه‌ها</div><div class="sp__d">فولدر برنامه، نسخه‌های قدیمی</div></div></div>
+          <div class="setting-row" data-s="نمایش فولدر برنامه محل ذخیره داده‌ها">
+            <div>
+              <div class="setting-row__label">فولدر برنامه</div>
+              <div class="setting-row__desc">محل ذخیره داده‌ها — /data/data/ir.balochistan.nama</div>
+            </div>
+            <button class="btn btn--ghost" id="btnOpenFolder">📂 مشاهده</button>
+          </div>
+          <div class="setting-row" data-s="نسخه‌های قدیمی بازیابی از نسخه‌های قبل">
+            <div>
+              <div class="setting-row__label">نسخه‌های قدیمی</div>
+              <div class="setting-row__desc" id="oldVersionsText">در حال بارگذاری…</div>
+            </div>
+            <button class="btn btn--ghost" id="btnViewOldVersions">📜 مشاهده</button>
+          </div>
+          <div class="setting-row" data-s="حذف داده‌های قدیمی تمیزکاری">
+            <div>
+              <div class="setting-row__label">پاک‌کردن داده‌های موقت</div>
+              <div class="setting-row__desc">حذف cache و فایل‌های موقت</div>
+            </div>
+            <button class="btn btn--ghost" id="btnClearCache">🗑️ پاک‌کردن</button>
+          </div>
+        </section>
         <section class="sp" data-noform="1" id="sp-creator" data-title="سازنده برنامه">
           <div class="sp__hdr sp__hdr--gold"><span>👤</span><div><div class="sp__t">سازنده برنامه</div><div class="sp__d">آشنا شوید</div></div></div>
           <div class="cr-hero">
@@ -1255,6 +1424,64 @@
           <button class="btn btn--ghost" id="setCancel" style="flex:1;">لغو</button>
           <button class="btn btn--primary" id="setConfirm" style="flex:2;">تایید</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Onboarding — راهنمای اولین اجرا (v1.20) -->
+  <div class="modal-backdrop" id="modalOnboard">
+    <div class="modal" style="max-width:420px;">
+      <div id="obStep1">
+        <div style="text-align:center;padding:6px 0 2px;">
+          <div style="font-size:44px;">🕌</div>
+          <div style="font-size:20px;font-weight:800;margin-top:6px;">به بلوچستان‌نما خوش آمدی</div>
+          <div class="text-small text-muted" style="margin-top:8px;line-height:1.9;">اوقات شرعی دقیقِ منطقه، تقویم سه‌گانه، قبله‌نما و ابزارهای میدانی — کاملاً آفلاین و بدون تبلیغ.<br><b>برای شروع شهرت رو انتخاب کن:</b></div>
+        </div>
+        <select class="select" id="obCity" style="width:100%;"></select>
+        <button class="btn btn--ghost" id="obGps" style="width:100%;margin-top:8px;">📍 استفاده از موقعیت فعلی</button>
+      </div>
+      <div id="obStep2" style="display:none;">
+        <div style="text-align:center;padding:6px 0 2px;">
+          <div style="font-size:44px;">🕋</div>
+          <div style="font-size:20px;font-weight:800;margin-top:6px;">روش محاسبهٔ اوقات</div>
+          <div class="text-small text-muted" style="margin-top:8px;line-height:1.9;">مرجع/مذهب خودت رو انتخاب کن — اوقات شرعی بر همان اساس حساب میشه:</div>
+        </div>
+        <select class="select" id="obMethod" style="width:100%;"></select>
+        <div class="setting-row" style="margin-top:10px;">
+          <div><div class="setting-row__label">🔊 پخش خودکار اذان</div><div class="setting-row__desc">وقت نماز رسید، صدای اذان پخش بشه</div></div>
+          <div class="toggle on" id="obAthan"></div>
+        </div>
+      </div>
+      <div id="obStep3" style="display:none;">
+        <div style="text-align:center;padding:6px 0 2px;">
+          <div style="font-size:44px;">🔔</div>
+          <div style="font-size:20px;font-weight:800;margin-top:6px;">اعلان‌ها</div>
+          <div class="text-small text-muted" style="margin-top:8px;line-height:1.9;">اعلان اذان و مناسبت‌ها — هر وقت خواستی از تنظیمات تغییر بده:</div>
+        </div>
+        <div class="setting-row"><div><div class="setting-row__label">اعلان اذان نمازها</div></div><div class="toggle on" id="obNotify"></div></div>
+        <div class="setting-row"><div><div class="setting-row__label">اعلان مناسبت‌های امروز و فردا</div></div><div class="toggle on" id="obNotifyEv"></div></div>
+      </div>
+      <div class="modal__footer" style="border-top:1px solid var(--line);padding:10px 14px;display:flex;gap:8px;">
+        <button class="btn btn--ghost" id="obSkip" style="flex:1;">رد شدن</button>
+        <button class="btn btn--ghost" id="obBack" style="display:none;">→ قبلی</button>
+        <button class="btn btn--primary" id="obNext" style="flex:2;">بعدی</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Athan Screen — صفحهٔ اذان با پس‌زمینه — v1.20 (الگو: SalatTimes-Backgrounds) -->
+  <div class="modal-backdrop athan-screen" id="modalAthanScreen">
+    <div class="athan-screen__bg" id="athanScrBg"></div>
+    <div class="athan-screen__content">
+      <div class="athan-screen__icon">🕌</div>
+      <div class="athan-screen__title" id="athanScrTitle">اذان</div>
+      <div class="athan-screen__time" id="athanScrTime">—</div>
+      <div class="athan-screen__ayah text-small">«إِنَّا أَذَّنَّا لَكَ صَوْتَ الْأَذَانِ»</div>
+      <div class="athan-screen__credit text-small" id="athanScrCredit"></div>
+      <div class="athan-screen__btns">
+        <button class="btn btn--ghost" id="athanScrRepeat">🔁 تکرار</button>
+        <button class="btn btn--ghost" id="athanScrStop">⏹ توقف</button>
+        <button class="btn btn--primary" id="athanScrClose">بستن ✕</button>
       </div>
     </div>
   </div>
@@ -1418,6 +1645,17 @@
     </div>
   </div>
 
+  <!-- v2 M1: مودال سرویس‌های مراقبت -->
+  <div class="modal-backdrop" id="modalCareSrv">
+    <div class="modal" style="max-width:380px;">
+      <div class="modal__title" id="careSrvTitle">🤖 سرویس مراقبتی</div>
+      <div class="modal__body" id="careSrvBody" style="line-height:1.8;"></div>
+      <div class="modal__actions">
+        <button class="btn btn--ghost" id="careSrvClose">بستن</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script src="js/utils.js?v=176"></script>
   <script src="js/backup.js?v=176"></script>
@@ -1426,41 +1664,50 @@
   <script src="js/events.js?v=176"></script>
   <script src="js/culture_extra.js?v=176"></script>
   <script src="js/baloch.js?v=176"></script>
-  <script src="js/prayertimes.js?v=176"></script>
-  <script src="js/athan.js?v=176"></script>
+  <script src="js/prayertimes.js?v=177"></script>
+  <script src="js/athan.js?v=201"></script>
   <script src="js/notes.js?v=176"></script>
   <script src="js/season_fx.js?v=176"></script>
   <script src="js/quran_audio.js?v=176"></script>
-  <script src="js/weather.js?v=190"></script>
-  <script src="js/compass.js?v=190"></script>
-  <script src="js/streak.js?v=190"></script>
-  <script src="js/ramadan.js?v=190"></script>
-  <script src="js/clock.js?v=190"></script>
-  <script src="js/moon.js?v=190"></script>
-  <script src="js/app.js?v=190"></script>
-  <script src="js/tasbeeh.js?v=190"></script>
-  <script src="js/tools.js?v=190"></script>
-  <script src="js/athan_player.js?v=190"></script>
-  <script src="js/personalevents.js?v=190"></script>
-  <script src="js/learn.js?v=190"></script>
-  <script src="js/fatwa.js?v=190"></script>
-  <script src="js/ayat_day.js?v=190"></script>
-  <script src="js/ayat.js?v=190"></script>
-  <script src="js/pt_server.js?v=190"></script>
-  <script src="js/athans_catalog.js?v=190"></script>
-  <script src="js/adhkar_lib.js?v=190"></script>
-  <script src="js/lessons.js?v=190"></script>
-  <script src="js/monthtable.js?v=190"></script>
-  <script src="js/ics.js?v=190"></script>
-  <script src="js/stats.js?v=190"></script>
+  <script src="js/weather.js?v=191"></script>
+  <script src="js/compass.js?v=191"></script>
+  <script src="js/streak.js?v=191"></script>
+  <script src="js/ramadan.js?v=191"></script>
+  <script src="js/clock.js?v=191"></script>
+  <script src="js/moon.js?v=191"></script>
+  <script src="assets/athan_bg_catalog.js?v=1"></script>
+  <script src="js/app.js?v=210"></script>
+  <script src="js/tasbeeh.js?v=192"></script>
+  <script src="js/tools.js?v=202"></script>
+  <script src="js/athan_player.js?v=191"></script>
+  <script src="js/personalevents.js?v=191"></script>
+  <script src="js/learn.js?v=191"></script>
+  <script src="js/fatwa.js?v=191"></script>
+  <script src="js/ayat_day.js?v=191"></script>
+  <script src="js/ayat.js?v=191"></script>
+  <script src="js/pt_server.js?v=191"></script>
+  <script src="js/athans_catalog.js?v=191"></script>
+  <script src="js/adhkar_lib.js?v=191"></script>
+  <script src="js/lessons.js?v=191"></script>
+  <script src="js/monthtable.js?v=191"></script>
+  <script src="js/ics.js?v=191"></script>
+  <script src="js/stats.js?v=191"></script>
+  <script src="js/search.js?v=200"></script>
+  <script src="js/tasks.js?v=200"></script>
+  <script src="js/m5_alarms.js?v=200"></script>
+  <script src="js/care.js?v=202"></script>
+  <script src="js/cpx_wmm.js?v=208"></script>
+  <script src="js/vendor/mgrs.js?v=1"></script>
+  <script src="js/fieldtools.js?v=1"></script>
+  <script src="js/pro360.js?v=209"></script>
   <script>
     // init یادداشت یک‌بار در startup — تا دکمه + از صفحه خانه هم کار کند
     document.addEventListener('DOMContentLoaded', function () {
       try { if (window.Notes) Notes.init(); } catch (e) {}
     });
   </script>
-  <script src="js/notify.js?v=190"></script>
-  <script src="js/i18n.js?v=190"></script>
-  <script src="js/extensions.js?v=190"></script>
+  <script src="js/notify.js?v=191"></script>
+  <script src="js/i18n.js?v=191"></script>
+  <script src="js/extensions.js?v=201"></script>
 </body>
 </html>

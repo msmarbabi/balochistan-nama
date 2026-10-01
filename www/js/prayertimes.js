@@ -77,7 +77,14 @@
     turkey:        { name: 'ترکیه - دیانت',              fajr: 18,   isha: 17,   asr: 'Shafii' },
     tehran:        { name: 'تهران (شیعه)',                fajr: 17.7, isha: 14,   asr: 'Hanafi' },
     gulf:          { name: 'خلیج فارس',                   fajr: 19.5, isha: 17.5, asr: 'Shafii' },
-    northAmerica:  { name: 'آمریکای شمالی (ISNA)',        fajr: 15,   isha: 15,   asr: 'Shafii' }
+    northAmerica:  { name: 'آمریکای شمالی (ISNA)',        fajr: 15,   isha: 15,   asr: 'Shafii' },
+    /* v1.20 — ۶ روش جدید (الگو: Salat-Times) */
+    dubai:         { name: 'دبی',                          fajr: 18.2, isha: 18.2, asr: 'Shafii' },
+    kuwait:        { name: 'کویت',                         fajr: 18,   isha: 17.5, asr: 'Shafii' },
+    qatar:         { name: 'قطر',                          fajr: 18,   isha: 18,   asr: 'Shafii', ishaInterval: 90 },
+    singapore:     { name: 'سنگاپور',                      fajr: 20,   isha: 18,   asr: 'Shafii' },
+    habashiyah:    { name: 'حبشیه',                        fajr: 20,   isha: 18,   asr: 'Shafii' },
+    moonsighting:  { name: 'هلال‌محاسبه (Moonsighting)', fajr: 18,   isha: 18,   asr: 'Shafii' }
   };
 
   /* Compute prayer times in UT hours for a Gregorian date at lat/lng. */

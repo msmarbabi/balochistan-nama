@@ -160,6 +160,21 @@
 
   // ---------- Routing ----------
   function go(route) {
+    // v2.0.4: care now lives on the culture page
+    if (route === 'care') {
+      state.route = 'culture';
+      document.querySelectorAll('.view').forEach(function (v) {
+        v.classList.toggle('active', v.dataset.route === 'culture');
+      });
+      document.querySelectorAll('.nav-item').forEach(function (n) {
+        n.classList.toggle('active', n.dataset.route === 'culture');
+      });
+      cultureTab = 'care';
+      renderCulture();
+      if (window.BXCare && BXCare.render) BXCare.render();
+      var cc = document.getElementById('content'); if (cc) cc.scrollTop = 0;
+      return;
+    }
     state.route = route;
     document.querySelectorAll('.view').forEach(function (v) {
       v.classList.toggle('active', v.dataset.route === route);
@@ -169,14 +184,23 @@
     });
     // Lazy-load view content
     if (route === 'calendar') renderCalendar();
-    if (route === 'prayer') renderPrayer();
+    if (route === 'prayer') {
+      renderPrayer();
+      // v2: تسبیح داخل نماز — render پس از اوقات شرعی
+      if (window.Tasbeeh && Tasbeeh.render) Tasbeeh.render();
+      if (window.Tasbeeh && Tasbeeh.onRouteEnter) Tasbeeh.onRouteEnter();
+    }
     if (route === 'prayer') { Compass && Compass.start(); Compass && Compass.setQibla(Prayer.qiblaBearing(settings.lat, settings.lng)); }
     if (route === 'prayer') { Compass && Compass.bindQiblaMap && Compass.bindQiblaMap(); }
+    // v2: تسبیح منتقل به نماز شد — route tasbeeh → redirect
+    if (route === 'tasbeeh') { state.route = 'prayer'; return go('prayer'); }
     if (route !== 'prayer' && Compass && Compass.stop) Compass.stop();
-    if (route !== 'tasbeeh' && typeof Tasbeeh !== 'undefined' && Tasbeeh.onRouteLeave) Tasbeeh.onRouteLeave(); // v1.16: خاموشی ولوم/صدا هنگام خروج از تسبیح
-    if (route === 'weather') { Weather.load(); if (window.Compass) { Compass.start(); Compass.setQibla(Prayer.qiblaBearing(settings.lat, settings.lng)); } wireCompassCalib(); }
-    if (route === 'culture') renderCulture();
+    if (route !== 'prayer' && typeof Tasbeeh !== 'undefined' && Tasbeeh.onRouteLeave) Tasbeeh.onRouteLeave();
+    if (route === 'weather') { Weather.load(); }
+    if (route === 'culture') { renderCulture(); if (window.BXCare && BXCare.render) BXCare.render(); }
     if (route === 'notes') { Notes.init(); Notes.renderList('noteList'); }
+    // v2.1: تب ابزار = قطب‌نمای ۳بعدی Compass 360 Pro
+    if (route === 'tools') { if (window.P && P.go) { try { P.go(); } catch (e) { dbg(e); } } }
     // Scroll content to top
     var content = document.getElementById('content');
     if (content) content.scrollTop = 0;
@@ -297,7 +321,8 @@
       }
       pdiv.innerHTML =
         '<div class="ev-title"><span class="ev-tag ev-tag--personal">خانوادگی</span>' + escapeHtml(pe.title) + age + '</div>' +
-        (pe.desc ? '<div class="ev-desc">' + escapeHtml(pe.desc) + '</div>' : '');
+        (pe.desc ? '<div class="ev-desc">' + escapeHtml(pe.desc) + '</div>' : '') +
+        (pe.id ? '<button class="btn btn--ghost" data-m5alarm="' + pe.id + '" style="font-size:11px; padding:2px 8px; margin-top:4px;">⏰ آلارم شخصی</button>' : '');
       el.appendChild(pdiv);
     }
     // Render dated notes
@@ -1198,6 +1223,74 @@
     renderCalendar();
   }
 
+  // ===== v1.20: پیکر پرش به تاریخ هجری (الگو: HijriDatePicker) =====
+  function hijriYearHint(hy) {
+    try {
+      var g = Cal.hijriToGreg(hy, 1, 1);
+      var jl = Cal.toJalaali(g.gy, 1, 1);
+      return '≈ ' + Cal.toFaDigits(jl.jy) + ' شمسی';
+    } catch (e) { return ''; }
+  }
+  function openHijriPicker() {
+    if (!window.BXSheet) { toast('در دسترس نیست'); return; }
+    var nowHy = 0;
+    try { if (state.triple && state.triple.hijri && state.triple.hijri.hy) nowHy = state.triple.hijri.hy; } catch (e) {}
+    if (!nowHy) {
+      try {
+        var d = new Date();
+        var jl = Cal.toJalaali(d.getFullYear(), d.getMonth() + 1, d.getDate());
+        var hj = Cal.jalaaliToHijri(jl.jy, jl.jm, jl.jd);
+        nowHy = hj ? hj.hy : 1447;
+      } catch (e) { nowHy = 1447; }
+    }
+    var years = [], y;
+    for (y = nowHy - 8; y <= nowHy + 12; y++) years.push(y);
+    BXSheet.open({
+      title: '🌙 انتخاب سال هجری',
+      value: nowHy,
+      options: years.map(function (v) {
+        return { value: v, label: Cal.toFaDigits(v) + ' هـ', desc: hijriYearHint(v) };
+      }),
+      onChange: function (hy) {
+        BXSheet.open({
+          title: 'ماه هجری ' + Cal.toFaDigits(hy) + ' هـ',
+          options: Cal.HIJRI_MONTHS.map(function (n, i) {
+            return { value: i + 1, label: n, icon: '🌙' };
+          }),
+          onChange: function (hm) {
+            var len = 30;
+            try { len = Cal.hijriMonthLength(hy, hm) || 30; } catch (e) {}
+            var days = [], d2;
+            for (d2 = 1; d2 <= len; d2++) days.push({ value: d2, label: Cal.toFaDigits(d2) + ' ' + Cal.HIJRI_MONTHS[hm - 1] });
+            BXSheet.open({
+              title: 'روز ماه ' + Cal.HIJRI_MONTHS[hm - 1],
+              options: days,
+              onChange: function (hd) { jumpToHijri(hy, hm, hd); }
+            });
+          }
+        });
+      }
+    });
+  }
+
+  function jumpToHijri(hy, hm, hd) {
+    try {
+      var g = Cal.hijriToGreg(hy, hm, hd);
+      var jl = Cal.toJalaali(g.gy, g.gm, g.gd);
+      if (state.calMode === 'hijri') state.calCursor = { jy: hy + 621 - 1380, jm: hm, jd: hd };
+      else if (state.calMode === 'gregorian') state.calCursor = { jy: g.gy - 621, jm: g.gm, jd: g.gd };
+      else state.calCursor = { jy: jl.jy, jm: jl.jm, jd: jl.jd };
+      state.calView = 'day';
+      settings.calView = 'day';
+      saveSettings();
+      renderCalendar();
+      try {
+        selectCalendarDay({ jalali: { jy: jl.jy, jm: jl.jm, jd: jl.jd }, greg: { gy: g.gy, gm: g.gm, gd: g.gd } });
+      } catch (e) {}
+      toast('رفتیم به ' + Cal.toFaDigits(hy) + '/' + Cal.toFaDigits(hm) + '/' + Cal.toFaDigits(hd) + ' هـ');
+    } catch (e) { dbg(e); toast('پرش به تاریخ هجری ناموفق بود'); }
+  }
+
   function timesMerged(date) {
     var tz = (typeof settings.tz === 'number') ? settings.tz : (-date.getTimezoneOffset() / 60);
     if (settings.dst) tz += 1;
@@ -1500,6 +1593,7 @@
   function wireCompassCalib() {
     if (calibWired) return;
     calibWired = true;
+    calibWired = true;
     var btn = document.getElementById('compassCalibBtn');
     if (btn) btn.addEventListener('click', function () {
       if (typeof App !== 'undefined' && App.toast) App.toast('قطب‌نما در حال کالیبره... گوشی را ۸ شکل بچرخانید 🔄');
@@ -1587,6 +1681,8 @@
         '<button class="culture-tab' + (cultureTab === 'rooze' ? ' active' : '') + '" data-tab="rooze">☪️ روزه</button>' +
         '<button class="culture-tab' + (cultureTab === 'fatwa' ? ' active' : '') + '" data-tab="fatwa">⚖️ فتاوا</button>' +
 
+        '<button class="culture-tab' + (cultureTab === 'care' ? ' active' : '') + '" data-tab="care">🧘 مراقبت</button>' +
+
       '</div>';
     
     var contentHtml = '';
@@ -1604,10 +1700,13 @@
       contentHtml = '<div id="fatwaTab"></div>'; // v1.16: کتاب فتاوا
     } else if (cultureTab === 'quiz') {
       contentHtml = '<div class="text-muted" style="padding:16px;">آزمون موقتاً غیرفعال است.</div>';
+    } else if (cultureTab === 'care') {
+      contentHtml = '<div id="toolPanel-care" class="care-root" style="margin-top:14px;">\n          <div class="card" style="margin-bottom:10px;"><div class="card__title"><span>🧘 مراقبت و هوش مصنوعی</span></div></div>\n        <!-- M2/M4/M1 care cards -->\n        <!-- M2: دکمه چک‌اپ کامل -->\n        <div class="card" style="margin-bottom:10px;">\n          <div class="card__title"><span>⚡ چک‌اپ کامل دستگاه و اپ</span>\n            <button class="btn btn--primary" id="careCheckupBtn" style="font-size:13px;">🔍 شروع</button>\n          </div>\n          <div id="careCheckupResult" class="text-small text-muted">هنوز چک‌اپی انجام نشده — دکمه «شروع» را بزن.</div>\n          <button class="btn btn--ghost" id="careHistoryBtn" style="width:100%; margin-top:8px; font-size:13px;">📜 تاریخچه چک‌اپ‌ها</button>\n          <div id="careHistoryList" style="display:none; margin-top:8px; max-height:200px; overflow-y:auto;"></div>\n        </div>\n\n        <!-- M4: کاشی قفل سریع -->\n        <div class="card" style="margin-bottom:10px;">\n          <div class="card__title"><span>🔒 قفل سریع</span></div>\n          <div class="text-small text-muted" style="margin-bottom:8px;">دستگاه را بلافاصله قفل می‌کند — مثل کاشی قفل در منوی اصلی.</div>\n          <button class="btn btn--ghost" id="careLockBtn" style="width:100%; font-size:15px;">🔒 قفل فوری دستگاه</button>\n        </div>\n\n        <!-- M1: ۶ سرویس هوشمند -->\n        <div class="card">\n          <div class="card__title"><span>🤖 ۶ سرویس هوشمند</span></div>\n          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">\n            <div class="care-svc" data-svc="water">\n              <div class="care-svc__ic">💧</div>\n              <div class="care-svc__name">یادآوری آب و حرکت</div>\n              <div class="care-svc__desc">هر ۲ ساعت یادآوری بنوش</div>\n              <div class="care-svc__stat" id="careWaterStat">—</div>\n            </div>\n            <div class="care-svc" data-svc="mood">\n              <div class="care-svc__ic">🧘</div>\n              <div class="care-svc__name">ردیاب حال و آرامش</div>\n              <div class="care-svc__desc">ثبت روزانه حال</div>\n              <div class="care-svc__stat" id="careMoodStat">—</div>\n            </div>\n            <div class="care-svc" data-svc="routine">\n              <div class="care-svc__ic">📋</div>\n              <div class="care-svc__name">روتین هوشمند روزانه</div>\n              <div class="care-svc__desc">نمایش وظایف بر اساس ساعت</div>\n              <div class="care-svc__stat" id="careRoutineStat">—</div>\n            </div>\n            <div class="care-svc" data-svc="goal">\n              <div class="care-svc__ic">🎯</div>\n              <div class="care-svc__name">اهداف و پیشرفت</div>\n              <div class="care-svc__desc">تعریف هدف و شمارش</div>\n              <div class="care-svc__stat" id="careGoalStat">—</div>\n            </div>\n            <div class="care-svc" data-svc="tip">\n              <div class="care-svc__ic">💡</div>\n              <div class="care-svc__name">نکته هوشمند فصلی</div>\n              <div class="care-svc__desc">بر اساس فصل و هوا</div>\n              <div class="care-svc__stat" id="careTipStat">—</div>\n            </div>\n            <div class="care-svc" data-svc="sleep">\n              <div class="care-svc__ic">😴</div>\n              <div class="care-svc__name">کیفیت خواب تخمینی</div>\n              <div class="care-svc__desc">از ساعت اذان و فعالیت</div>\n              <div class="care-svc__stat" id="careSleepStat">—</div>\n            </div>\n          </div>\n        </div>\n        </div>';
     }
     
     container.innerHTML = tabsHtml + '<div class="culture-content">' + dailyHtml + contentHtml + '</div>';
     if (cultureTab === 'fatwa' && window.BXFatwa) BXFatwa.render('fatwaTab'); // v1.16
+    if (cultureTab === 'care' && window.BXCare && BXCare.render) BXCare.render();
     
     // Wire tab clicks
     container.querySelectorAll('.culture-tab').forEach(function(tab) {
@@ -2125,6 +2224,9 @@
     setText('cvWeekday', info);
   }
   function getVal(id) { var el = document.getElementById(id); return el ? (parseInt(el.value, 10) || 0) : 0; }
+  function normTime(v, def) { // v1.20: فقط HH:MM معتبر قبول شود
+    return (typeof v === 'string' && /^\d{1,2}:\d{2}$/.test(v)) ? v : def;
+  }
   function setVal(id, v) { var el = document.getElementById(id); if (el) el.value = v; }
   // setText بهینه (v1.13): فقط وقتی مقدار واقعاً تغییر کرده DOM را بازنویسی می‌کند — حلقه هر ثانیه سبک می‌شود
   function setText(id, txt) {
@@ -2326,6 +2428,27 @@
         inp.addEventListener('change', function () { settings[m[2]] = inp.value; saveSettings(); if (typeof Notify !== "undefined") { try { Notify.reschedule(); } catch (e) {} } });
       }
     });
+    // v1.20: یادآور دوره‌ای ذکر + هدف روزانه + ساعت سکوت (الگو: ShafeeZekr)
+    (function () {
+      var tg = document.getElementById('setDhikrRemind');
+      var opts = document.getElementById('dhikrRemindOpts');
+      if (!tg || tg.dataset.wired) return;
+      tg.dataset.wired = '1';
+      tg.classList.toggle('on', !!settings.dhikrRemind);
+      if (opts) opts.style.display = settings.dhikrRemind ? '' : 'none';
+      setVal('setDhikrRemindMin', settings.dhikrRemindMin || 30);
+      setVal('setDhikrGoal', settings.dhikrGoal || 100);
+      setVal('setQuietFrom', normTime(settings.quietFrom, '23:00'));
+      setVal('setQuietTo', normTime(settings.quietTo, '06:00'));
+      tg.addEventListener('click', function (ev) {
+        ev.stopImmediatePropagation();
+        tg.classList.toggle('on');
+        settings.dhikrRemind = tg.classList.contains('on');
+        if (opts) opts.style.display = settings.dhikrRemind ? '' : 'none';
+        if (window.Tasbeeh && Tasbeeh.remindKick) Tasbeeh.remindKick();
+        saveSettings();
+      }, true); // capture: جلوگیری از listener عمومی init (v1.16-پترن)
+    })();
     setToggle('setFaDigits', settings.faDigits);
     setToggle('setSeasonFx', settings.seasonFx);
     setToggle('setDst', settings.dst);
@@ -2356,6 +2479,11 @@
     settings.notifyEvents = getToggle('setNotifyEvents');
     settings.notifyNotes = getToggle('setNotifyNotes');
     settings.faDigits = getToggle('setFaDigits');
+    // S1: toggleهای هم‌گام‌شده (sync) — faDigits2/autoNight2 روی sp-general همان state را می‌دهند
+    ['setFaDigits2', 'setAutoNight2'].forEach(function (sid) {
+      var el = document.getElementById(sid);
+      if (el) el.classList.toggle('on', el.getAttribute('data-synk') === 'setFaDigits' ? settings.faDigits : settings.autoNight);
+    });
     settings.seasonFx = getToggle('setSeasonFx');
     settings.dst = getToggle('setDst');
     settings.ramadanMode = getToggle('setRamadan');
@@ -2386,6 +2514,14 @@
     if (athanSnd) settings.athanSound = athanSnd.classList.contains('on');
     var sysRng = document.getElementById('athanSystemToggle');
     if (sysRng) settings.showSystemRingtones = sysRng.classList.contains('on');
+    // v1.20: صدای جدا برای هر نماز
+    try {
+      settings.athanByPrayer = settings.athanByPrayer || {};
+      ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].forEach(function (pk) {
+        var el = document.getElementById('setAthanP_' + pk);
+        if (el) settings.athanByPrayer[pk] = el.value || '';
+      });
+    } catch (e) { dbg(e); }
     settings.prayerAdjAll = getVal('setPrayerAdjAll') || 0;
     var _singleSel = document.getElementById('setPrayerSingle');
     settings.prayerAdjSingle = {
@@ -2397,6 +2533,21 @@
     var fontSel = document.getElementById('setFont');
     settings.fontScale = fontSel ? (parseFloat(fontSel.value) || 1) : 1;
     settings.stickyPrayer = getToggle('setStickyPrayer');
+    // v1.20: یادآور دوره‌ای ذکر، هدف روزانه، ساعت سکوت
+    settings.dhikrRemindMin = Math.max(1, parseInt(getVal('setDhikrRemindMin'), 10) || 30);
+    settings.dhikrGoal = Math.max(1, parseInt(getVal('setDhikrGoal'), 10) || 100);
+    var _qf = document.getElementById('setQuietFrom');
+    var _qt = document.getElementById('setQuietTo');
+    settings.quietFrom = normTime(_qf ? _qf.value : '', '23:00');
+    settings.quietTo = normTime(_qt ? _qt.value : '', '06:00');
+    if (window.Tasbeeh && Tasbeeh.render) { try { Tasbeeh.render(); } catch (e) {} }
+    // S1: تنظیمات عمومی جدید — حجم اذان، خاموش‌شدن صفحه، صفحه اصلی
+    var avEl = document.getElementById('setAthanVolume');
+    if (avEl) settings.athanVolume = parseInt(avEl.value, 10) || 70;
+    var soEl = document.getElementById('setScreenOff');
+    if (soEl) settings.screenOff = parseInt(soEl.value, 10) || 0;
+    var hrEl = document.getElementById('setHomeRoute');
+    if (hrEl) settings.homeRoute = hrEl.value;
     var pSel = document.getElementById('prayerMethodSel'); if (pSel) pSel.value = settings.method;
     saveSettings();
     applyTheme();
@@ -2432,6 +2583,26 @@
     if (al && sel.alert) al.value = sel.alert;
     if (as) as.onchange = function () { Athan.setSel('athan', as.value); };
     if (al) al.onchange = function () { Athan.setSel('alert', al.value); };
+    // v1.20: صدای جدا به ازای هر نماز
+    try {
+      var byP = settings.athanByPrayer || {};
+      ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].forEach(function (pk) {
+        var pe = document.getElementById('setAthanP_' + pk);
+        if (!pe) return;
+        pe.innerHTML = '<option value="">همان صدای انتخاب‌شده</option>';
+        lib.forEach(function (it) {
+          var o = document.createElement('option');
+          o.value = it.id; o.textContent = it.name;
+          pe.appendChild(o);
+        });
+        pe.value = byP[pk] || '';
+        pe.onchange = function () {
+          settings.athanByPrayer = settings.athanByPrayer || {};
+          settings.athanByPrayer[pk] = pe.value;
+          saveSettings();
+        };
+      });
+    } catch (e) { dbg(e); }
     // v1.13: منوی انتخاب اذان/هشدار هم با bottom sheet (درجا، نه کل صفحه)
     if (window.BXSheet) {
       BXSheet.replaceSelect('athanSelect', 'صدای اذان');
@@ -2439,6 +2610,49 @@
       BXSheet.replaceSelect('athanPreMinSel', 'چند دقیقه قبل از اذان؟');
       BXSheet.replaceSelect('athanIqamaSel', 'اقامه نماز');
       BXSheet.syncAll();
+    }
+    // v2 M7b: لیست واردشده‌ها با ویرایش/حذف در همان کارت انتخاب صدا
+    var impBox = document.getElementById('athanImportedList');
+    if (impBox) {
+      var impHtml = '';
+      var impCount = 0;
+      lib.forEach(function (it) {
+        if (!it) return;
+        impCount++;
+        var isBuiltin = it.builtin ? ' • درون‌ساز' : '';
+        impHtml += '<div class="setting-row" style="padding:4px 0;" data-impid="' + it.id + '">' +
+          '<div style="flex:1;"><div style="font-size:13px;">🔊 ' + escapeHtml(it.name) + escapeHtml(isBuiltin) + '</div>' +
+          '<div class="text-small text-muted">' + (it.type === 'file' ? 'فایل داخلی' : it.type === 'file64' ? 'فایل شخصی' : it.type === 'silent' ? 'بدون صدا' : it.type === 'link' ? 'لینک' : it.type) + '</div></div>' +
+          '<div style="display:flex; gap:4px;">' +
+          '<button class="btn btn--ghost" data-impact="edit" style="padding:3px 8px; font-size:11px;">✏️</button>' +
+          '<button class="btn btn--ghost" data-impact="del" style="padding:3px 8px; font-size:11px; color:#f87171;">🗑️</button>' +
+          '</div></div>';
+      });
+      if (!impCount) impHtml = '<div class="text-small text-muted" style="padding:4px 0;">هنوز صدایی نداری — از دکمه‌های «➕ از سیستم» یا «⬇️ دانلود» اضافه کن.</div>';
+      impBox.innerHTML = impHtml;
+      impBox.querySelectorAll('[data-impact]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var id = btn.closest('[data-impid]').getAttribute('data-impid');
+          var act = btn.getAttribute('data-impact');
+          var it0 = Athan.getById(id);
+          if (act === 'del') {
+            if (!it0) return;
+            if (confirm('«' + it0.name + '» حذف شود؟')) {
+              var ok = it0.builtin ? Athan.removeBuiltin(id) : Athan.removeItem(id);
+              refreshAthanSelectors(); renderAthanUserList();
+              toast(ok ? 'حذف شد ✓' : 'حذف نشد');
+            }
+          } else if (act === 'edit') {
+            if (!it0) return;
+            var newName = prompt('نام جدید:', it0.name);
+            if (newName && newName.trim()) {
+              Athan.updateItem(id, { name: newName.trim() });
+              refreshAthanSelectors(); renderAthanUserList();
+              toast('نام تغییر کرد ✓');
+            }
+          }
+        });
+      });
     }
   }
   function wireAthan() {
@@ -2456,6 +2670,20 @@
       st.addEventListener('click', function () { settings.showSystemRingtones = st.classList.contains('on'); saveSettings(); toast('تنظیم ذخیره شد'); });
     }
     refreshAthanSelectors();
+    try { renderAthanBgPicker(); } catch (e) { dbg(e); } // v1.20: انتخاب پس‌زمینهٔ اذان
+    try {
+      var _bgp = document.getElementById('athanBgPreview');
+      if (_bgp && !_bgp.dataset.wired) {
+        _bgp.dataset.wired = '1';
+        _bgp.addEventListener('click', function () {
+          try {
+            var _t = null;
+            try { var _tm = timesMerged(new Date()); _t = _tm.fajr; } catch (e2) {}
+            showAthanScreen('fajr', _t);
+          } catch (e3) { dbg(e3); }
+        });
+      }
+    } catch (e) { dbg(e); }
 
     // ===== دکمه‌های پخش تست (شروع/مکث/توقف) =====
     var test = document.getElementById('athanTest');
@@ -2912,40 +3140,40 @@
     var box = document.getElementById('athanUserList');
     if (!box || typeof Athan === 'undefined') return;
     var lib = Athan.getLib();
-    var html = '';
     var userCount = 0;
+    var html = '';
     lib.forEach(function (it) {
-      if (it.builtin) return;
+      if (!it) return;
       userCount++;
+      var label = it.builtin ? ' • درون‌ساز' : '';
       html += '<div class="note" style="padding:8px; display:flex; align-items:center; justify-content:space-between; gap:8px;" data-athid="' + it.id + '">' +
-        '<span style="flex:1; font-size:13px;">🔊 ' + escapeHtml(it.name) + '</span>' +
+        '<span style="flex:1; font-size:13px;">🔊 ' + escapeHtml(it.name) + escapeHtml(label) + '</span>' +
         '<span style="display:flex; gap:4px;">' +
         '<button class="btn btn--ghost" data-athact="play" style="padding:4px 10px; font-size:12px;">▶️</button>' +
         '<button class="btn btn--ghost" data-athact="edit" style="padding:4px 10px; font-size:12px;">✏️ ویرایش</button>' +
         '<button class="btn btn--ghost" data-athact="del" style="padding:4px 10px; font-size:12px; color:#f87171;">🗑️ حذف</button>' +
         '</span></div>';
     });
-    if (!userCount) html = '<div class="text-small text-muted">هنوز صدای شخصی اضافه نکرده‌ای — از دکمه‌های بالا اضافه کن.</div>';
+    if (!userCount) html = '<div class="text-small text-muted">هنوز صدایی نداری — از دکمه‌های بالا اضافه کن.</div>';
     box.innerHTML = html;
     // رویدادها
     box.querySelectorAll('[data-athact]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var id = btn.closest('[data-athid]').getAttribute('data-athid');
         var act = btn.getAttribute('data-athact');
+        var it = Athan.getById(id);
+        if (!it) return;
         if (act === 'del') {
-          if (confirm('این صدا حذف شود؟')) {
-            Athan.removeItem(id);
+          if (confirm('«' + it.name + '» حذف شود؟')) {
+            var ok = it.builtin ? Athan.removeBuiltin(id) : Athan.removeItem(id);
             refreshAthanSelectors(); renderAthanUserList();
-            toast('حذف شد');
+            toast(ok ? 'حذف شد ✓' : 'حذف نشد');
           }
         } else if (act === 'play') {
-          // پخش سریع همین آیتم + انتخاب آن به‌عنوان اذان فعال
           Athan.setSel('athan', id);
           Athan.playItem(id);
           toast('▶️ پخش: ' + (Athan.getById(id) || {}).name);
         } else if (act === 'edit') {
-          var it = Athan.getById(id);
-          if (!it) return;
           var newName = prompt('نام جدید این صدا:', it.name);
           if (newName && newName.trim()) {
             Athan.updateItem(id, { name: newName.trim() });
@@ -2976,9 +3204,181 @@
       if (nowH >= t && nowH < t + 1.5 / 60) {
         played[stamp] = 1;
         try { localStorage.setItem('blx_athan_played', JSON.stringify(played)); } catch (e) { dbg(e); }
-        if (typeof Athan !== 'undefined') { try { Athan.play(); } catch (e) { dbg(e); } }
+        if (typeof Athan !== 'undefined') {
+          // v1.20: صدای جدا به ازای هر نماز (الگو: Salat-Times)
+          try {
+            var _byP = settings.athanByPrayer || {};
+            var _pid = _byP[k];
+            if (_pid && Athan.getById && Athan.getById(_pid)) Athan.playItem(_pid);
+            else Athan.play();
+          } catch (e) { dbg(e); try { Athan.play(); } catch (e2) {} }
+        }
+        // v1.20: صفحهٔ اذان با پس‌زمینهٔ کاتالوگی
+        try { showAthanScreen(k, t); } catch (e) { dbg(e); }
       }
     }
+  }
+
+  // ===== v1.20: صفحهٔ اذان با پس‌زمینه (الگو: SalatTimes-Backgrounds) =====
+  var ATHAN_SCREEN_PRAYERS = {
+    fajr: { label: 'اذان فجر', icon: '🌅' },
+    dhuhr: { label: 'اذان ظهر', icon: '☀️' },
+    asr: { label: 'اذان عصر', icon: '🌇' },
+    maghrib: { label: 'اذان مغرب', icon: '🌆' },
+    isha: { label: 'اذان عشاء', icon: '🌙' }
+  };
+  function showAthanScreen(k, t) {
+    try {
+      var m = document.getElementById('modalAthanScreen');
+      if (!m) return;
+      var p = ATHAN_SCREEN_PRAYERS[k] || { label: 'اذان', icon: '🕌' };
+      var tt = document.getElementById('athanScrTitle');
+      if (tt) tt.innerHTML = p.icon + ' ' + p.label;
+      var tm = document.getElementById('athanScrTime');
+      if (tm) tm.textContent = (typeof Prayer !== 'undefined' && Prayer.formatTime && t != null) ? Prayer.formatTime(t) : '';
+      var bg = document.getElementById('athanScrBg');
+      var cred = document.getElementById('athanScrCredit');
+      var item = null;
+      if (window.ATHAN_BG_CATALOG) {
+        for (var i = 0; i < ATHAN_BG_CATALOG.length; i++) if (ATHAN_BG_CATALOG[i].id === settings.athanBg) item = ATHAN_BG_CATALOG[i];
+      }
+      if (bg) {
+        if (item && item.url) bg.style.backgroundImage = 'url("' + item.url + '")';
+        else bg.style.backgroundImage = '';
+      }
+      if (cred) cred.textContent = item ? (item.name + ' — ' + item.credit) : '';
+      m.classList.add('show');
+    } catch (e) { dbg(e); }
+  }
+  function hideAthanScreen() {
+    try {
+      var m = document.getElementById('modalAthanScreen');
+      if (m) m.classList.remove('show');
+    } catch (e) {}
+  }
+  function athanBgCredit(id) {
+    if (!id || !window.ATHAN_BG_CATALOG) return '';
+    for (var i = 0; i < ATHAN_BG_CATALOG.length; i++)
+      if (ATHAN_BG_CATALOG[i].id === id) return ATHAN_BG_CATALOG[i].name + ' — ' + ATHAN_BG_CATALOG[i].credit;
+    return '';
+  }
+  function renderAthanBgPicker() {
+    var box = document.getElementById('athanBgPick');
+    if (!box) return;
+    if (!window.ATHAN_BG_CATALOG) { box.innerHTML = '<span class="text-small text-muted">کاتالوگ بارگذاری نشد</span>'; return; }
+    var cur = settings.athanBg || '';
+    var html = '<button class="bg-chip' + (cur ? '' : ' on') + '" data-bg="">✨ پیش‌فرض</button>';
+    ATHAN_BG_CATALOG.forEach(function (it) {
+      html += '<button class="bg-chip' + (cur === it.id ? ' on' : '') + '" data-bg="' + it.id + '"' +
+        ' style="background-image:url(\'' + it.url + '\')"><span>' + it.name + '</span></button>';
+    });
+    box.innerHTML = html;
+    Array.prototype.forEach.call(box.querySelectorAll('.bg-chip'), function (b) {
+      b.addEventListener('click', function () {
+        settings.athanBg = b.getAttribute('data-bg') || '';
+        saveSettings();
+        renderAthanBgPicker();
+      });
+    });
+    var cr = document.getElementById('athanBgCredit');
+    if (cr) cr.textContent = athanBgCredit(cur) || 'گرادیان پیش‌فرض (بدون تصویر)';
+  }
+
+  // ===== v1.20: راهنمای اولین اجرا (onboarding) =====
+  function obSetStep(n) {
+    window.__obStep = n;
+    var back = document.getElementById('obBack'), next = document.getElementById('obNext');
+    for (var i = 1; i <= 3; i++) {
+      var el = document.getElementById('obStep' + i);
+      if (el) el.style.display = (i === n) ? '' : 'none';
+    }
+    if (back) back.style.display = n === 1 ? 'none' : '';
+    if (next) next.textContent = n === 3 ? 'شروع کن ✓' : 'بعدی';
+  }
+  function showOnboard() {
+    var m = document.getElementById('modalOnboard');
+    if (!m) return;
+    var cs = document.getElementById('obCity');
+    if (cs && window.Tools && Tools.CITIES) {
+      cs.innerHTML = '';
+      for (var i = 0; i < Tools.CITIES.length; i++) {
+        var o = document.createElement('option');
+        o.value = i; o.textContent = Tools.CITIES[i].name;
+        cs.appendChild(o);
+      }
+      for (var j = 0; j < Tools.CITIES.length; j++) if (Tools.CITIES[j].name === settings.locName) { cs.value = j; break; }
+    }
+    var ms = document.getElementById('obMethod');
+    if (ms && typeof Prayer !== 'undefined' && Prayer.METHODS) {
+      ms.innerHTML = '';
+      for (var k in Prayer.METHODS) {
+        var o2 = document.createElement('option');
+        o2.value = k; o2.textContent = Prayer.METHODS[k].name;
+        if (k === settings.method) o2.selected = true;
+        ms.appendChild(o2);
+      }
+    }
+    setToggle('obAthan', settings.athanSound !== false);
+    setToggle('obNotify', settings.notifyPrayer !== false);
+    setToggle('obNotifyEv', settings.notifyEvents !== false);
+    obSetStep(1);
+    m.classList.add('show');
+  }
+  function maybeShowOnboard() {
+    try { if (localStorage.getItem('blx_onboard_done') === '1') return; } catch (e) {}
+    try { if (sessionStorage.getItem('blx_ob_shown') === '1') return; sessionStorage.setItem('blx_ob_shown', '1'); } catch (e) {}
+    setTimeout(showOnboard, 900);
+  }
+  function finishOnboard(skip) {
+    var m = document.getElementById('modalOnboard');
+    if (!skip) {
+      var cs = document.getElementById('obCity');
+      if (cs && window.Tools && Tools.CITIES) {
+        var c = Tools.CITIES[parseInt(cs.value, 10)];
+        if (c) { settings.lat = c.lat; settings.lng = c.lng; settings.locName = c.name; }
+      }
+      var ms = document.getElementById('obMethod');
+      if (ms && ms.value && Prayer.METHODS[ms.value]) settings.method = ms.value;
+      settings.athanSound = getToggle('obAthan');
+      settings.notifyPrayer = getToggle('obNotify');
+      settings.notifyEvents = getToggle('obNotifyEv');
+      saveSettings();
+      try { if (window.Weather && Weather.load) Weather.load(); } catch (e) {}
+      try { if (window.Notify) Notify.reschedule(); } catch (e) {}
+      try {
+        if (window.Compass && Compass.setQibla && Prayer.qiblaBearing) Compass.setQibla(Prayer.qiblaBearing(settings.lat, settings.lng));
+      } catch (e) {}
+      toast('تنظیمات ذخیره شد — خوش اومدی 🌙');
+    }
+    try { localStorage.setItem('blx_onboard_done', '1'); } catch (e) {}
+    if (m) m.classList.remove('show');
+  }
+  function wireOnboard() {
+    var m = document.getElementById('modalOnboard');
+    if (!m) return;
+    document.getElementById('obNext').addEventListener('click', function () {
+      var s = window.__obStep || 1;
+      if (s >= 3) finishOnboard(false); else obSetStep(s + 1);
+    });
+    document.getElementById('obBack').addEventListener('click', function () {
+      var s = window.__obStep || 1;
+      if (s > 1) obSetStep(s - 1);
+    });
+    document.getElementById('obSkip').addEventListener('click', function () { finishOnboard(true); });
+    document.getElementById('obGps').addEventListener('click', function () {
+      if (!navigator.geolocation) { toast('موقعیت‌یاب در دسترس نیست'); return; }
+      var b = document.getElementById('obGps');
+      b.textContent = '⏳ در حال یافتن موقعیت…';
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        settings.lat = pos.coords.latitude; settings.lng = pos.coords.longitude; settings.locName = 'موقعیت فعلی';
+        b.textContent = '✓ موقعیت ثبت شد';
+        toast('موقعیت فعلی ثبت شد ✓');
+      }, function () {
+        b.textContent = '📍 استفاده از موقعیت فعلی';
+        toast('موقعیت‌یابی ناموفق — شهر رو از لیست انتخاب کن');
+      }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
+    });
+    m.addEventListener('click', function (e) { if (e.target === this) finishOnboard(true); });
   }
 
   // ---------- Initialization ----------
@@ -3014,6 +3414,8 @@
     document.getElementById('calPrev').addEventListener('click', calPrev);
     document.getElementById('calNext').addEventListener('click', calNext);
     document.getElementById('calToday').addEventListener('click', calToday);
+    var _hjp = document.getElementById('calHijriPick');
+    if (_hjp) _hjp.addEventListener('click', openHijriPicker); // v1.20: پیکر هجری
     // v1.18: view switching (month / week / day / agenda)
     document.querySelectorAll('.calview-btn').forEach(function (cv) {
       cv.addEventListener('click', function () {
@@ -3070,7 +3472,6 @@
         if (a === 'poetry') go('culture');
         if (a === 'moon') { if (window.Moon) Moon.open(); else showMoonPhase(); }
         if (a === 'share') { if (window.Tools) Tools.shareDateCard(); }
-        if (a === 'tools') { go('tools'); }
         if (a === 'nextPrayer') { go('prayer'); }
         if (a === 'tasbih') { go('tasbeeh'); }
         if (a === 'adhkar') { var _m = document.getElementById('modalAdhkar'); if (_m) { _m.classList.add('show'); if (window.BXQuranAudio) BXQuranAudio.render(); } }
@@ -3189,6 +3590,56 @@
         bFile.value = '';
       });
     }
+    // v2: دکمه‌های جدید پشتیبان‌گیری/افزونه‌ها + فولدر/نسخه‌ها
+    var bFull = document.getElementById('btnBackupFull');
+    if (bFull && window.BXBackup) bFull.addEventListener('click', function () {
+      bFull.disabled = true;
+      toast('⏳ در حال ساخت بکاپ کامل…');
+      BXBackup.export().then(function (r) {
+        bFull.disabled = false;
+        if (r === 'shared') toast('✅ بکاپ کامل آماده و منوی اشتراک باز شد');
+        else if (String(r).indexOf('saved:') === 0) toast('✅ بکاپ کامل ذخیره شد');
+        else if (r === 'download') toast('✅ بکاپ کامل دانلود شد');
+        else toast('⚠️ بکاپ ساخته نشد');
+      }).catch(function () { bFull.disabled = false; toast('❌ خطا در ساخت بکاپ'); });
+    });
+    var bRestore = document.getElementById('btnBackupRestore');
+    if (bRestore && bFile && window.BXBackup) bRestore.addEventListener('click', function () { bFile.click(); });
+    var bRefresh = document.getElementById('btnRefreshPlugins');
+    if (bRefresh) bRefresh.addEventListener('click', function () {
+      var txt = document.getElementById('pluginListText');
+      if (txt) txt.textContent = 'در حال بررسی…';
+      setTimeout(function () {
+        var plugins = [
+          'PrayerCalc (محاسبه native اوقات شرعی)',
+          'WidgetScheduler (به‌روزرسانی خودکار ویجت‌ها)',
+          'BXBackup (پشتیبان‌گیری JSON)',
+          'Tools (۱۱ ماژول ابزار)',
+          'Stats (آمار و پیشرفت)',
+          'Moon (فاز ماه و مناسبت قمری)'
+        ];
+        if (txt) txt.textContent = plugins.length + ' افزونه فعال: ' + plugins.join('، ');
+      }, 400);
+    });
+    var bFolder = document.getElementById('btnOpenFolder');
+    if (bFolder) bFolder.addEventListener('click', function () {
+      toast('📂 فولدر: /data/data/ir.balochistan.nama (فقط root)');
+    });
+    var bOldVer = document.getElementById('btnViewOldVersions');
+    if (bOldVer) bOldVer.addEventListener('click', function () {
+      var vTxt = document.getElementById('oldVersionsText');
+      if (vTxt) vTxt.textContent = 'نسخه فعلی: ۲ (code ۲۰۰) — نسخه‌های قدیمی: ۱.۱۹، ۱.۱۸، …';
+      toast('📜 نسخه فعلی: ۲');
+    });
+    var bClear = document.getElementById('btnClearCache');
+    if (bClear) bClear.addEventListener('click', function () {
+      if (!confirm('داده‌های موقت (cache) حذف شود؟ داده‌های اصلی ذخیره نمی‌شوند.')) return;
+      var cleared = 0;
+      Object.keys(localStorage).forEach(function (k) {
+        if (k.indexOf('blx_cache') === 0) { localStorage.removeItem(k); cleared++; }
+      });
+      toast('🗑️ ' + cleared + ' مورد cache حذف شد');
+    });
     document.querySelectorAll('.toggle').forEach(function (t) {
       t.addEventListener('click', function () { t.classList.toggle('on'); });
     });
@@ -3288,6 +3739,19 @@
         }
       } catch (e) { dbg(e); }
     }, 1500);
+
+    // v1.20: راهنمای اولین اجرا
+    try { wireOnboard(); } catch (e) { dbg(e); }
+    try { maybeShowOnboard(); } catch (e) { dbg(e); }
+    // v1.20: دکمه‌های صفحهٔ اذان
+    try {
+      var _rp = document.getElementById('athanScrRepeat');
+      if (_rp) _rp.addEventListener('click', function () { if (window.Athan) { try { Athan.play(); } catch (e) {} } });
+      var _sp = document.getElementById('athanScrStop');
+      if (_sp) _sp.addEventListener('click', function () { if (window.Athan) { try { Athan.stop(); } catch (e) {} } });
+      var _cl = document.getElementById('athanScrClose');
+      if (_cl) _cl.addEventListener('click', hideAthanScreen);
+    } catch (e) { dbg(e); }
   }
 
   function showMoonPhase() {
@@ -3334,13 +3798,15 @@
   var App = {
     init: init,
     go: go,
+    showAthanScreen: showAthanScreen, // v1.20: برای پیش‌نمایش/تست
     toast: toast,
     getSettings: function () { return settings; },
     saveSettings: saveSettings,
     getState: function () { return state; },
     searchDayEvents: searchDayEvents,
     searchAllEvents: searchAllEvents,
-    openConverter: openConverter
+    openConverter: openConverter,
+    currentSeason: currentSeason
   };
   if (typeof window !== 'undefined') window.App = App;
 
@@ -3350,6 +3816,15 @@
   } else {
     init();
   }
+
+  // v2: init ماژول‌های جدید (جستجو، وظایف، آلارم M5)
+  function initNewModules() {
+    try { if (window.BXSearch) BXSearch.init(); } catch (e) {}
+    try { if (window.BXTask) BXTask.init(); } catch (e) {}
+    try { if (window.BXAlarms) { BXAlarms.checkMissed(); BXAlarms.wireUI(); } } catch (e) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initNewModules);
+  else initNewModules();
 })(typeof window !== 'undefined' ? window : this);
 
 

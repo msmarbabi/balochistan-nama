@@ -20,6 +20,7 @@
 
   var TODAY_KEY = 'blx_tasbeeh_today';
   var STREAK_KEY = 'blx_tasbeeh_streak';
+  var HIST_KEY = 'blx_tasbeeh_history'; // v1.20: تاریخچهٔ روزانه برای نمودار هفتگی
   var CUSTOM_KEY = 'blx_tasbeeh_custom'; // v1.16: ذکرهای دلخواه
 
   function loadCustom() {
@@ -50,7 +51,108 @@
       return o;
     } catch (e) { return { date: todayStr(), counts: {} }; }
   }
-  function saveToday(o) { localStorage.setItem(TODAY_KEY, JSON.stringify(o)); }
+  function saveToday(o) {
+    localStorage.setItem(TODAY_KEY, JSON.stringify(o));
+    bumpHistory(o);
+  }
+  /* ===== v1.20: تاریخچه، هدف روزانه، نمودار هفتگی (الگو: ShafeeZekr) ===== */
+  function bumpHistory(o) {
+    try {
+      var k = todayStr();
+      var h = JSON.parse(localStorage.getItem(HIST_KEY) || '{}');
+      h[k] = totalToday(o);
+      var keys = Object.keys(h);
+      if (keys.length > 60) {
+        keys.sort();
+        for (var i = 0; i < keys.length - 60; i++) delete h[keys[i]];
+      }
+      localStorage.setItem(HIST_KEY, JSON.stringify(h));
+    } catch (e) {}
+  }
+  function loadHistory() {
+    try { return JSON.parse(localStorage.getItem(HIST_KEY) || '{}'); } catch (e) { return {}; }
+  }
+  function weekStats() {
+    var h = loadHistory();
+    var names = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
+    var out = [];
+    var live = totalToday(loadToday());
+    for (var i = 6; i >= 0; i--) {
+      var d = new Date(); d.setDate(d.getDate() - i);
+      var k = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+      out.push({ key: k, label: names[d.getDay()], total: i === 0 ? live : (h[k] || 0), today: i === 0 });
+    }
+    return out;
+  }
+  function getGoal() {
+    // منبع واحد: تنظیمات اصلی اپ (v1.20)
+    try {
+      var st = JSON.parse(localStorage.getItem('blx_nama_settings') || '{}');
+      var g = parseInt(st.dhikrGoal, 10);
+      if (g > 0) return g;
+    } catch (e) {}
+    var g2 = parseInt(localStorage.getItem('blx_tasbeeh_goal') || '0', 10);
+    return g2 > 0 ? g2 : 100;
+  }
+  function setGoal(g) { localStorage.setItem('blx_tasbeeh_goal', String(Math.max(1, g | 0))); }
+  /* یادآور دوره‌ای + ساعت سکوت */
+  var remindLast = 0, remindArmed = false, remindT = null;
+  function quietNow() {
+    try {
+      var st = JSON.parse(localStorage.getItem('blx_nama_settings') || '{}');
+      function mins(s) { var p = String(s || '').split(':'); return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0); }
+      var fm = mins(st.quietFrom || '23:00'), tm = mins(st.quietTo || '06:00');
+      if (fm === tm) return false;
+      var now = new Date(), cur = now.getHours() * 60 + now.getMinutes();
+      return fm < tm ? (cur >= fm && cur < tm) : (cur >= fm || cur < tm);
+    } catch (e) { return false; }
+  }
+  function chime() {
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) {
+        if (!window.__tbAC) window.__tbAC = new AC();
+        var ctx = window.__tbAC;
+        if (ctx.state === 'suspended') ctx.resume();
+        function beep(f, t0, dur) {
+          var o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = 'sine'; o.frequency.value = f;
+          g.gain.setValueAtTime(0.0001, ctx.currentTime + t0);
+          g.gain.exponentialRampToValueAtTime(0.22, ctx.currentTime + t0 + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t0 + dur);
+          o.connect(g); g.connect(ctx.destination);
+          o.start(ctx.currentTime + t0); o.stop(ctx.currentTime + t0 + dur + 0.05);
+        }
+        beep(880, 0, 0.35);
+        beep(1174.66, 0.45, 0.5);
+      }
+    } catch (e) {}
+    if (navigator.vibrate) { try { navigator.vibrate([120, 80, 120]); } catch (e) {} }
+    try {
+      var cur = currentInfo();
+      var msg = '📿 وقت ذکر — «' + ((cur && cur.name) || 'سبحان‌الله') + '»';
+      if (window.App && App.toast) App.toast(msg);
+      else if (window.toast) toast(msg);
+    } catch (e) {}
+  }
+  function remindTick() {
+    try {
+      var st = JSON.parse(localStorage.getItem('blx_nama_settings') || '{}');
+      if (!st.dhikrRemind) { remindArmed = false; return; }
+      if (document.visibilityState === 'hidden') return;
+      var iv = parseInt(st.dhikrRemindMin, 10); if (!(iv > 0)) iv = 30;
+      if (!remindArmed) { remindArmed = true; remindLast = Date.now(); return; }
+      if (quietNow()) return;
+      if (Date.now() - remindLast < iv * 60000) return;
+      remindLast = Date.now();
+      chime();
+    } catch (e) {}
+  }
+  function startReminder() {
+    if (remindT) return;
+    remindT = setInterval(remindTick, 15000);
+  }
+  function remindKick() { remindArmed = false; } // بعد از تغییر تنظیم، شمارش دوباره از صفر
 
   function loadStreak() {
     try { return JSON.parse(localStorage.getItem(STREAK_KEY) || '{"lastDate":"","streak":0}'); }
@@ -573,6 +675,34 @@
     }
   }
 
+  /* v1.20: بلوک هدف روزانه با نوار پیشرفت */
+  function goalBlock(total) {
+    var goal = getGoal();
+    var pct = Math.min(100, Math.round((total / goal) * 100));
+    return '<div class="tb-goal">' +
+      '<div class="tb-goal__head"><span>🎯 هدف روزانه</span><b>' + total + ' از ' + goal + ' (' + pct + '٪)</b></div>' +
+      '<div class="tb-goal__bar"><i style="width:' + pct + '%"></i></div>' +
+      '</div>';
+  }
+  /* v1.20: نمودار ۷ روز اخیر */
+  function weekBlock() {
+    var w = weekStats(), max = 1, html = '';
+    for (var i = 0; i < w.length; i++) if (w[i].total > max) max = w[i].total;
+    for (var j = 0; j < w.length; j++) {
+      var d = w[j];
+      var hp = d.total > 0 ? Math.max(6, Math.round((d.total / max) * 100)) : 3;
+      html += '<div class="tb-week__col' + (d.today ? ' is-today' : '') + (d.total > 0 ? '' : ' is-zero') + '">' +
+        '<div class="tb-week__val">' + (d.total > 0 ? d.total : '') + '</div>' +
+        '<div class="tb-week__bar"><i style="height:' + hp + '%"></i></div>' +
+        '<div class="tb-week__d">' + d.label + '</div>' +
+        '</div>';
+    }
+    return '<div class="tb-week">' +
+      '<div class="tb-week__head">📊 ذکر ۷ روز اخیر</div>' +
+      '<div class="tb-week__chart">' + html + '</div>' +
+      '</div>';
+  }
+
   function render() {
     var view = document.getElementById('view-tasbeeh');
     if (!view) return;
@@ -615,6 +745,9 @@
         '<div class="tb-stat"><div class="tb-stat__v" id="tbTotal">' + total + '</div><div class="tb-stat__l">ذکر امروز</div></div>' +
         '<div class="tb-stat"><div class="tb-stat__v" id="tbStreak">' + s.streak + '</div><div class="tb-stat__l">روز متوالی</div></div>' +
       '</div>' +
+      // v1.20: هدف روزانه + نمودار هفتگی (الگو: ShafeeZekr)
+      goalBlock(total) +
+      weekBlock() +
       '<div class="card" style="margin-top:12px;" id="statsCard"></div>' +
       '<div style="display:flex; gap:8px; margin-top:10px;">' +
         '<button class="btn btn--ghost" id="tbReset" style="flex:1;">ریست این ذکر</button>' +
@@ -703,6 +836,31 @@
     var streakEl = document.getElementById('tbStreak');
     var s = loadStreak();
     if (streakEl) streakEl.textContent = s.streak;
+    // v1.20: نوار هدف روزانه + ستون امروز نمودار (زنده)
+    try {
+      var _tot = totalToday(o), _goal = getGoal();
+      var _gp = Math.min(100, Math.round((_tot / _goal) * 100));
+      var _gEl = document.querySelector('.tb-goal');
+      if (_gEl) {
+        var _hb = _gEl.querySelector('.tb-goal__head b');
+        if (_hb) _hb.textContent = _tot + ' از ' + _goal + ' (' + _gp + '٪)';
+        var _bar = _gEl.querySelector('.tb-goal__bar i');
+        if (_bar) _bar.style.width = _gp + '%';
+      }
+      var _col = document.querySelector('.tb-week__col.is-today');
+      if (_col) {
+        var _v = _col.querySelector('.tb-week__val');
+        if (_v) _v.textContent = _tot;
+        var _all = document.querySelectorAll('.tb-week__val');
+        var _mx = 1, _i;
+        for (_i = 0; _i < _all.length; _i++) {
+          var _n = parseInt(String(_all[_i].textContent).replace(/[^\d]/g, ''), 10) || 0;
+          if (_n > _mx) _mx = _n;
+        }
+        var _wb = _col.querySelector('.tb-week__bar i');
+        if (_wb) _wb.style.height = Math.max(6, Math.round((_tot / _mx) * 100)) + '%';
+      }
+    } catch (e) {}
     // haptic
     var vib = document.getElementById('tbVib');
     if (vib && vib.dataset.on !== '0') {
@@ -725,6 +883,16 @@
     var d = allDhikr()[current];
     return d ? { name: d.name, target: d.target || 0 } : null;
   }
-  var Tasbeeh = { render: render, onTap: onTap, matchCounts: matchCounts, normKey: normKey, onRouteLeave: onRouteLeave, currentInfo: currentInfo };
+  var Tasbeeh = {
+    render: render, onTap: onTap, matchCounts: matchCounts, normKey: normKey,
+    onRouteLeave: onRouteLeave, currentInfo: currentInfo,
+    // v1.20
+    weekStats: weekStats, getGoal: getGoal, setGoal: setGoal,
+    startReminder: startReminder, remindKick: remindKick
+  };
   if (typeof window !== 'undefined') window.Tasbeeh = Tasbeeh;
+  // راه‌اندازی موتور یادآور (۴ ثانیه بعد از بارگذاری)
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    setTimeout(function () { try { startReminder(); } catch (e) {} }, 4000);
+  }
 })(typeof window !== 'undefined' ? window : this);

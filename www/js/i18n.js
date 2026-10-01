@@ -13,7 +13,8 @@
   var DICT = {
     fa: {
       'nav.home': 'خانه', 'nav.calendar': 'تقویم', 'nav.prayer': 'نماز',
-      'nav.compass': 'قبله', 'nav.weather': 'هوا', 'nav.culture': 'فرهنگ', 'nav.tasbeeh': 'تسبیح',
+      'nav.compass': 'قبله', 'nav.weather': 'آب و هوا', 'nav.culture': 'فرهنگ',
+      'nav.care': 'مراقبت', 'nav.tools': 'ابزار', 'nav.notes': 'یادداشت',
       'sec.todayEvents': 'مناسبت‌های امروز', 'sec.tools': 'ابزارها',
       'quick.qibla': 'قبله', 'quick.converter': 'تبدیل تاریخ', 'quick.poetry': 'شعر روز', 'quick.moon': 'فاز ماه', 'quick.tools': 'ابزار',
       'tb.title': 'تسبیح دیجیتال', 'tb.tap': 'بزن',
@@ -21,7 +22,8 @@
     },
     bal: {
       'nav.home': 'گیش', 'nav.calendar': 'تقویم', 'nav.prayer': 'نماز',
-      'nav.compass': 'قبله', 'nav.weather': 'هوا', 'nav.culture': 'فرهنگ', 'nav.tasbeeh': 'تسبیح',
+      'nav.compass': 'قبله', 'nav.weather': 'آب و هوا', 'nav.culture': 'فرهنگ',
+      'nav.care': 'مراقبت', 'nav.tools': 'افزار', 'nav.notes': 'یادداشت',
       'sec.todayEvents': 'مراسمِ امروز', 'sec.tools': 'افزار',
       'quick.qibla': 'قبله', 'quick.converter': 'تبدیل تاریخ', 'quick.poetry': 'شعرِ روز', 'quick.moon': 'فاز ماه', 'quick.tools': 'افزار',
       'tb.title': 'تسبیح دیجیتال', 'tb.tap': 'بزن',

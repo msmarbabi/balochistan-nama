@@ -6,11 +6,7 @@
   var SEL_KEY = 'blx_athan_sel';
 
   var DEFAULT_LIB = [
-    { id: 'user_adan', name: 'اذان مکه مکرمه (علی الملا)', type: 'file', data: 'assets/audio/adan_user.mp3', builtin: true },
-    { id: 'digital_athan', name: 'اذان دیجیتال (استاندارد)', type: 'digital', data: 'standard', builtin: true },
-    { id: 'digital_athan_slow', name: 'اذان دیجیتال (آرام)', type: 'digital', data: 'slow', builtin: true },
-    { id: 'digital_athan_warm', name: 'اذان دیجیتال (مليح)', type: 'digital', data: 'warm', builtin: true },
-    { id: 'silent', name: 'بدون صدا (فقط اعلان)', type: 'silent', data: '', builtin: true }
+    { id: 'user_adan', name: 'اذان مکه مکرمه (علی الملا)', type: 'file', data: 'assets/audio/adan_user.mp3', builtin: true }
   ];
 
   // محدودیتها: فایل خام حداکثر ~۲۰ مگابایت؛ در حالت بدون Filesystem حداکثر ~۱.۵ مگ ب64 در localStorage
@@ -42,8 +38,8 @@
     lib.forEach(function (it) { if (it) have[it.id] = 1; });
     DEFAULT_LIB.forEach(function (d) { if (!have[d.id]) lib.push(d); });
     _lib = lib;
-    migrateLegacy(lib); // انتقال فایلهای بزرگ قدیمی از localStorage به دیسک
-    return lib;
+    _lib = migrateLegacy(_lib); // انتقال فایلهای بزرگ قدیمی از localStorage به دیسک + حذف دیجیتال‌ها
+    return _lib;
   }
   function saveLib(lib) {
     _lib = lib;
@@ -71,10 +67,17 @@
   }
 
   // انتقال آیتمهای قدیمی (base64 داخل localStorage) به فایل روی دیسک — رفع کرش/سهمیه
-  // v1.11 باگ: آیتمهای قدیمی ممکن است ID یکسان داشته باشند → قبل از نوشتن روی دیسک، ID جدید می‌گیرند
+  // v2: حذف اذانهای دیجیتال قدیمی — اگر کاربر قبلاً داشته، هنگام بارگذاری از لیست حذف می‌شوند
   function migrateLegacy(lib) {
-    if (!hasFS()) return;
-    // ۱) اصلاح IDهای تکراری
+    // اذان دیجیتال‌ها را همیشه حذف کن (حتی بدون FS)
+    var digitalIds = ['digital_athan', 'digital_athan_slow', 'digital_athan_warm', 'silent'];
+    var digitalRemoved = 0;
+    lib = (lib || []).filter(function (it) {
+      if (it && digitalIds.indexOf(it.id) !== -1) { digitalRemoved++; return false; }
+      return true;
+    });
+    if (digitalRemoved) saveLib(lib);
+    if (!hasFS()) return lib;
     var seen = {};
     var renamed = false;
     lib.forEach(function (it) {
@@ -88,7 +91,8 @@
     lib.forEach(function (it) {
       if (it && it.type === 'file64' && it.data && it.data.length > 120000 && !it.path) pending++;
     });
-    if (!pending) { if (renamed) saveLib(lib); return; }
+    // اگر دیجیتال‌ها حذف شد، حتماً ذخیره کن (حتی بدون pending/renamed)
+    if (!pending) { if (renamed || digitalRemoved) saveLib(lib); return lib; }
     var finish = function () {
       done++;
       if (done >= pending) saveLib(lib); // ذخیره نسخه کوچک‌شده (بدون base64)
@@ -103,6 +107,7 @@
         } catch (e) { finish(); }
       }
     });
+    return lib;
   }
 
   // افزودن آیتم سبک (URL یا دیجیتال) — همگام
@@ -140,18 +145,38 @@
     });
   }
 
-  // ویرایش نام
+  // ویرایش نام (builtin هم قابل تغییر نام است — اما type/data/builtin ثابت می‌ماند)
   function updateItem(id, patch) {
     var lib = loadLib();
     for (var i = 0; i < lib.length; i++) {
       if (lib[i] && lib[i].id === id) {
-        if (lib[i].builtin) return null;
-        for (var k in patch) if (Object.prototype.hasOwnProperty.call(patch, k)) lib[i][k] = patch[k];
+        if (lib[i].builtin) {
+          if (patch.name) lib[i].name = String(patch.name);
+        } else {
+          for (var k in patch) if (Object.prototype.hasOwnProperty.call(patch, k)) lib[i][k] = patch[k];
+        }
         saveLib(lib);
         return lib[i];
       }
     }
     return null;
+  }
+
+  // حذف آیتم builtin (محدود — فقط برای آیتم‌های قابل‌حذف)
+  function removeBuiltin(id) {
+    var lib = loadLib();
+    var out = [];
+    var removed = null;
+    for (var i = 0; i < lib.length; i++) {
+      if (lib[i] && lib[i].id === id && lib[i].builtin) { removed = lib[i]; continue; }
+      out.push(lib[i]);
+    }
+    if (!removed) return false;
+    saveLib(out);
+    var sel = readJSON(SEL_KEY, {});
+    if (sel.athan === id) { sel.athan = DEFAULT_LIB[0].id; writeJSON(SEL_KEY, sel); }
+    if (sel.alert === id) { sel.alert = DEFAULT_LIB[0].id; writeJSON(SEL_KEY, sel); }
+    return true;
   }
 
   // حذف (builtin حذف نمی‌شود) — فایل روی دیسک هم پاک می‌شود
@@ -360,6 +385,7 @@
     addItemFile: addItemFile,
     updateItem: updateItem,
     removeItem: removeItem,
+    removeBuiltin: removeBuiltin,
     getSel: getSel,
     setSel: setSel,
     play: play,

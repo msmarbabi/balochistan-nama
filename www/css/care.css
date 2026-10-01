@@ -1,0 +1,14 @@
+/* v2 M1 — Care view styles */
+.care-svc {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 12px; border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--line, rgba(255,255,255,.08));
+  cursor: pointer; transition: transform .15s, border-color .15s;
+  min-height: 88px;
+}
+.care-svc:active { transform: scale(.97); border-color: var(--accent); }
+.care-svc__ic { font-size: 24px; }
+.care-svc__name { font-size: 13px; font-weight: 700; color: var(--text); }
+.care-svc__desc { font-size: 11px; color: var(--text-dim, rgba(255,255,255,.55)); line-height: 1.5; flex: 1; }
+.care-svc__stat { font-size: 12px; font-weight: 600; color: var(--accent, #4d9fff); margin-top: 4px; }

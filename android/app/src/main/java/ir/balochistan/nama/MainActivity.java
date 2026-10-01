@@ -169,6 +169,13 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // v2.0.2: always load fresh web assets (no HTTP cache) without wiping user data
+        try {
+            android.webkit.WebView wv = getBridge().getWebView();
+            if (wv != null) wv.getSettings().setCacheMode(android.webkit.WebSettings.LOAD_NO_CACHE);
+        } catch (Exception ignored) {}
+        // v2 (M6): برنامه‌ریزیِ به‌روزرسانیِ خودکارِ ویجت‌ها (WorkManager، هر ۳۰ دقیقه)
+        try { WidgetScheduler.schedule(this); } catch (Exception ignored) {}
         // v1.18: Deep link از QS Tile / ویجت اجنده — باز کردن مودال رویدادهای شخصی
         handleBxAction(getIntent());
         // NotesBridge: ارسال یادداشت به برنامه یادداشت رسمی اندروید
@@ -673,6 +680,24 @@ public class MainActivity extends BridgeActivity {
                             requestPermissions(new String[]{ android.Manifest.permission.READ_CONTACTS }, 9001);
                         } catch (Exception e) {}
                         return false;
+                    }
+
+                    // ===== v2 M4: قفل سریع دستگاه (Keyguard) =====
+                    @JavascriptInterface
+                    public void lockDevice() {
+                        try {
+                            Intent i = new Intent("com.android.server.action.KEYGUARD_GO_LOCK");
+                            i.setPackage("android");
+                            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT);
+                            MainActivity.this.startActivity(i);
+                        } catch (Exception e) {
+                            // fallback: intent عمومی تر
+                            try {
+                                Intent i2 = new Intent(Intent.ACTION_SCREEN_OFF);
+                                i2.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                MainActivity.this.startActivity(i2);
+                            } catch (Exception ignored) {}
+                        }
                     }
 
                     // ===== v1.18: ذخیره/اشتراک فایل ICS از وب =====

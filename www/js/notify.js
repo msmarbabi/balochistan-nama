@@ -159,6 +159,75 @@
           }
         }
 
+        // --- M5: آلارم شخصی برای هر رویداد (N دقیقه قبل از مناسبت) ---
+        // blx_event_alarms: { "eventId": { min: N, sound: 'adan'|'default' } }
+        var evAlarms = {};
+        try { evAlarms = JSON.parse(localStorage.getItem('blx_event_alarms') || '{}'); } catch (e) {}
+        if (Object.keys(evAlarms).length && typeof PersonalEvents !== 'undefined' && PersonalEvents.upcoming) {
+          var stM5 = (typeof App !== 'undefined' && App.getState) ? App.getState() : null;
+          if (stM5 && stM5.triple) {
+            var ups = [];
+            try { ups = PersonalEvents.upcoming(stM5.triple.jalali.jy, stM5.triple.jalali.jm, stM5.triple.jalali.jd, 3) || []; } catch (e) {}
+            // فقط امروز و فردا (روز ۰ و ۱)
+            ups = ups.filter(function (u) { return u.dayIdx <= 1; });
+            ups.forEach(function (u) {
+              var g = Cal.toGregorian(u.jy, u.jm, u.jd);
+              u.events.forEach(function (pe) {
+                if (!pe.id) return;
+                var alarm = evAlarms[pe.id];
+                if (!alarm || !alarm.min) return;
+                var targetDate = new Date(g.gy, g.gm - 1, g.gd);
+                if (pe.time) {
+                  var tm = String(pe.time).match(/^(\d{1,2}):(\d{2})/);
+                  if (tm) { targetDate.setHours(parseInt(tm[1], 10), parseInt(tm[2], 10), 0, 0); }
+                  else targetDate.setHours(9, 0, 0, 0);
+                } else {
+                  targetDate.setHours(9, 0, 0, 0); // پیش‌فرض صبح
+                }
+                var atAlarm = new Date(targetDate.getTime() - alarm.min * 60000);
+                if (atAlarm.getTime() <= Date.now()) return;
+                notes.push({
+                  id: id++,
+                  title: '⏰ ' + (pe.icon || '') + ' ' + (pe.title || 'مناسبت'),
+                  body: 'آلارم شخصی — ' + alarm.min + ' دقیقه قبل (' + u.jm + '/' + u.jd + ')',
+                  schedule: { at: atAlarm },
+                  sound: alarm.sound === 'adan' ? 'adan' : 'default'
+                });
+              });
+            });
+          }
+        }
+
+        // --- S1: یادآوری هوشمند — اگر رویداد رد شد، دوباره با لحن متفاوت یادآوری ---
+        if (settings.smartReminder !== false) {
+          var smartLadder = [
+            { afterMin: 5,  tone: 'مهربان',  msg: '⏳ یک مناسبت نزدیک است — وقت آن فرا می‌رسد' },
+            { afterMin: 30, tone: 'یادآوری',  msg: '🔔 همان مناسبت — به نظر می‌رسد جا افتاد، یک نگاه دیگر بده' },
+            { afterMin: 60, tone: 'پرسش',    msg: '❓ آیا از یاد رفت؟ مناسبت در آستانه است — کناره‌ای؟' }
+          ];
+          var missed = [];
+          try { missed = JSON.parse(localStorage.getItem('blx_smart_missed') || '[]'); } catch (e) {}
+          // فقط رویدادهای ۲ ساعت اخیر
+          missed = missed.filter(function (m) { return m && m.ts && Date.now() - m.ts < 2 * 3600000; });
+          missed.forEach(function (m) {
+            var evTime = new Date(m.iso || m.ts);
+            var age = (Date.now() - evTime.getTime()) / 60000; // دقیقه از زمان رویداد
+            smartLadder.forEach(function (step) {
+              if (age >= step.afterMin && age < step.afterMin + 25) {
+                var at = new Date(evTime.getTime() + step.afterMin * 60000);
+                if (at.getTime() < Date.now()) return; // رد شده
+                notes.push({
+                  id: id++,
+                  title: '🔔 ' + step.tone + ': ' + (m.title || 'مناسبت'),
+                  body: step.msg,
+                  schedule: { at: at },
+                  sound: 'default'
+                });
+              }
+            });
+          });
+        }
+
         if (notes.length) {
           LN.schedule({ notifications: notes }).catch(function (e) {
             if (typeof App !== 'undefined' && App.toast) App.toast('نوتیفیکیشن تنظیم نشد');

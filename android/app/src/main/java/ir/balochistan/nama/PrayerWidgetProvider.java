@@ -38,6 +38,11 @@ public class PrayerWidgetProvider extends AppWidgetProvider {
     }
 
     private void updateWidget(Context context, AppWidgetManager mgr, int appWidgetId) {
+        // v2: اگه widget_data.json نباشد یا قدیمی باشد، محاسبات native پرشیو کند
+        File dataFile = new File(context.getFilesDir(), "widget_data.json");
+        if (!dataFile.exists() || System.currentTimeMillis() - dataFile.lastModified() > 15 * 60 * 1000L) {
+            PrayerCalc.ensureWidgetData(context);
+        }
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_layout);
 
         String fajr = "--:--", dhuhr = "--:--", asr = "--:--", maghrib = "--:--", isha = "--:--";
@@ -101,6 +106,16 @@ public class PrayerWidgetProvider extends AppWidgetProvider {
         int[] ids = mgr.getAppWidgetIds(new android.content.ComponentName(context, PrayerWidgetProvider.class));
         for (int id : ids) {
             new PrayerWidgetProvider().updateWidget(context, mgr, id);
+        }
+    }
+
+    /** v2: آپدیت همه نمونه‌ها از بیرون (WorkManager) — خودِ file رو به‌روز می‌کند */
+    public static void pushAllUpdates(Context ctx) {
+        Context app = ctx.getApplicationContext();
+        AppWidgetManager mgr = AppWidgetManager.getInstance(app);
+        int[] ids = mgr.getAppWidgetIds(new android.content.ComponentName(app, PrayerWidgetProvider.class));
+        for (int id : ids) {
+            new PrayerWidgetProvider().updateWidget(app, mgr, id);
         }
     }
 }
